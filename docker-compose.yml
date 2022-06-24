@@ -1,0 +1,40 @@
+version: "3.8"
+services:
+  redis:
+    restart: always
+    image: "redis:alpine"
+    container_name: redis
+    volumes:
+      - redis-data:/data
+    entrypoint: redis-server --appendonly yes
+    ports:
+      - 6379:6379
+  overtimemarkets-bot:
+    restart: always
+    image: thalesmarket/overtimemarkets-bot
+    environment:
+      - "PRIVATE_KEY=''"
+      - "WALLET=''"
+      - "INFURA=16f15a8ff9f54b2394086bda0b237611"
+      - "INFURA_URL=https://optimism-mainnet.infura.io/v3/16f15a8ff9f54b2394086bda0b237611"
+      - "NETWORK=optimism"
+      - "NETWORK_ID=10"
+      - "BASE_URL=https://api.0x.org/sra/v4/"
+      - "LINK_AMOUNT=0.1"
+      - "MILISECONDS=1000"
+      - "ONE_HOUR_IN_SECONDS=3600"
+      - "ONE_DAY_IN_MILISECONDS=86400000"
+      - "CREATION_DAYS_INFRONT=7"
+      - "JOB_ID_CREATION=5c4b2ebb686b4cb58968ae0a7b5782f6"
+      - "MARKET_CREATION=create"
+      - "SPORT_IDS=3,10"
+      - "MARKET_RESOLVE=resolve"
+      - "JOB_ID_RESOLVE=5c4b2ebb686b4cb58968ae0a7b5782f6"
+      - "RESOLVE_STATUSES=1,2,8,11"
+      - "EXPECTED_GAME_DURATIN=7200"
+      - "JOB_ID_ODDS=3b13b48340ac4226b3c2973295d869d7"
+      - "FASTER_PROCESSING_TIME=259200"
+      - "SLOW_PROCCES_HOURS=1"
+      - "FAST_PROCESS_HOURS=6"
+volumes:
+  redis-data:

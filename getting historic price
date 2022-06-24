@@ -1,0 +1,67 @@
+ const dater = new EthDater(
+    mainnetprovider // ethers provider, required.
+  );
+  const yearago = new Date(
+    new Date().setFullYear(new Date().getFullYear() - 1)
+  );
+  // Getting block by date:
+  let block = await dater.getDate(yearago, true);
+
+  let rateForSynthAYearAgo;
+
+  const historicPrice = gql`
+    query historicPrice($block: Int!, $synth: String!) {
+      latestRates(block: { number: $block }, where: { id: $synth }) {
+        id
+        rate
+      }
+    }
+  `;
+
+  const variables = {
+    block: block.block,
+    synth: currencyKey,
+  };
+
+  const pricedata = await request(
+    "https://api.thegraph.com/subgraphs/name/synthetixio-team/synthetix-rates",
+    historicPrice,
+    variables
+  );
+
+  let rateAtTime;
+
+  if (pricedata.latestRates.length == 0) {
+    //get the first block that had the price
+    const firstBlock = gql`
+      query firstBlock($synth: String!) {
+        rateUpdates(
+          orderBy: block
+          orderDirection: asc
+          where: { synth: $synth }
+          first: 1
+        ) {
+          block
+          synth
+          rate
+        }
+      }
+    `;
+
+    const variablesFirst = {
+      synth: currencyKey,
+    };
+
+    const firstBlockData = await request(
+      "https://api.thegraph.com/subgraphs/name/synthetixio-team/synthetix-rates",
+      firstBlock,
+      variablesFirst
+    );
+    const firstBlockRate = firstBlockData.rateUpdates[0].rate / 1e18;
+    rateAtTime = firstBlockRate;
+  } else {
+    rateAtTime = pricedata.latestRates[0].rate / 1e18;
+  }
+
+  rateForSynthAYearAgo = rateAtTime;
+  rateForSynthAYearAgo = rateForSynthAYearAgo.toFixed(2);
