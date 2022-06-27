@@ -12,30 +12,35 @@ const bytes32 = require("bytes32");
 const gamesQueue = require("../../scripts/GamesQueue.js");
 const gamesWrapper = require("../../scripts/GamesWrapper.js");
 const gamesConsumer = require("../../scripts/GamesConsumer.js");
+const linkToken = require("../../contracts/LinkToken.js");
 
 async function doPull() {
+
+  const link = new ethers.Contract(
+    process.env.LINK_CONTRACT,
+    linkToken.linkTokenContract.abi,
+    wallet
+  );
   
   const queues = new ethers.Contract(
-    "0x952Af77e13e121A648Ff2aDe0b65779f45a1f496",
+    process.env.GAME_QUEUE_CONTRACT,
     gamesQueue.gamesQueueContract.abi,
     wallet
   );
 
   const wrapper = new ethers.Contract(
-    "0xae4fB5Dc9b2371Ef994D09DB1b4F341CdED0b1d6",
+    process.env.WRAPPER_CONTRACT,
     gamesWrapper.gamesWraperContract.abi,
     wallet
   );
 
   const consumer = new ethers.Contract(
-    "0xd03f473caC24767134A86A298FeC38294986EcE6",
+    process.env.CONSUMER_CONTRACT,
     gamesConsumer.gamesConsumerContract.abi,
     wallet
   );
 
   const jobId = bytes32({ input: process.env.JOB_ID_ODDS});
-
-  const linkAmountPerRequest = w3utils.toWei(process.env.LINK_AMOUNT);
 
   console.log("Pulling Odds...");
 
@@ -48,6 +53,9 @@ async function doPull() {
 
     let unproccessedGames = await queues.getLengthUnproccessedGames();
     console.log("GAMES length =  " + unproccessedGames);
+
+    let linkAmountForApprove = await wrapper.payment();
+    console.log("Link amount to approve:  " + linkAmountForApprove);
 
     // do for all games
     for (let j = 0; j < unproccessedGames; j++) {
@@ -88,13 +96,33 @@ async function doPull() {
         if((gameLastTimePullOddsMili + (process.env.ONE_HOUR_IN_SECONDS * process.env.SLOW_PROCCES_HOURS) * process.env.MILISECONDS) < timeInMiliseconds){
           // pull odds
           try {
-            let tx = await wrapper.requestOddsWithFilters(
-              jobId,
-              linkAmountPerRequest,
-              sportId,
-              gameStart,
-              [] //ids
+
+            console.log("Approve link amount...");
+
+            let approveTx = await link.approve(
+              process.env.WRAPPER_CONTRACT,
+              linkAmountForApprove
             );
+
+            await approveTx.wait().then((e) => {
+              console.log(
+                "approved " +
+                  process.env.WRAPPER_CONTRACT +
+                  " on " +
+                  wallet.address +
+                  " amount: " +
+                  linkAmountForApprove
+              );
+            });
+
+            console.log("------------------------");
+            console.log("Send request...");
+              let tx = await wrapper.requestOddsWithFilters(
+                jobId,
+                sportId,
+                gameStart,
+                [] //ids
+              );
   
             await tx.wait().then((e) => {
               console.log(
@@ -117,9 +145,29 @@ async function doPull() {
 
           // pull odds
           try {
+            console.log("Approve link amount...");
+
+            let approveTx = await link.approve(
+              process.env.WRAPPER_CONTRACT,
+              linkAmountForApprove
+            );
+
+            await approveTx.wait().then((e) => {
+              console.log(
+                "approved " +
+                  process.env.WRAPPER_CONTRACT +
+                  " on " +
+                  wallet.address +
+                  " amount: " +
+                  linkAmountForApprove
+              );
+            });
+
+            console.log("------------------------");
+            console.log("Send request...");
+
             let tx = await wrapper.requestOddsWithFilters(
               jobId,
-              linkAmountPerRequest,
               sportId,
               gameStart,
               [] //ids

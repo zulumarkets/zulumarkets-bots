@@ -9,32 +9,37 @@ const fetch = require("node-fetch");
 const w3utils = require("web3-utils");
 const bytes32 = require("bytes32");
 
-const gamesQueue = require("../../scripts/GamesQueue.js");
-const gamesWrapper = require("../../scripts/GamesWrapper.js");
-const gamesConsumer = require("../../scripts/GamesConsumer.js");
+const gamesQueue = require("../../contracts/GamesQueue.js");
+const gamesWrapper = require("../../contracts/GamesWrapper.js");
+const gamesConsumer = require("../../contracts/GamesConsumer.js");
+const linkToken = require("../../contracts/LinkToken.js");
 
 async function doResolve() {
+  const link = new ethers.Contract(
+    process.env.LINK_CONTRACT,
+    linkToken.linkTokenContract.abi,
+    wallet
+  );
+
   const queues = new ethers.Contract(
-    "0x952Af77e13e121A648Ff2aDe0b65779f45a1f496",
+    process.env.GAME_QUEUE_CONTRACT,
     gamesQueue.gamesQueueContract.abi,
     wallet
   );
 
   const wrapper = new ethers.Contract(
-    "0xae4fB5Dc9b2371Ef994D09DB1b4F341CdED0b1d6",
+    process.env.WRAPPER_CONTRACT,
     gamesWrapper.gamesWraperContract.abi,
     wallet
   );
 
   const consumer = new ethers.Contract(
-    "0xd03f473caC24767134A86A298FeC38294986EcE6",
+    process.env.CONSUMER_CONTRACT,
     gamesConsumer.gamesConsumerContract.abi,
     wallet
   );
 
   const jobId = bytes32({ input: process.env.JOB_ID_RESOLVE });
-
-  const linkAmountPerRequest = w3utils.toWei(process.env.LINK_AMOUNT);
 
   // resolve market
   const market = process.env.MARKET_RESOLVE;
@@ -48,11 +53,13 @@ async function doResolve() {
     processed = true;
 
     console.log("JOB ID =  " + jobId);
-    console.log("LINK AMOUNT =  " + linkAmountPerRequest);
     console.log("MARKET =  " + market);
 
     let unproccessedGames = await queues.getLengthUnproccessedGames();
     console.log("GAMES length =  " + unproccessedGames);
+
+    let linkAmountForApprove = await wrapper.payment();
+    console.log("Link amount to approve:  " + linkAmountForApprove);
 
     // do for all games
     for (let j = 0; j < unproccessedGames; j++) {
@@ -68,35 +75,46 @@ async function doResolve() {
       let gameStart = await queues.gameStartPerGameId(gameID);
       console.log("GAME start:  " + gameStart);
 
-      let expectedTimeToProcess =
-        parseInt(gameStart) + parseInt(process.env.EXPECTED_GAME_DURATIN); // add hours  .env
-      let expectedTimeToProcessInMiliseconds =
-        parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
-      console.log(
-        "Time of processing (gameStart + .env):  " +
-          parseInt(expectedTimeToProcess)
-      );
-      console.log(
-        "Time of processing (miliseconds):  " +
-          expectedTimeToProcessInMiliseconds
-      );
+      let expectedTimeToProcess = parseInt(gameStart) + parseInt(process.env.EXPECTED_GAME_DURATIN); // add hours  .env
+      let expectedTimeToProcessInMiliseconds = parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
+      console.log("Time of processing (gameStart + .env):  " +parseInt(expectedTimeToProcess));
+      console.log("Time of processing (miliseconds):  " +expectedTimeToProcessInMiliseconds);
 
       let timeInMiliseconds = new Date().getTime(); // miliseconds
       console.log("Time is:  " + timeInMiliseconds);
 
       // check if expected time
       if (expectedTimeToProcessInMiliseconds < timeInMiliseconds) {
-        let ids = [stringId];
 
         try {
+          console.log("Approve link amount...");
+
+          let approveTx = await link.approve(
+            process.env.WRAPPER_CONTRACT,
+            linkAmountForApprove
+          );
+
+          await approveTx.wait().then((e) => {
+            console.log(
+              "approved " +
+                process.env.WRAPPER_CONTRACT +
+                " on " +
+                wallet.address +
+                " amount: " +
+                linkAmountForApprove
+            );
+          });
+
+          console.log("------------------------");
+          console.log("Send request...");
+
           let tx = await wrapper.requestGamesResolveWithFilters(
             jobId,
-            linkAmountPerRequest,
             market,
             sportId,
             gameStart,
             [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
-            ids
+            [stringId]
           );
 
           await tx.wait().then((e) => {

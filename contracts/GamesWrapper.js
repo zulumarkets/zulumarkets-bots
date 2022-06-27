@@ -16,23 +16,15 @@ const gamesWraperContract = {
             "internalType": "address",
             "name": "_consumer",
             "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_payment",
+            "type": "uint256"
           }
         ],
         "stateMutability": "nonpayable",
         "type": "constructor"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": false,
-            "internalType": "address",
-            "name": "_whitelistAddress",
-            "type": "address"
-          }
-        ],
-        "name": "AddedIntoWhitelist",
-        "type": "event"
       },
       {
         "anonymous": false,
@@ -103,6 +95,19 @@ const gamesWraperContract = {
         "anonymous": false,
         "inputs": [
           {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "_payment",
+            "type": "uint256"
+          }
+        ],
+        "name": "NewPaymentAmount",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
             "indexed": true,
             "internalType": "address",
             "name": "previousOwner",
@@ -143,19 +148,6 @@ const gamesWraperContract = {
         ],
         "name": "Unpaused",
         "type": "event"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "_whitelistAddress",
-            "type": "address"
-          }
-        ],
-        "name": "addToWhitelist",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
       },
       {
         "inputs": [],
@@ -297,6 +289,19 @@ const gamesWraperContract = {
       },
       {
         "inputs": [],
+        "name": "payment",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "renounceOwnership",
         "outputs": [],
         "stateMutability": "nonpayable",
@@ -308,11 +313,6 @@ const gamesWraperContract = {
             "internalType": "bytes32",
             "name": "_specId",
             "type": "bytes32"
-          },
-          {
-            "internalType": "uint256",
-            "name": "_payment",
-            "type": "uint256"
           },
           {
             "internalType": "string",
@@ -341,11 +341,6 @@ const gamesWraperContract = {
             "internalType": "bytes32",
             "name": "_specId",
             "type": "bytes32"
-          },
-          {
-            "internalType": "uint256",
-            "name": "_payment",
-            "type": "uint256"
           },
           {
             "internalType": "string",
@@ -384,11 +379,6 @@ const gamesWraperContract = {
             "internalType": "bytes32",
             "name": "_specId",
             "type": "bytes32"
-          },
-          {
-            "internalType": "uint256",
-            "name": "_payment",
-            "type": "uint256"
           },
           {
             "internalType": "uint256",
@@ -440,6 +430,19 @@ const gamesWraperContract = {
       {
         "inputs": [
           {
+            "internalType": "uint256",
+            "name": "_payment",
+            "type": "uint256"
+          }
+        ],
+        "name": "setPayment",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
             "internalType": "bytes32",
             "name": "",
             "type": "bytes32"
@@ -467,25 +470,6 @@ const gamesWraperContract = {
         "name": "transferOwnership",
         "outputs": [],
         "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "",
-            "type": "address"
-          }
-        ],
-        "name": "whitelistedAddresses",
-        "outputs": [
-          {
-            "internalType": "bool",
-            "name": "",
-            "type": "bool"
-          }
-        ],
-        "stateMutability": "view",
         "type": "function"
       },
       {
