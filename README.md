@@ -32,7 +32,9 @@ services:
       - "INFURA_URL=https://optimism-mainnet.infura.io/v3/16f15a8ff9f54b2394086bda0b237611"
       - "NETWORK=optimism"
       - "NETWORK_ID=10"
+      - "REQUEST_KEY=''"
       - "BASE_URL=https://api.0x.org/sra/v4/"
+      - "RUNDOWN_BASE_URL=https://therundown-therundown-v1.p.rapidapi.com"
       - "WRAPPER_CONTRACT=0xae4fB5Dc9b2371Ef994D09DB1b4F341CdED0b1d6"
       - "GAME_QUEUE_CONTRACT=0x952Af77e13e121A648Ff2aDe0b65779f45a1f496"
       - "CONSUMER_CONTRACT=0xd03f473caC24767134A86A298FeC38294986EcE6"
@@ -52,6 +54,7 @@ services:
       - "FASTER_PROCESSING_TIME=259200"
       - "SLOW_PROCCES_HOURS=1"
       - "FAST_PROCESS_HOURS=6"
+      - "ODDS_PERCENRAGE_CHANGE=2"
 volumes:
   redis-data:
 
@@ -67,8 +70,10 @@ WALLET=your wallet address
 INFURA=27301cd3b3134269bfb2271a79a5beae    
 INFURA_URL=https://optimism-mainnet.infura.io/v3/27301cd3b3134269bfb2271a79a5beae    
 NETWORK=kovan    
-NETWORK_ID=42  
- 
+NETWORK_ID=42
+REQUEST_KEY=from rundown api
+RUNDOWN_BASE_URL=https://therundown-therundown-v1.p.rapidapi.com
+
 
 ### GLOBAL SPORT ENV PROPS ###  
 MILISECONDS=1000  
@@ -98,6 +103,7 @@ JOB_ID_ODDS=3b13b48340ac4226b3c2973295d869d7
 FASTER_PROCESSING_TIME=259200  
 SLOW_PROCCES_HOURS=6  
 FAST_PROCESS_HOURS=2  
+ODDS_PERCENRAGE_CHANGE=1
 
 ---------------------------------------------  
 

@@ -20,6 +20,8 @@ services:
       - "NETWORK=optimism"
       - "NETWORK_ID=10"
       - "BASE_URL=https://api.0x.org/sra/v4/"
+      - "REQUEST_KEY=''"
+      - "RUNDOWN_BASE_URL=https://therundown-therundown-v1.p.rapidapi.com"
       - "GAME_QUEUE_CONTRACT=0x952Af77e13e121A648Ff2aDe0b65779f45a1f496"
       - "WRAPPER_CONTRACT=0xae4fB5Dc9b2371Ef994D09DB1b4F341CdED0b1d6"
       - "CONSUMER_CONTRACT=0xd03f473caC24767134A86A298FeC38294986EcE6"
@@ -39,5 +41,6 @@ services:
       - "FASTER_PROCESSING_TIME=259200"
       - "SLOW_PROCCES_HOURS=1"
       - "FAST_PROCESS_HOURS=6"
+      - "ODDS_PERCENRAGE_CHANGE=2"
 volumes:
   redis-data:

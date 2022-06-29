@@ -173,11 +173,8 @@ doIndefinitely();
 
 function getSecondsToDate(dateFrom) {
   const date = new Date(Date.now() + dateFrom * 3600 * 1000 * 24);
-  date.setHours(0);
-  date.setMinutes(0);
-  date.setMilliseconds(0);
-  date.setSeconds(0);
-  return Math.floor(date.getTime() / 1000);
+  date.setUTCHours(0, 0, 0, 0);
+  return Math.floor(date.getTime() / 1000);// + 7200; // add 7200 -> 2h because of GMT time
 }
 
 function delay(time) {

@@ -105,3 +105,4 @@ dist
 
 /.idea
 /.olympicsenv
+.DS_Store
