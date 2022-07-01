@@ -120,7 +120,7 @@ async function doCreate() {
     }
   }
 
-  await delay(20000); // wait to be populated
+  await delay(10000); // wait to be populated
   console.log("Create Markets...");
 
   processed = false;
@@ -165,7 +165,7 @@ async function doCreate() {
 async function doIndefinitely() {
   while (true) {
     await doCreate();
-    await delay(3600 * 1000 * 24); // each day
+    await delay(3600 * 1000 * 24 * 3.5); // 3.5 days (twice a week)
   }
 }
 
@@ -174,7 +174,7 @@ doIndefinitely();
 function getSecondsToDate(dateFrom) {
   const date = new Date(Date.now() + dateFrom * 3600 * 1000 * 24);
   date.setUTCHours(0, 0, 0, 0);
-  return Math.floor(date.getTime() / 1000);// + 7200; // add 7200 -> 2h because of GMT time
+  return Math.floor(date.getTime() / 1000);
 }
 
 function delay(time) {

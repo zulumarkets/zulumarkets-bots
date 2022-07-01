@@ -44,8 +44,6 @@ async function doResolve() {
   // resolve market
   const market = process.env.MARKET_RESOLVE;
 
-  let statuses = process.env.RESOLVE_STATUSES.split(",");
-
   console.log("Resolving Games...");
 
   let processed = false;
@@ -69,7 +67,7 @@ async function doResolve() {
       let stringId = bytes32({ input: gameID });
       console.log("Game id as string:  " + stringId);
 
-      let sportId = await queues.sportPerGameId(gameID);
+      let sportId = await consumer.sportsIdPerGame(gameID);
       console.log("Sport ID:  " + sportId);
 
       let gameStart = await queues.gameStartPerGameId(gameID);
@@ -132,7 +130,7 @@ async function doResolve() {
     }
   }
 
-  await delay(20000); // wait to be populated
+  await delay(10000); // wait to be populated
   console.log("Resolving Markets...");
 
   processed = false;

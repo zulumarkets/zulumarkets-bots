@@ -48,6 +48,9 @@ async function doPull() {
 
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
+  
+  // resolve market
+  const market = process.env.MARKET_RESOLVE;
 
   const baseUrl = process.env.RUNDOWN_BASE_URL;
 
@@ -76,10 +79,14 @@ async function doPull() {
 
           let unixDate = await getSecondsToDate(i);
           console.log("Unix date in seconds: " + unixDate);
-          let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
+          let unixDateMiliseconds =
+            parseInt(unixDate) * process.env.MILISECONDS;
           console.log("Unix date in miliseconds: " + unixDateMiliseconds);
 
-          let isSportOnADate = await consumer.isSportOnADate(unixDate,sportIds[j]);
+          let isSportOnADate = await consumer.isSportOnADate(
+            unixDate,
+            sportIds[j]
+          );
           console.log("Having sport on a date:  " + isSportOnADate);
 
           let gamesOnContract = await consumer.getGamesPerdate(unixDate);
@@ -89,7 +96,7 @@ async function doPull() {
           if (isSportOnADate && gamesOnContract.length > 0) {
             console.log("Processing sport and date...");
 
-            let sendRequest = false;
+            let sendRequestForOdds = false;
 
             const urlBuild =
               baseUrl +
@@ -108,6 +115,7 @@ async function doPull() {
             response.data.events.forEach((event) => {
               gamesListResponse.push({
                 id: event.event_id,
+                status: event.score.event_status,
                 homeOdd: getOdds(event.lines, 1),
                 awayOdd: getOdds(event.lines, 2),
                 drawOdd: getOdds(event.lines, 0),
@@ -116,38 +124,101 @@ async function doPull() {
 
             // check if odd changed more then ODDS_PERCENRAGE_CHANGE
             for (let n = 0; n < gamesListResponse.length; n++) {
+              console.log("Game status -> " + gamesListResponse[n].status);
+              console.log("Obtaining game id (as string): -> " + gamesListResponse[n].id);
               for (let m = 0; m < gamesOnContract.length; m++) {
-                if ( gamesListResponse[n].id == bytes32({ input: gamesOnContract[m] })) {
+                // when game is found and status is not canceled
+                if (gamesListResponse[n].id == bytes32({ input: gamesOnContract[m] }) &&
+                  gamesListResponse[n].status != "STATUS_CANCELED"
+                ) {
                   console.log("Odds, checking...");
 
                   let homeOddPinnacle = gamesListResponse[n].homeOdd;
                   console.log("homeOdd Pinnacle: " + homeOddPinnacle + " id: " + gamesListResponse[n].id);
-                  let homeOdd = await consumer.getOddsHomeTeam(gamesOnContract[m]);
+                  let homeOdd = await consumer.getOddsHomeTeam( gamesOnContract[m]);
                   console.log("homeOdd contract: " + homeOdd + " id: " + gamesOnContract[m]);
 
                   let awayOddPinnacle = gamesListResponse[n].awayOdd;
                   console.log("awayOdd Pinnacle: " + awayOddPinnacle + " id: " + gamesListResponse[n].id);
                   let awayOdd = await consumer.getOddsAwayTeam(gamesOnContract[m]);
-                  console.log("awayOdd contract: " + awayOdd + " id: " + gamesOnContract[m]);
+                  console.log("awayOdd contract: " + awayOdd + " id: " + gamesOnContract[m] );
 
                   let drawOddPinnacle = gamesListResponse[n].drawOdd;
-                  console.log("drawOdd Pinnacle: " + drawOddPinnacle + " id: " + gamesListResponse[n].id);
+                  console.log( "drawOdd Pinnacle: " + drawOddPinnacle + " id: " + gamesListResponse[n].id);
                   let drawOdd = await consumer.getOddsDraw(gamesOnContract[m]);
                   console.log("drawOdd contract: " + drawOdd + " id: " + gamesOnContract[m]);
 
                   if (
                     getPercentageChange(homeOdd, homeOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE ||
                     getPercentageChange(awayOdd, awayOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE ||
-                    getPercentageChange(drawOdd, drawOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE
-                  ) {
-                    sendRequest = true;
+                    getPercentageChange(drawOdd, drawOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE ) {
+                      sendRequestForOdds = true;
+                  }
+                } else if (
+                  gamesListResponse[n].id == bytes32({ input: gamesOnContract[m] }) &&
+                  gamesListResponse[n].status == "STATUS_CANCELED"
+                ) {
+
+                  let gameStart = await queues.gameStartPerGameId(gamesOnContract[m]);
+                  console.log("GAME start:  " + gameStart);
+
+                  try {
+                    console.log("Approve link amount...");
+          
+                    let approveTx = await link.approve(
+                      process.env.WRAPPER_CONTRACT,
+                      linkAmountForApprove
+                    );
+          
+                    await approveTx.wait().then((e) => {
+                      console.log(
+                        "approved " +
+                          process.env.WRAPPER_CONTRACT +
+                          " on " +
+                          wallet.address +
+                          " amount: " +
+                          linkAmountForApprove
+                      );
+                    });
+          
+                    console.log("------------------------");
+                    console.log("Send request...");
+          
+                    let tx = await wrapper.requestGamesResolveWithFilters(
+                      jobId,
+                      market,
+                      sportIds[j],
+                      gameStart,
+                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
+                      [gamesListResponse[n].id]
+                    );
+          
+                    await tx.wait().then((e) => {
+                      console.log(
+                        "Requested for: " + gameStart + " with game id: " + gamesListResponse[n].id
+                      );
+                    });
+
+                    await delay(10000); // wait to be populated
+
+                    let tx_resolve = await consumer.resolveMarketForGame(gamesOnContract[m]);
+
+                    await tx_resolve.wait().then((e) => {
+                      console.log("Market resolve for game: " + gamesOnContract[m]);
+                    });
+
+                    let marketAddress = await consumer.marketPerGameId(gamesOnContract[m]);
+                    console.log("Market resolved address: " + marketAddress);
+
+                  } catch (e) {
+                    console.log(e);
                   }
                 }
               }
             }
 
-            // if it is less then 24h or time for pulling odds on that date more then slow porcessing hours
-            if (sendRequest) {
+            // odds changed
+            if (sendRequestForOdds) {
               console.log("Sending request, odds changed...");
               try {
                 console.log("Approve link amount...");
