@@ -8,6 +8,12 @@ const gamesConsumerContract = {
             "internalType": "address",
             "name": "_whitelistAddress",
             "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "_flag",
+            "type": "bool"
           }
         ],
         "name": "AddedIntoWhitelist",
@@ -303,6 +309,59 @@ const gamesConsumerContract = {
         "inputs": [
           {
             "indexed": false,
+            "internalType": "bytes32",
+            "name": "_requestId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "address",
+            "name": "_marketAddress",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "_id",
+            "type": "bytes32"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bytes32",
+                "name": "gameId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "int24",
+                "name": "homeOdds",
+                "type": "int24"
+              },
+              {
+                "internalType": "int24",
+                "name": "awayOdds",
+                "type": "int24"
+              },
+              {
+                "internalType": "int24",
+                "name": "drawOdds",
+                "type": "int24"
+              }
+            ],
+            "indexed": false,
+            "internalType": "struct TherundownConsumer.GameOdds",
+            "name": "_game",
+            "type": "tuple"
+          }
+        ],
+        "name": "InvalidOddsForMarket",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
             "internalType": "contract GamesQueue",
             "name": "_queues",
             "type": "address"
@@ -380,6 +439,25 @@ const gamesConsumerContract = {
           }
         ],
         "name": "PauseChanged",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "address",
+            "name": "_marketAddress",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "_pause",
+            "type": "bool"
+          }
+        ],
+        "name": "PauseSportsMarket",
         "type": "event"
       },
       {
@@ -561,6 +639,11 @@ const gamesConsumerContract = {
             "internalType": "address",
             "name": "_whitelistAddress",
             "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "_flag",
+            "type": "bool"
           }
         ],
         "name": "addToWhitelist",
@@ -907,25 +990,6 @@ const gamesConsumerContract = {
           }
         ],
         "name": "gamesPerDate",
-        "outputs": [
-          {
-            "internalType": "bytes32",
-            "name": "",
-            "type": "bytes32"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "bytes32",
-            "name": "",
-            "type": "bytes32"
-          }
-        ],
-        "name": "gemeIdPerRequestId",
         "outputs": [
           {
             "internalType": "bytes32",
@@ -1558,25 +1622,6 @@ const gamesConsumerContract = {
       {
         "inputs": [
           {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "name": "oddsLastPulledForDate",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
             "internalType": "bytes32",
             "name": "",
             "type": "bytes32"
@@ -1604,6 +1649,42 @@ const gamesConsumerContract = {
           }
         ],
         "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "_gameId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "_pause",
+            "type": "bool"
+          }
+        ],
+        "name": "pauseOrUnpauseGameManually",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "_market",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "_pause",
+            "type": "bool"
+          }
+        ],
+        "name": "pauseOrUnpauseMarketManually",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
       },
       {
@@ -1841,7 +1922,7 @@ const gamesConsumerContract = {
           },
           {
             "internalType": "bool",
-            "name": "_isSuported",
+            "name": "_isSupported",
             "type": "bool"
           }
         ],
@@ -1859,7 +1940,7 @@ const gamesConsumerContract = {
           },
           {
             "internalType": "bool",
-            "name": "_isSuported",
+            "name": "_isSupported",
             "type": "bool"
           }
         ],
@@ -1877,24 +1958,11 @@ const gamesConsumerContract = {
           },
           {
             "internalType": "bool",
-            "name": "_isSuported",
+            "name": "_isSupported",
             "type": "bool"
           }
         ],
         "name": "setSupportedSport",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "_wrapperAddress",
-            "type": "address"
-          }
-        ],
-        "name": "setWrapperAddress",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -1912,7 +1980,20 @@ const gamesConsumerContract = {
             "type": "bool"
           }
         ],
-        "name": "setwoPositionSport",
+        "name": "setTwoPositionSport",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "_wrapperAddress",
+            "type": "address"
+          }
+        ],
+        "name": "setWrapperAddress",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -1957,7 +2038,7 @@ const gamesConsumerContract = {
             "type": "uint256"
           }
         ],
-        "name": "suportResolveGameStatuses",
+        "name": "supportResolveGameStatuses",
         "outputs": [
           {
             "internalType": "bool",

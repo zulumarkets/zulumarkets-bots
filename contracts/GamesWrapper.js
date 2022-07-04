@@ -84,6 +84,19 @@ const gamesWraperContract = {
           {
             "indexed": false,
             "internalType": "address",
+            "name": "_link",
+            "type": "address"
+          }
+        ],
+        "name": "NewLinkAddress",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "address",
             "name": "_oracle",
             "type": "address"
           }
@@ -263,6 +276,19 @@ const gamesWraperContract = {
       },
       {
         "inputs": [],
+        "name": "linkToken",
+        "outputs": [
+          {
+            "internalType": "contract IERC20",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "owner",
         "outputs": [
           {
@@ -418,6 +444,19 @@ const gamesWraperContract = {
         "inputs": [
           {
             "internalType": "address",
+            "name": "_link",
+            "type": "address"
+          }
+        ],
+        "name": "setLink",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
             "name": "_oracle",
             "type": "address"
           }
@@ -468,13 +507,6 @@ const gamesWraperContract = {
           }
         ],
         "name": "transferOwnership",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "withdrawLink",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
