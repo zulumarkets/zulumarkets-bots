@@ -9,6 +9,8 @@ const fetch = require("node-fetch");
 const w3utils = require("web3-utils");
 const bytes32 = require("bytes32");
 
+const axios = require("axios");
+
 const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
@@ -41,6 +43,8 @@ async function doCreate() {
 
   const jobId = bytes32({ input: process.env.JOB_ID_CREATION });
 
+  const baseUrl = process.env.RUNDOWN_BASE_URL;
+
   // number of days in front for calculation
   const daysInFront = process.env.CREATION_DAYS_INFRONT;
 
@@ -71,15 +75,33 @@ async function doCreate() {
 
         let unixDate = await getSecondsToDate(i);
         console.log("Unix date in seconds: " + unixDate);
+        let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
+        console.log("Unix date in miliseconds: " + unixDateMiliseconds);
 
         const dayOfWeekDigit = new Date(parseInt(unixDate) * 1000).getDay();
         console.log("Day of week: " + dayOfWeekDigit);
 
-        // NBA, EPL fetch game every day
-        // Champions Leaugue only Tuesday, Wednesday (Final game is on Saturday!! TODO!)
-        if (sportIds[j] == 16 && dayOfWeekDigit != 2 && dayOfWeekDigit != 3) {
-          console.log("Skiping date for sport: " + sportIds[j] + " on a date: " + unixDate);
-        } else {
+        const urlBuild =
+          baseUrl +
+          "/sports/" +
+          sportIds[j] +
+          "/events/" +
+          dateConverter(unixDateMiliseconds);
+        let response = await axios.get(urlBuild, {
+          headers: {
+            "X-RapidAPI-Key": process.env.REQUEST_KEY,
+          },
+        });
+
+        let numberOfGamesPerDay = response.data.events.length;
+        console.log(
+          "Number of games: " +
+            numberOfGamesPerDay +
+            " in a date " +
+            dateConverter(unixDateMiliseconds)
+        );
+
+        if (numberOfGamesPerDay > 0) {
           try {
             console.log("Approve link amount...");
 
@@ -175,6 +197,12 @@ function getSecondsToDate(dateFrom) {
   const date = new Date(Date.now() + dateFrom * 3600 * 1000 * 24);
   date.setUTCHours(0, 0, 0, 0);
   return Math.floor(date.getTime() / 1000);
+}
+
+function dateConverter(UNIXTimestamp) {
+  var date = new Date(UNIXTimestamp);
+  var month = date.getUTCMonth() + 1; // starts from zero (0) -> January
+  return date.getUTCFullYear() + "-" + month + "-" + date.getUTCDate();
 }
 
 function delay(time) {
