@@ -11,16 +11,18 @@ services:
       - 6379:6379
   overtimemarkets-bot:
     restart: always
-    image: thalesmarket/overtimemarkets-bot
+    image: thalesmarket/overtimecreator
+    #image: thalesmarket/overtimeodds
+    #image: thalesmarket/overtimeresolver
     environment:
       - "PRIVATE_KEY=''"
       - "WALLET=''"
+      - "REQUEST_KEY=''"
       - "INFURA=16f15a8ff9f54b2394086bda0b237611"
       - "INFURA_URL=https://optimism-mainnet.infura.io/v3/16f15a8ff9f54b2394086bda0b237611"
       - "NETWORK=optimism"
       - "NETWORK_ID=10"
       - "BASE_URL=https://api.0x.org/sra/v4/"
-      - "REQUEST_KEY=''"
       - "RUNDOWN_BASE_URL=https://therundown-therundown-v1.p.rapidapi.com"
       - "GAME_QUEUE_CONTRACT=0x5417c847b6ce4163C43116E8D9670395Ba08B503"
       - "WRAPPER_CONTRACT=0x1687fDC8A409Be442e2dD3DE42b1fcC974Ac9eE8"

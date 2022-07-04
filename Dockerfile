@@ -25,4 +25,7 @@ RUN npm install
 COPY . .
 
 EXPOSE 3001
-CMD [ "node", "index.js" ]
+
+# CMD [ "node", "source/createGames/createGamesAndMarkets.js" ]
+# CMD [ "node", "source/resolveGames/resolveGamesAndMarkets.js" ]
+CMD [ "node", "source/pullOdds/pullOdds.js" ]

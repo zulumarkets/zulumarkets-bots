@@ -9,17 +9,14 @@ const fetch = require("node-fetch");
 const w3utils = require("web3-utils");
 const bytes32 = require("bytes32");
 
+const axios = require("axios");
+
 const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
-const linkToken = require("../../contracts/LinkToken.js");
+const allowances = require("../../source/allowances.js");
 
 async function doResolve() {
-  const link = new ethers.Contract(
-    process.env.LINK_CONTRACT,
-    linkToken.linkTokenContract.abi,
-    wallet
-  );
 
   const queues = new ethers.Contract(
     process.env.GAME_QUEUE_CONTRACT,
@@ -41,6 +38,8 @@ async function doResolve() {
 
   const jobId = bytes32({ input: process.env.JOB_ID_RESOLVE });
 
+  const baseUrl = process.env.RUNDOWN_BASE_URL;
+
   // resolve market
   const market = process.env.MARKET_RESOLVE;
 
@@ -56,9 +55,6 @@ async function doResolve() {
     let unproccessedGames = await queues.getLengthUnproccessedGames();
     console.log("GAMES length =  " + unproccessedGames);
 
-    let linkAmountForApprove = await wrapper.payment();
-    console.log("Link amount to approve:  " + linkAmountForApprove);
-
     // do for all games
     for (let j = 0; j < unproccessedGames; j++) {
       let gameID = await queues.unproccessedGames(j);
@@ -73,55 +69,73 @@ async function doResolve() {
       let gameStart = await queues.gameStartPerGameId(gameID);
       console.log("GAME start:  " + gameStart);
 
-      let expectedTimeToProcess = parseInt(gameStart) + parseInt(process.env.EXPECTED_GAME_DURATIN); // add hours  .env
-      let expectedTimeToProcessInMiliseconds = parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
-      console.log("Time of processing (gameStart + .env):  " +parseInt(expectedTimeToProcess));
-      console.log("Time of processing (miliseconds):  " +expectedTimeToProcessInMiliseconds);
+      let expectedTimeToProcess =
+        parseInt(gameStart) + parseInt(process.env.EXPECTED_GAME_DURATIN); // add hours  .env
+      let expectedTimeToProcessInMiliseconds =
+        parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
+      console.log(
+        "Time of processing (gameStart + .env):  " +
+          parseInt(expectedTimeToProcess)
+      );
+      console.log(
+        "Time of processing (miliseconds):  " +
+          expectedTimeToProcessInMiliseconds
+      );
 
       let timeInMiliseconds = new Date().getTime(); // miliseconds
       console.log("Time is:  " + timeInMiliseconds);
 
       // check if expected time
       if (expectedTimeToProcessInMiliseconds < timeInMiliseconds) {
+        const urlBuild =
+          baseUrl +
+          "/sports/" +
+          sportId +
+          "/events/" +
+          dateConverter(gameStart);
+        let response = await axios.get(urlBuild, {
+          headers: {
+            "X-RapidAPI-Key": process.env.REQUEST_KEY,
+          },
+        });
 
-        try {
-          console.log("Approve link amount...");
+        const gamesListResponse = [];
 
-          let approveTx = await link.approve(
-            process.env.WRAPPER_CONTRACT,
-            linkAmountForApprove
-          );
-
-          await approveTx.wait().then((e) => {
-            console.log(
-              "approved " +
-                process.env.WRAPPER_CONTRACT +
-                " on " +
-                wallet.address +
-                " amount: " +
-                linkAmountForApprove
-            );
+        response.data.events.forEach((event) => {
+          gamesListResponse.push({
+            id: event.event_id,
+            status: event.score.event_status,
           });
+        });
 
-          console.log("------------------------");
-          console.log("Send request...");
+        for (let n = 0; n < gamesListResponse.length; n++) {
+          // if the game is in right status
+          if (
+            gamesListResponse[n].id == stringId &&
+            (gamesListResponse[n].status == "STATUS_FINAL" ||
+              gamesListResponse[n].status == "STATUS_FULL_TIME")
+          ) {
+            try {
+              console.log("Send request...");
 
-          let tx = await wrapper.requestGamesResolveWithFilters(
-            jobId,
-            market,
-            sportId,
-            gameStart,
-            [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
-            [stringId]
-          );
+              let tx = await wrapper.requestGamesResolveWithFilters(
+                jobId,
+                market,
+                sportId,
+                gameStart,
+                [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
+                [stringId]
+              );
 
-          await tx.wait().then((e) => {
-            console.log(
-              "Requested for: " + gameStart + " with game id: " + stringId
-            );
-          });
-        } catch (e) {
-          console.log(e);
+              await tx.wait().then((e) => {
+                console.log(
+                  "Requested for: " + gameStart + " with game id: " + stringId
+                );
+              });
+            } catch (e) {
+              console.log(e);
+            }
+          }
         }
       } else {
         console.log("On to the next, less then expected time");
@@ -173,10 +187,20 @@ async function doResolve() {
 }
 
 async function doIndefinitely() {
+  await allowances.checkAllowanceAndAllow(
+    process.env.LINK_CONTRACT,
+    process.env.WRAPPER_CONTRACT
+  );
   while (true) {
     await doResolve();
-    await delay(3600 * 1000); // each hour
+    await delay(900 * 1000); // each 15min.
   }
+}
+
+function dateConverter(UNIXTimestamp) {
+  var date = new Date(UNIXTimestamp);
+  var month = date.getUTCMonth() + 1; // starts from zero (0) -> January
+  return date.getUTCFullYear() + "-" + month + "-" + date.getUTCDate();
 }
 
 doIndefinitely();

@@ -14,15 +14,9 @@ const axios = require("axios");
 const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
-const linkToken = require("../../contracts/LinkToken.js");
+const allowances = require("../../source/allowances.js");
 
 async function doCreate() {
-  const link = new ethers.Contract(
-    process.env.LINK_CONTRACT,
-    linkToken.linkTokenContract.abi,
-    wallet
-  );
-
   const queues = new ethers.Contract(
     process.env.GAME_QUEUE_CONTRACT,
     gamesQueue.gamesQueueContract.abi,
@@ -62,9 +56,6 @@ async function doCreate() {
     console.log("JOB ID =  " + jobId);
     console.log("MARKET =  " + market);
 
-    let linkAmountForApprove = await wrapper.payment();
-    console.log("Link amount to approve:  " + linkAmountForApprove);
-
     // do for all sportIds
     for (let j = 0; j < sportIds.length; j++) {
       // do for next X days in front
@@ -103,25 +94,6 @@ async function doCreate() {
 
         if (numberOfGamesPerDay > 0) {
           try {
-            console.log("Approve link amount...");
-
-            let approveTx = await link.approve(
-              process.env.WRAPPER_CONTRACT,
-              linkAmountForApprove
-            );
-
-            await approveTx.wait().then((e) => {
-              console.log(
-                "approved " +
-                  process.env.WRAPPER_CONTRACT +
-                  " on " +
-                  wallet.address +
-                  " amount: " +
-                  linkAmountForApprove
-              );
-            });
-
-            console.log("------------------------");
             console.log("Send request...");
 
             let tx_request = await wrapper.requestGames(
@@ -185,6 +157,10 @@ async function doCreate() {
 }
 
 async function doIndefinitely() {
+  await allowances.checkAllowanceAndAllow(
+    process.env.LINK_CONTRACT,
+    process.env.WRAPPER_CONTRACT
+  );
   while (true) {
     await doCreate();
     await delay(3600 * 1000 * 24 * 3.5); // 3.5 days (twice a week)

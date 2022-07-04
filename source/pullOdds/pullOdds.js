@@ -14,14 +14,9 @@ const axios = require("axios");
 const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
-const linkToken = require("../../contracts/LinkToken.js");
+const allowances = require("../../source/allowances.js");
 
 async function doPull() {
-  const link = new ethers.Contract(
-    process.env.LINK_CONTRACT,
-    linkToken.linkTokenContract.abi,
-    wallet
-  );
 
   const queues = new ethers.Contract(
     process.env.GAME_QUEUE_CONTRACT,
@@ -64,9 +59,6 @@ async function doPull() {
 
     let unproccessedGames = await queues.getLengthUnproccessedGames();
     console.log("GAMES length =  " + unproccessedGames);
-
-    let linkAmountForApprove = await wrapper.payment();
-    console.log("Link amount to approve:  " + linkAmountForApprove);
 
     if (unproccessedGames > 0) {
       // do for all sportIds
@@ -163,25 +155,6 @@ async function doPull() {
                   console.log("GAME start:  " + gameStart);
 
                   try {
-                    console.log("Approve link amount...");
-          
-                    let approveTx = await link.approve(
-                      process.env.WRAPPER_CONTRACT,
-                      linkAmountForApprove
-                    );
-          
-                    await approveTx.wait().then((e) => {
-                      console.log(
-                        "approved " +
-                          process.env.WRAPPER_CONTRACT +
-                          " on " +
-                          wallet.address +
-                          " amount: " +
-                          linkAmountForApprove
-                      );
-                    });
-          
-                    console.log("------------------------");
                     console.log("Send request...");
           
                     let tx = await wrapper.requestGamesResolveWithFilters(
@@ -221,25 +194,6 @@ async function doPull() {
             if (sendRequestForOdds) {
               console.log("Sending request, odds changed...");
               try {
-                console.log("Approve link amount...");
-
-                let approveTx = await link.approve(
-                  process.env.WRAPPER_CONTRACT,
-                  linkAmountForApprove
-                );
-
-                await approveTx.wait().then((e) => {
-                  console.log(
-                    "approved " +
-                      process.env.WRAPPER_CONTRACT +
-                      " on " +
-                      wallet.address +
-                      " amount: " +
-                      linkAmountForApprove
-                  );
-                });
-
-                console.log("------------------------");
                 console.log("Send request...");
 
                 let tx = await wrapper.requestOddsWithFilters(
@@ -272,6 +226,10 @@ async function doPull() {
 }
 
 async function doIndefinitely() {
+  await allowances.checkAllowanceAndAllow(
+    process.env.LINK_CONTRACT,
+    process.env.WRAPPER_CONTRACT
+  );
   while (true) {
     await doPull();
     await delay(600 * 1000); // 10 minutes
