@@ -121,7 +121,7 @@ async function doPull() {
               for (let m = 0; m < gamesOnContract.length; m++) {
                 // when game is found and status is not canceled
                 if (gamesListResponse[n].id == bytes32({ input: gamesOnContract[m] }) &&
-                  gamesListResponse[n].status != "STATUS_CANCELED"
+                  gamesListResponse[n].status == "STATUS_SCHEDULED"
                 ) {
                   console.log("Odds, checking...");
 
