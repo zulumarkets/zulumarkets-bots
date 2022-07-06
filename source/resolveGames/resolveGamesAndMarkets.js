@@ -89,13 +89,13 @@ async function doResolve() {
       if (expectedTimeToProcessInMiliseconds < timeInMiliseconds) {
 
         console.log("Date in request: " + dateConverter(gameStart * parseInt(process.env.MILISECONDS)));
-        
+
         const urlBuild =
           baseUrl +
           "/sports/" +
           sportId +
           "/events/" +
-          dateConverter(gameStart * 1000);
+          dateConverter(gameStart * parseInt(process.env.MILISECONDS));
         let response = await axios.get(urlBuild, {
           headers: {
             "X-RapidAPI-Key": process.env.REQUEST_KEY,
