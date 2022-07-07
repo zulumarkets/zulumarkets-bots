@@ -673,19 +673,6 @@ const gamesConsumerContract = {
       {
         "inputs": [
           {
-            "internalType": "bytes32",
-            "name": "_gameId",
-            "type": "bytes32"
-          }
-        ],
-        "name": "cancelGameManually",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
             "internalType": "uint256",
             "name": "",
             "type": "uint256"
@@ -1654,24 +1641,6 @@ const gamesConsumerContract = {
       {
         "inputs": [
           {
-            "internalType": "bytes32",
-            "name": "_gameId",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bool",
-            "name": "_pause",
-            "type": "bool"
-          }
-        ],
-        "name": "pauseOrUnpauseGameManually",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
             "internalType": "address",
             "name": "_market",
             "type": "address"
@@ -1823,6 +1792,16 @@ const gamesConsumerContract = {
             "internalType": "uint256",
             "name": "_outcome",
             "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "_homeScore",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "_awayScore",
+            "type": "uint8"
           }
         ],
         "name": "resolveGameManually",
@@ -1854,6 +1833,16 @@ const gamesConsumerContract = {
             "internalType": "uint256",
             "name": "_outcome",
             "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "_homeScore",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "_awayScore",
+            "type": "uint8"
           }
         ],
         "name": "resolveMarketManually",
