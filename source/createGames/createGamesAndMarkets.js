@@ -93,8 +93,8 @@ async function doCreate() {
         response.data.events.forEach((event) => {
           gamesListResponse.push({
             id: event.event_id,
-            homeTeam: getTeam(event.teams, 0),
-            awayTeam: getTeam(event.teams, 1),
+            //homeTeam: getTeam(event.teams, 0),
+            //awayTeam: getTeam(event.teams, 1),
           });
         });
 
@@ -105,12 +105,13 @@ async function doCreate() {
             dateConverter(unixDateMiliseconds)
         );
 
-        for (let n = 0; n < gamesListResponse.length; n++) {
+        /*for (let n = 0; n < gamesListResponse.length; n++) {
           if(gamesListResponse[n].homeTeam == 'TBD TBD' || gamesListResponse[n].awayTeam == 'TBD TBD'){
             numberOfTBDGames++;
           }
         }
         console.log("TBD teams: " + numberOfTBDGames);
+        */
 
         if (gamesListResponse.length > 0 && gamesOnContract.length < gamesListResponse.length - numberOfTBDGames) {
           try {
@@ -193,8 +194,8 @@ async function doIndefinitely() {
 
 doIndefinitely();
 
-function getTeam(lines, number) {
-  return lines[number].name;
+function getTeam(teams, number) {
+  return teams[number].name;
 }
 
 function getSecondsToDate(dateFrom) {
