@@ -35,6 +35,11 @@ async function doResolve() {
     wallet
   );
 
+  const EXPECTED_GAME_DURATIN = {
+    3: process.env.EXPECTED_GAME_MLB,
+    10: process.env.EXPECTED_GAME_FOOTBAL,
+  };
+
   const jobId = bytes32({ input: process.env.JOB_ID_RESOLVE });
 
   const baseUrl = process.env.RUNDOWN_BASE_URL;
@@ -63,12 +68,13 @@ async function doResolve() {
 
     let gameStart = await queues.gameStartPerGameId(gameID);
     console.log("GAME start:  " + gameStart);
+    
+    console.log(
+      "Time for sport ending:  " + parseInt(EXPECTED_GAME_DURATIN[parseInt(sportId)])
+    );
 
-    // TODO expected game duration per sport
-    // soccer = 2h
-    // MLB ?
     let expectedTimeToProcess =
-      parseInt(gameStart) + parseInt(process.env.EXPECTED_GAME_DURATIN); // add hours  .env
+      parseInt(gameStart) + parseInt(EXPECTED_GAME_DURATIN[parseInt(sportId)]); // add hours  .env
     let expectedTimeToProcessInMiliseconds =
       parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
     console.log(
@@ -176,9 +182,10 @@ async function doResolve() {
           let marketAddress = await consumer.marketPerGameId(gameId);
           console.log("Market resolved address: " + marketAddress);
         } catch (e) {
-          // TODO: consider the scenario if the tx succeeded but there was some RPC error
-          // do not decrement
-          i--;
+          let isMarketResolved = await consumer.marketResolved(marketAddress);
+          if (!isMarketResolved){
+            i--;
+          }
           console.log(e);
         }
       }
@@ -197,8 +204,7 @@ async function doIndefinitely() {
   );
   while (true) {
     await doResolve();
-    // TODO: frequency needs to be a env variable
-    await delay(900 * 1000); // each 15min.
+    await delay(process.env.RESOLVE_FREQUENCY);
   }
 }
 

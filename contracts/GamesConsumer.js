@@ -663,7 +663,7 @@ const gamesConsumerContract = {
         "outputs": [
           {
             "internalType": "uint256",
-            "name": "",
+            "name": "odd",
             "type": "uint256"
           }
         ],
@@ -1097,7 +1097,7 @@ const gamesConsumerContract = {
               }
             ],
             "internalType": "struct TherundownConsumer.GameCreate",
-            "name": "",
+            "name": "game",
             "type": "tuple"
           }
         ],
@@ -1184,7 +1184,7 @@ const gamesConsumerContract = {
               }
             ],
             "internalType": "struct TherundownConsumer.GameResolve",
-            "name": "",
+            "name": "game",
             "type": "tuple"
           }
         ],
@@ -1317,7 +1317,7 @@ const gamesConsumerContract = {
         "outputs": [
           {
             "internalType": "uint256",
-            "name": "",
+            "name": "_result",
             "type": "uint256"
           }
         ],
@@ -1365,6 +1365,25 @@ const gamesConsumerContract = {
         "name": "initialize",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "invalidOdds",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
         "type": "function"
       },
       {
@@ -1532,6 +1551,25 @@ const gamesConsumerContract = {
           }
         ],
         "name": "marketCanceled",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "marketCreated",
         "outputs": [
           {
             "internalType": "bool",

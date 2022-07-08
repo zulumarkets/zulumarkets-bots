@@ -72,6 +72,9 @@ async function doCreate() {
         const dayOfWeekDigit = new Date(parseInt(unixDate) * 1000).getDay();
         console.log("Day of week: " + dayOfWeekDigit);
 
+        let gamesOnContract = await consumer.getGamesPerdate(unixDate);
+        console.log("Count games on a date, contract: " + gamesOnContract.length);
+
         const urlBuild =
           baseUrl +
           "/sports/" +
@@ -84,17 +87,32 @@ async function doCreate() {
           },
         });
 
-        let numberOfGamesPerDay = response.data.events.length;
+        const gamesListResponse = [];
+        let numberOfTBDGames = 0;
+
+        response.data.events.forEach((event) => {
+          gamesListResponse.push({
+            id: event.event_id,
+            homeTeam: getTeam(event.teams, 0),
+            awayTeam: getTeam(event.teams, 1),
+          });
+        });
+
         console.log(
           "Number of games: " +
-            numberOfGamesPerDay +
+            gamesListResponse.length +
             " in a date " +
             dateConverter(unixDateMiliseconds)
         );
 
-        //TODO: only request games if number of games per day from rundown doesnt match the number of markets already created for that day
-        // numberOfGamesPerDay should filter out TBD games
-        if (numberOfGamesPerDay > 0) {
+        for (let n = 0; n < gamesListResponse.length; n++) {
+          if(gamesListResponse[n].homeTeam == 'TBD TBD' || gamesListResponse[n].awayTeam == 'TBD TBD'){
+            numberOfTBDGames++;
+          }
+        }
+        console.log("TBD teams: " + numberOfTBDGames);
+
+        if (gamesListResponse.length > 0 && gamesOnContract.length < gamesListResponse.length - numberOfTBDGames) {
           try {
             console.log("Send request...");
 
@@ -133,6 +151,8 @@ async function doCreate() {
       let gameId = await queues.gamesCreateQueue(i);
       console.log("GameID: " + gameId);
 
+      let marketAddress = await consumer.marketPerGameId(gameId);
+
       try {
         let tx = await consumer.createMarketForGame(gameId);
 
@@ -140,12 +160,16 @@ async function doCreate() {
           console.log("Market created for game: " + gameId);
         });
 
-        let marketAddress = await consumer.marketPerGameId(gameId);
+        await delay(1500); // wait to be populated
+
+        marketAddress = await consumer.marketPerGameId(gameId);
         console.log("Market address: " + marketAddress);
+
       } catch (e) {
-        //TODO: consider the scenario that transaction was actually successfull but there was an exception
-        // if the market was created, dont decrement
-        i--;
+        let isMarketCreated = await consumer.marketCreated(marketAddress);
+        if (!isMarketCreated){
+          i--;
+        }
         console.log(e);
       }
     }
@@ -163,13 +187,15 @@ async function doIndefinitely() {
   );
   while (true) {
     await doCreate();
-    await delay(3600 * 1000 * 24 * 3.5); // 3.5 days (twice a week)
-    // TODO: frequency needs to be a env variable
-    // its safer to go with higher freqency if there is a check that matches are already created
+    await delay(process.env.CREATION_FREQUENCY);
   }
 }
 
 doIndefinitely();
+
+function getTeam(lines, number) {
+  return lines[number].name;
+}
 
 function getSecondsToDate(dateFrom) {
   const date = new Date(Date.now() + dateFrom * 3600 * 1000 * 24);

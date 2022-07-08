@@ -51,6 +51,9 @@ services:
       - "EXPECTED_GAME_DURATIN=7200"
       - "JOB_ID_ODDS=d4f5cebf842d4063a9743ad32e694c4f"
       - "ODDS_PERCENRAGE_CHANGE=2"
+      - "CREATION_FREQUENCY=86400000"
+      - "RESOLVE_FREQUENCY=900000"
+      - "ODDS_FREQUENCY=600000"
 volumes:
   redis-data:
 

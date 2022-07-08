@@ -81,8 +81,6 @@ async function doPull() {
           );
           console.log("Having sport on a date:  " + isSportOnADate);
 
-          // TODO: do not proceed if gameStartTime is more than current time
-
           let gamesOnContract = await consumer.getGamesPerdate(unixDate);
           console.log("Count games on a date: " + gamesOnContract.length);
 
@@ -142,13 +140,19 @@ async function doPull() {
                   let drawOdd = await consumer.getOddsDraw(gamesOnContract[m]);
                   console.log("drawOdd contract: " + drawOdd + " id: " + gamesOnContract[m]);
 
+                  let marketAddress = await consumer.marketPerGameId(gamesOnContract[m]);;
+                  let invalidOdds = await consumer.invalidOdds(marketAddress);
+                  console.log("Is game paused: " + invalidOdds);
 
-                  // TODO: if market was paused due to invalid odds we need to do an update now if we have valid odds
+                  let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(sportIds[j]);
 
                   if (
                     getPercentageChange(homeOdd, homeOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE ||
                     getPercentageChange(awayOdd, awayOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE ||
                     getPercentageChange(drawOdd, drawOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE ) {
+                      sendRequestForOdds = true;
+                  }else if (homeOddPinnacle != 0.01 && awayOddPinnacle != 0.01 
+                          && (isSportTwoPositionsSport || drawOddPinnacle != 0.01) && invalidOdds){
                       sendRequestForOdds = true;
                   }
                 } else if (
@@ -237,8 +241,7 @@ async function doIndefinitely() {
   );
   while (true) {
     await doPull();
-    // TODO: frequency needs to be a env variable
-    await delay(600 * 1000); // 10 minutes
+    await delay(process.env.ODDS_FREQUENCY);
   }
 }
 
