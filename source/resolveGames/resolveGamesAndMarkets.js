@@ -197,6 +197,7 @@ async function doIndefinitely() {
   );
   while (true) {
     await doResolve();
+    // TODO: frequency needs to be a env variable
     await delay(900 * 1000); // each 15min.
   }
 }

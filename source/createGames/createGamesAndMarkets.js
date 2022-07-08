@@ -164,6 +164,8 @@ async function doIndefinitely() {
   while (true) {
     await doCreate();
     await delay(3600 * 1000 * 24 * 3.5); // 3.5 days (twice a week)
+    // TODO: frequency needs to be a env variable
+    // its safer to go with higher freqency if there is a check that matches are already created
   }
 }
 

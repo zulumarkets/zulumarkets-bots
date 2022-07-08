@@ -81,6 +81,8 @@ async function doPull() {
           );
           console.log("Having sport on a date:  " + isSportOnADate);
 
+          // TODO: do not proceed if gameStartTime is more than current time
+
           let gamesOnContract = await consumer.getGamesPerdate(unixDate);
           console.log("Count games on a date: " + gamesOnContract.length);
 
@@ -139,6 +141,9 @@ async function doPull() {
                   console.log( "drawOdd Pinnacle: " + drawOddPinnacle + " id: " + gamesListResponse[n].id);
                   let drawOdd = await consumer.getOddsDraw(gamesOnContract[m]);
                   console.log("drawOdd contract: " + drawOdd + " id: " + gamesOnContract[m]);
+
+
+                  // TODO: if market was paused due to invalid odds we need to do an update now if we have valid odds
 
                   if (
                     getPercentageChange(homeOdd, homeOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE ||
@@ -232,6 +237,7 @@ async function doIndefinitely() {
   );
   while (true) {
     await doPull();
+    // TODO: frequency needs to be a env variable
     await delay(600 * 1000); // 10 minutes
   }
 }
