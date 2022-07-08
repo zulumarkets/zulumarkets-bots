@@ -92,6 +92,8 @@ async function doCreate() {
             dateConverter(unixDateMiliseconds)
         );
 
+        //TODO: only request games if number of games per day from rundown doesnt match the number of markets already created for that day
+        // numberOfGamesPerDay should filter out TBD games
         if (numberOfGamesPerDay > 0) {
           try {
             console.log("Send request...");
@@ -117,40 +119,38 @@ async function doCreate() {
   await delay(10000); // wait to be populated
   console.log("Create Markets...");
 
-  processed = false;
-  while (!processed) {
-    processed = true;
-    let firstCreated = await queues.firstCreated();
-    console.log("Start:  " + firstCreated);
-    let lastCreated = await queues.lastCreated();
-    console.log("End:  " + lastCreated);
+  let firstCreated = await queues.firstCreated();
+  console.log("Start:  " + firstCreated);
+  let lastCreated = await queues.lastCreated();
+  console.log("End:  " + lastCreated);
 
-    // there is new elements in queue
-    if (parseInt(firstCreated) <= parseInt(lastCreated)) {
-      console.log("Processing...");
-      for (let i = parseInt(firstCreated); i <= parseInt(lastCreated); i++) {
-        console.log("Process game from queue:  " + i);
+  // there is new elements in queue
+  if (parseInt(firstCreated) <= parseInt(lastCreated)) {
+    console.log("Processing...");
+    for (let i = parseInt(firstCreated); i <= parseInt(lastCreated); i++) {
+      console.log("Process game from queue:  " + i);
 
-        let gameId = await queues.gamesCreateQueue(i);
-        console.log("GameID: " + gameId);
+      let gameId = await queues.gamesCreateQueue(i);
+      console.log("GameID: " + gameId);
 
-        try {
-          let tx = await consumer.createMarketForGame(gameId);
+      try {
+        let tx = await consumer.createMarketForGame(gameId);
 
-          await tx.wait().then((e) => {
-            console.log("Market created for game: " + gameId);
-          });
+        await tx.wait().then((e) => {
+          console.log("Market created for game: " + gameId);
+        });
 
-          let marketAddress = await consumer.marketPerGameId(gameId);
-          console.log("Market address: " + marketAddress);
-        } catch (e) {
-          i--;
-          console.log(e);
-        }
+        let marketAddress = await consumer.marketPerGameId(gameId);
+        console.log("Market address: " + marketAddress);
+      } catch (e) {
+        //TODO: consider the scenario that transaction was actually successfull but there was an exception
+        // if the market was created, dont decrement
+        i--;
+        console.log(e);
       }
-    } else {
-      console.log("Nothing to process...");
     }
+  } else {
+    console.log("Nothing to process...");
   }
 
   console.log("Ended batch...");

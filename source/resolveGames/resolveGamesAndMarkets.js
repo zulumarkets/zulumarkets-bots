@@ -17,7 +17,6 @@ const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 
 async function doResolve() {
-
   const queues = new ethers.Contract(
     process.env.GAME_QUEUE_CONTRACT,
     gamesQueue.gamesQueueContract.abi,
@@ -45,105 +44,104 @@ async function doResolve() {
 
   console.log("Resolving Games...");
 
-  let processed = false;
-  while (!processed) {
-    processed = true;
+  console.log("JOB ID =  " + jobId);
+  console.log("MARKET =  " + market);
 
-    console.log("JOB ID =  " + jobId);
-    console.log("MARKET =  " + market);
+  let unproccessedGames = await queues.getLengthUnproccessedGames();
+  console.log("GAMES length =  " + unproccessedGames);
 
-    let unproccessedGames = await queues.getLengthUnproccessedGames();
-    console.log("GAMES length =  " + unproccessedGames);
+  // do for all games
+  for (let j = 0; j < unproccessedGames; j++) {
+    let gameID = await queues.unproccessedGames(j);
+    console.log("GAME ID:  " + gameID);
 
-    // do for all games
-    for (let j = 0; j < unproccessedGames; j++) {
-      let gameID = await queues.unproccessedGames(j);
-      console.log("GAME ID:  " + gameID);
+    let stringId = bytes32({ input: gameID });
+    console.log("Game id as string:  " + stringId);
 
-      let stringId = bytes32({ input: gameID });
-      console.log("Game id as string:  " + stringId);
+    let sportId = await consumer.sportsIdPerGame(gameID);
+    console.log("Sport ID:  " + sportId);
 
-      let sportId = await consumer.sportsIdPerGame(gameID);
-      console.log("Sport ID:  " + sportId);
+    let gameStart = await queues.gameStartPerGameId(gameID);
+    console.log("GAME start:  " + gameStart);
 
-      let gameStart = await queues.gameStartPerGameId(gameID);
-      console.log("GAME start:  " + gameStart);
+    // TODO expected game duration per sport
+    // soccer = 2h
+    // MLB ?
+    let expectedTimeToProcess =
+      parseInt(gameStart) + parseInt(process.env.EXPECTED_GAME_DURATIN); // add hours  .env
+    let expectedTimeToProcessInMiliseconds =
+      parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
+    console.log(
+      "Time of processing (gameStart + .env):  " +
+        parseInt(expectedTimeToProcess)
+    );
+    console.log(
+      "Time of processing (miliseconds):  " + expectedTimeToProcessInMiliseconds
+    );
 
-      let expectedTimeToProcess =
-        parseInt(gameStart) + parseInt(process.env.EXPECTED_GAME_DURATIN); // add hours  .env
-      let expectedTimeToProcessInMiliseconds =
-        parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
+    let timeInMiliseconds = new Date().getTime(); // miliseconds
+    console.log("Time is:  " + timeInMiliseconds);
+
+    // check if expected time
+    if (expectedTimeToProcessInMiliseconds < timeInMiliseconds) {
       console.log(
-        "Time of processing (gameStart + .env):  " +
-          parseInt(expectedTimeToProcess)
-      );
-      console.log(
-        "Time of processing (miliseconds):  " +
-          expectedTimeToProcessInMiliseconds
+        "Date in request: " +
+          dateConverter(gameStart * parseInt(process.env.MILISECONDS))
       );
 
-      let timeInMiliseconds = new Date().getTime(); // miliseconds
-      console.log("Time is:  " + timeInMiliseconds);
+      const urlBuild =
+        baseUrl +
+        "/sports/" +
+        sportId +
+        "/events/" +
+        dateConverter(gameStart * parseInt(process.env.MILISECONDS));
+      let response = await axios.get(urlBuild, {
+        headers: {
+          "X-RapidAPI-Key": process.env.REQUEST_KEY,
+        },
+      });
 
-      // check if expected time
-      if (expectedTimeToProcessInMiliseconds < timeInMiliseconds) {
+      const gamesListResponse = [];
 
-        console.log("Date in request: " + dateConverter(gameStart * parseInt(process.env.MILISECONDS)));
-
-        const urlBuild =
-          baseUrl +
-          "/sports/" +
-          sportId +
-          "/events/" +
-          dateConverter(gameStart * parseInt(process.env.MILISECONDS));
-        let response = await axios.get(urlBuild, {
-          headers: {
-            "X-RapidAPI-Key": process.env.REQUEST_KEY,
-          },
+      response.data.events.forEach((event) => {
+        gamesListResponse.push({
+          id: event.event_id,
+          status: event.score.event_status,
         });
+      });
 
-        const gamesListResponse = [];
+      for (let n = 0; n < gamesListResponse.length; n++) {
+        // if the game is in right status
+        if (
+          gamesListResponse[n].id == stringId &&
+          (gamesListResponse[n].status == "STATUS_FINAL" ||
+            gamesListResponse[n].status == "STATUS_FULL_TIME")
+        ) {
+          try {
+            console.log("Send request...");
 
-        response.data.events.forEach((event) => {
-          gamesListResponse.push({
-            id: event.event_id,
-            status: event.score.event_status,
-          });
-        });
+            let tx = await wrapper.requestGamesResolveWithFilters(
+              jobId,
+              market,
+              sportId,
+              gameStart,
+              [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
+              [stringId]
+            );
 
-        for (let n = 0; n < gamesListResponse.length; n++) {
-          // if the game is in right status
-          if (
-            gamesListResponse[n].id == stringId &&
-            (gamesListResponse[n].status == "STATUS_FINAL" ||
-              gamesListResponse[n].status == "STATUS_FULL_TIME")
-          ) {
-            try {
-              console.log("Send request...");
-
-              let tx = await wrapper.requestGamesResolveWithFilters(
-                jobId,
-                market,
-                sportId,
-                gameStart,
-                [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
-                [stringId]
+            await tx.wait().then((e) => {
+              console.log(
+                "Requested for: " + gameStart + " with game id: " + stringId
               );
-
-              await tx.wait().then((e) => {
-                console.log(
-                  "Requested for: " + gameStart + " with game id: " + stringId
-                );
-              });
-            } catch (e) {
-              console.log(e);
-            }
+            });
+          } catch (e) {
+            console.log(e);
           }
         }
-      } else {
-        console.log("On to the next, less then expected time");
-        continue;
       }
+    } else {
+      console.log("On to the next, less then expected time");
+      continue;
     }
   }
 
@@ -168,6 +166,7 @@ async function doResolve() {
         console.log("GameID: " + gameId);
 
         try {
+          // consider resolving all in batches
           let tx = await consumer.resolveMarketForGame(gameId);
 
           await tx.wait().then((e) => {
@@ -177,6 +176,8 @@ async function doResolve() {
           let marketAddress = await consumer.marketPerGameId(gameId);
           console.log("Market resolved address: " + marketAddress);
         } catch (e) {
+          // TODO: consider the scenario if the tx succeeded but there was some RPC error
+          // do not decrement
           i--;
           console.log(e);
         }
