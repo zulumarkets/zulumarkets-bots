@@ -72,8 +72,13 @@ async function doCreate() {
         const dayOfWeekDigit = new Date(parseInt(unixDate) * 1000).getDay();
         console.log("Day of week: " + dayOfWeekDigit);
 
-        let gamesOnContract = await consumer.getGamesPerDatePerSport(sportIds[j], unixDate);
-        console.log("Count games on a date, contract: " + gamesOnContract.length);
+        let gamesOnContract = await consumer.getGamesPerDatePerSport(
+          sportIds[j],
+          unixDate
+        );
+        console.log(
+          "Count games on a date, contract: " + gamesOnContract.length
+        );
 
         const urlBuild =
           baseUrl +
@@ -93,8 +98,8 @@ async function doCreate() {
         response.data.events.forEach((event) => {
           gamesListResponse.push({
             id: event.event_id,
-            //homeTeam: getTeam(event.teams, 0),
-            //awayTeam: getTeam(event.teams, 1),
+            homeTeam: getTeam(event.teams, event.teams_normalized, 0),
+            awayTeam: getTeam(event.teams, event.teams_normalized, 1),
           });
         });
 
@@ -105,15 +110,21 @@ async function doCreate() {
             dateConverter(unixDateMiliseconds)
         );
 
-        /*for (let n = 0; n < gamesListResponse.length; n++) {
-          if(gamesListResponse[n].homeTeam == 'TBD TBD' || gamesListResponse[n].awayTeam == 'TBD TBD'){
+        for (let n = 0; n < gamesListResponse.length; n++) {
+          if (
+            gamesListResponse[n].homeTeam == "TBD TBD" ||
+            gamesListResponse[n].awayTeam == "TBD TBD"
+          ) {
             numberOfTBDGames++;
           }
         }
-        console.log("TBD teams: " + numberOfTBDGames);
-        */
 
-        if (gamesListResponse.length > 0 && gamesOnContract.length < gamesListResponse.length - numberOfTBDGames) {
+        console.log("TBD teams: " + numberOfTBDGames);
+
+        if (
+          gamesListResponse.length > 0 &&
+          gamesOnContract.length < gamesListResponse.length - numberOfTBDGames
+        ) {
           try {
             console.log("Send request...");
 
@@ -165,10 +176,9 @@ async function doCreate() {
 
         marketAddress = await consumer.marketPerGameId(gameId);
         console.log("Market address: " + marketAddress);
-
       } catch (e) {
         let isMarketCreated = await consumer.marketCreated(marketAddress);
-        if (!isMarketCreated){
+        if (!isMarketCreated) {
           i--;
         }
         console.log(e);
@@ -194,8 +204,13 @@ async function doIndefinitely() {
 
 doIndefinitely();
 
-function getTeam(teams, number) {
-  return teams[number].name;
+function getTeam(teams, teamsN, number) {
+  if (typeof teams != "undefined" && teams.length > 1) {
+    return teams[number].name;
+  } else if (typeof teamsN != "undefined" && teamsN.length > 1) {
+    return teamsN[number].name + " " + teamsN[number].mascot;
+  }
+  return "TBD TBD"; // count as TBD
 }
 
 function getSecondsToDate(dateFrom) {
