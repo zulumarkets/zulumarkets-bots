@@ -990,6 +990,35 @@ const gamesConsumerContract = {
       {
         "inputs": [
           {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "name": "gamesPerDatePerSport",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
             "internalType": "bytes32",
             "name": "_gameId",
             "type": "bytes32"
@@ -1194,17 +1223,22 @@ const gamesConsumerContract = {
       {
         "inputs": [
           {
-            "internalType": "bytes32",
-            "name": "_gameId",
-            "type": "bytes32"
-          }
-        ],
-        "name": "getGameTime",
-        "outputs": [
+            "internalType": "uint256",
+            "name": "_sportId",
+            "type": "uint256"
+          },
           {
             "internalType": "uint256",
-            "name": "",
+            "name": "_date",
             "type": "uint256"
+          }
+        ],
+        "name": "getGamesPerDatePerSport",
+        "outputs": [
+          {
+            "internalType": "bytes32[]",
+            "name": "",
+            "type": "bytes32[]"
           }
         ],
         "stateMutability": "view",

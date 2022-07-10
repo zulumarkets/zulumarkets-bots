@@ -81,7 +81,7 @@ async function doPull() {
           );
           console.log("Having sport on a date:  " + isSportOnADate);
 
-          let gamesOnContract = await consumer.getGamesPerdate(unixDate);
+          let gamesOnContract = await consumer.getGamesPerdate(unixDate); // consumer.getGamesPerDatePerSport(sportIds[j], unixDate);
           console.log("Count games on a date: " + gamesOnContract.length);
 
           // that day have games inside
@@ -127,7 +127,7 @@ async function doPull() {
 
                   let homeOddPinnacle = gamesListResponse[n].homeOdd;
                   console.log("homeOdd Pinnacle: " + homeOddPinnacle + " id: " + gamesListResponse[n].id);
-                  let homeOdd = await consumer.getOddsHomeTeam( gamesOnContract[m]);
+                  let homeOdd = await consumer.getOddsHomeTeam(gamesOnContract[m]);
                   console.log("homeOdd contract: " + homeOdd + " id: " + gamesOnContract[m]);
 
                   let awayOddPinnacle = gamesListResponse[n].awayOdd;

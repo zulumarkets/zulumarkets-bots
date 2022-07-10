@@ -72,7 +72,7 @@ async function doCreate() {
         const dayOfWeekDigit = new Date(parseInt(unixDate) * 1000).getDay();
         console.log("Day of week: " + dayOfWeekDigit);
 
-        let gamesOnContract = await consumer.getGamesPerdate(unixDate);
+        let gamesOnContract = await consumer.getGamesPerDatePerSport(sportIds[j], unixDate);
         console.log("Count games on a date, contract: " + gamesOnContract.length);
 
         const urlBuild =
