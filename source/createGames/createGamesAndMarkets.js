@@ -158,31 +158,41 @@ async function doCreate() {
   // there is new elements in queue
   if (parseInt(firstCreated) <= parseInt(lastCreated)) {
     console.log("Processing...");
+    let gameIds = [];
     for (let i = parseInt(firstCreated); i <= parseInt(lastCreated); i++) {
       console.log("Process game from queue:  " + i);
 
       let gameId = await queues.gamesCreateQueue(i);
       console.log("GameID: " + gameId);
 
-      let marketAddress = await consumer.marketPerGameId(gameId);
+      gameIds.push(gameId);
 
-      try {
-        let tx = await consumer.createMarketForGame(gameId);
+      if (
+        (gameIds.length > 0 &&
+          gameIds.length % process.env.CREATE_BATCH == 0) ||
+        parseInt(lastCreated) == i
+      ) {
+        try {
+          console.log(gameIds);
+          // send all ids
+          let tx = await consumer.createAllMarketsForGames(gameIds);
 
-        await tx.wait().then((e) => {
-          console.log("Market created for game: " + gameId);
-        });
+          await tx.wait().then((e) => {
+            console.log(
+              "Market created for number of games: " + gameIds.length
+            );
+            console.log(gameIds);
+          });
 
-        await delay(1000); // wait to be populated
+          await delay(1000); // wait to be populated
 
-        marketAddress = await consumer.marketPerGameId(gameId);
-        console.log("Market address: " + marketAddress);
-      } catch (e) {
-        let isMarketCreated = await consumer.marketCreated(marketAddress);
-        if (!isMarketCreated) {
-          i--;
+          gameIds = [];
+        } catch (e) {
+          console.log(e);
+          break;
         }
-        console.log(e);
+      } else {
+        continue;
       }
     }
   } else {

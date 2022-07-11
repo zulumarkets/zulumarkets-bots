@@ -53,24 +53,25 @@ async function doResolve() {
   console.log("MARKET =  " + market);
 
   let unproccessedGames = await queues.getLengthUnproccessedGames();
-  console.log("GAMES length =  " + unproccessedGames);
+  console.log("GAMES length = " + unproccessedGames);
 
   // do for all games
   for (let j = 0; j < unproccessedGames; j++) {
     let gameID = await queues.unproccessedGames(j);
-    console.log("GAME ID:  " + gameID);
+    console.log("GAME ID: " + gameID);
 
     let stringId = bytes32({ input: gameID });
-    console.log("Game id as string:  " + stringId);
+    console.log("Game id as string: " + stringId);
 
     let sportId = await consumer.sportsIdPerGame(gameID);
-    console.log("Sport ID:  " + sportId);
+    console.log("Sport ID: " + sportId);
 
     let gameStart = await queues.gameStartPerGameId(gameID);
-    console.log("GAME start:  " + gameStart);
-    
+    console.log("GAME start: " + gameStart);
+
     console.log(
-      "Time for sport ending:  " + parseInt(EXPECTED_GAME_DURATIN[parseInt(sportId)])
+      "Time for sport ending: " +
+        parseInt(EXPECTED_GAME_DURATIN[parseInt(sportId)])
     );
 
     let expectedTimeToProcess =
@@ -78,18 +79,28 @@ async function doResolve() {
     let expectedTimeToProcessInMiliseconds =
       parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
     console.log(
-      "Time of processing (gameStart + .env):  " +
+      "Time of processing (gameStart + .env): " +
         parseInt(expectedTimeToProcess)
     );
     console.log(
-      "Time of processing (miliseconds):  " + expectedTimeToProcessInMiliseconds
+      "Time of processing (miliseconds): " + expectedTimeToProcessInMiliseconds
     );
 
     let timeInMiliseconds = new Date().getTime(); // miliseconds
     console.log("Time is:  " + timeInMiliseconds);
 
+    let isGameResultAlreadyFulfilled = await consumer.gameFulfilledResolved(
+      gameID
+    );
+    console.log(
+      "Result already in a contract: " + isGameResultAlreadyFulfilled
+    );
+
     // check if expected time
-    if (expectedTimeToProcessInMiliseconds < timeInMiliseconds) {
+    if (
+      expectedTimeToProcessInMiliseconds < timeInMiliseconds &&
+      !isGameResultAlreadyFulfilled
+    ) {
       console.log(
         "Date in request: " +
           dateConverter(gameStart * parseInt(process.env.MILISECONDS))
@@ -146,7 +157,9 @@ async function doResolve() {
         }
       }
     } else {
-      console.log("On to the next, less then expected time");
+      console.log(
+        "On to the next, less then expected time, or result already set in a contract"
+      );
       continue;
     }
   }
@@ -165,6 +178,7 @@ async function doResolve() {
     // there is new elements in queue
     if (parseInt(firstResolved) <= parseInt(lastResolved)) {
       console.log("Processing...");
+      let gameIds = [];
       for (let i = parseInt(firstResolved); i <= parseInt(lastResolved); i++) {
         console.log("Process game from queue:  " + i);
 
@@ -174,19 +188,33 @@ async function doResolve() {
         let marketAddress = await consumer.marketPerGameId(gameId);
         console.log("Market resolved address: " + marketAddress);
 
-        try {
-          // consider resolving all in batches
-          let tx = await consumer.resolveMarketForGame(gameId);
+        gameIds.push(gameId);
 
-          await tx.wait().then((e) => {
-            console.log("Market resolve for game: " + gameId);
-          });
-        } catch (e) {
-          let isMarketResolved = await consumer.marketResolved(marketAddress);
-          if (!isMarketResolved){
-            i--;
+        if (
+          (gameIds.length > 0 &&
+            gameIds.length % process.env.RESOLVE_BATCH == 0) ||
+          parseInt(lastResolved) == i
+        ) {
+          try {
+            // send all ids
+            let tx = await consumer.resolveAllMarketsForGames(gameIds);
+
+            await tx.wait().then((e) => {
+              console.log(
+                "Market resolve for number of games: " + gameIds.length
+              );
+              console.log(gameIds);
+            });
+
+            await delay(1000); // wait to be populated
+
+            gameIds = [];
+          } catch (e) {
+            console.log(e);
+            break;
           }
-          console.log(e);
+        } else {
+          continue;
         }
       }
     } else {

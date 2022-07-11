@@ -17,7 +17,6 @@ const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 
 async function doPull() {
-
   const queues = new ethers.Contract(
     process.env.GAME_QUEUE_CONTRACT,
     gamesQueue.gamesQueueContract.abi,
@@ -43,7 +42,7 @@ async function doPull() {
 
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
-  
+
   // resolve market
   const market = process.env.MARKET_RESOLVE;
 
@@ -117,55 +116,106 @@ async function doPull() {
             // check if odd changed more then ODDS_PERCENRAGE_CHANGE
             for (let n = 0; n < gamesListResponse.length; n++) {
               console.log("Game status -> " + gamesListResponse[n].status);
-              console.log("Obtaining game id (as string): -> " + gamesListResponse[n].id);
+              console.log(
+                "Obtaining game id (as string): -> " + gamesListResponse[n].id
+              );
               for (let m = 0; m < gamesOnContract.length; m++) {
                 // when game is found and status is not canceled
-                if (gamesListResponse[n].id == bytes32({ input: gamesOnContract[m] }) &&
+                if (
+                  gamesListResponse[n].id ==
+                    bytes32({ input: gamesOnContract[m] }) &&
                   gamesListResponse[n].status == "STATUS_SCHEDULED"
                 ) {
                   console.log("Odds, checking...");
 
                   let homeOddPinnacle = gamesListResponse[n].homeOdd;
-                  console.log("homeOdd Pinnacle: " + homeOddPinnacle + " id: " + gamesListResponse[n].id);
-                  let homeOdd = await consumer.getOddsHomeTeam(gamesOnContract[m]);
-                  console.log("homeOdd contract: " + homeOdd + " id: " + gamesOnContract[m]);
+                  console.log(
+                    "homeOdd Pinnacle: " +
+                      homeOddPinnacle +
+                      " id: " +
+                      gamesListResponse[n].id
+                  );
+                  let homeOdd = await consumer.getOddsHomeTeam(
+                    gamesOnContract[m]
+                  );
+                  console.log(
+                    "homeOdd contract: " +
+                      homeOdd +
+                      " id: " +
+                      gamesOnContract[m]
+                  );
 
                   let awayOddPinnacle = gamesListResponse[n].awayOdd;
-                  console.log("awayOdd Pinnacle: " + awayOddPinnacle + " id: " + gamesListResponse[n].id);
-                  let awayOdd = await consumer.getOddsAwayTeam(gamesOnContract[m]);
-                  console.log("awayOdd contract: " + awayOdd + " id: " + gamesOnContract[m] );
+                  console.log(
+                    "awayOdd Pinnacle: " +
+                      awayOddPinnacle +
+                      " id: " +
+                      gamesListResponse[n].id
+                  );
+                  let awayOdd = await consumer.getOddsAwayTeam(
+                    gamesOnContract[m]
+                  );
+                  console.log(
+                    "awayOdd contract: " +
+                      awayOdd +
+                      " id: " +
+                      gamesOnContract[m]
+                  );
 
                   let drawOddPinnacle = gamesListResponse[n].drawOdd;
-                  console.log( "drawOdd Pinnacle: " + drawOddPinnacle + " id: " + gamesListResponse[n].id);
+                  console.log(
+                    "drawOdd Pinnacle: " +
+                      drawOddPinnacle +
+                      " id: " +
+                      gamesListResponse[n].id
+                  );
                   let drawOdd = await consumer.getOddsDraw(gamesOnContract[m]);
-                  console.log("drawOdd contract: " + drawOdd + " id: " + gamesOnContract[m]);
+                  console.log(
+                    "drawOdd contract: " +
+                      drawOdd +
+                      " id: " +
+                      gamesOnContract[m]
+                  );
 
-                  let marketAddress = await consumer.marketPerGameId(gamesOnContract[m]);
+                  let marketAddress = await consumer.marketPerGameId(
+                    gamesOnContract[m]
+                  );
                   let invalidOdds = await consumer.invalidOdds(marketAddress);
                   console.log("Is game paused: " + invalidOdds);
 
-                  let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(sportIds[j]);
+                  let isSportTwoPositionsSport =
+                    await consumer.isSportTwoPositionsSport(sportIds[j]);
 
                   if (
-                    getPercentageChange(homeOdd, homeOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE ||
-                    getPercentageChange(awayOdd, awayOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE ||
-                    getPercentageChange(drawOdd, drawOddPinnacle) >= process.env.ODDS_PERCENRAGE_CHANGE ) {
-                      sendRequestForOdds = true;
-                  }else if (homeOddPinnacle != 0.01 && awayOddPinnacle != 0.01 
-                          && (isSportTwoPositionsSport || drawOddPinnacle != 0.01) && invalidOdds){
-                      sendRequestForOdds = true;
+                    getPercentageChange(homeOdd, homeOddPinnacle) >=
+                      process.env.ODDS_PERCENRAGE_CHANGE ||
+                    getPercentageChange(awayOdd, awayOddPinnacle) >=
+                      process.env.ODDS_PERCENRAGE_CHANGE ||
+                    getPercentageChange(drawOdd, drawOddPinnacle) >=
+                      process.env.ODDS_PERCENRAGE_CHANGE
+                  ) {
+                    sendRequestForOdds = true;
+                  } else if (
+                    homeOddPinnacle != 0.01 &&
+                    awayOddPinnacle != 0.01 &&
+                    (isSportTwoPositionsSport || drawOddPinnacle != 0.01) &&
+                    invalidOdds
+                  ) {
+                    sendRequestForOdds = true;
                   }
                 } else if (
-                  gamesListResponse[n].id == bytes32({ input: gamesOnContract[m] }) &&
+                  gamesListResponse[n].id ==
+                    bytes32({ input: gamesOnContract[m] }) &&
                   gamesListResponse[n].status == "STATUS_CANCELED"
                 ) {
-
-                  let gameStart = await queues.gameStartPerGameId(gamesOnContract[m]);
+                  let gameStart = await queues.gameStartPerGameId(
+                    gamesOnContract[m]
+                  );
                   console.log("GAME start:  " + gameStart);
 
                   try {
                     console.log("Send request...");
-          
+
                     let tx = await wrapper.requestGamesResolveWithFilters(
                       jobId,
                       market,
@@ -174,24 +224,32 @@ async function doPull() {
                       [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
                       [gamesListResponse[n].id]
                     );
-          
+
                     await tx.wait().then((e) => {
                       console.log(
-                        "Requested for: " + gameStart + " with game id: " + gamesListResponse[n].id
+                        "Requested for: " +
+                          gameStart +
+                          " with game id: " +
+                          gamesListResponse[n].id
                       );
                     });
 
                     await delay(10000); // wait to be populated
 
-                    let tx_resolve = await consumer.resolveMarketForGame(gamesOnContract[m]);
+                    let tx_resolve = await consumer.resolveMarketForGame(
+                      gamesOnContract[m]
+                    );
 
                     await tx_resolve.wait().then((e) => {
-                      console.log("Market resolve for game: " + gamesOnContract[m]);
+                      console.log(
+                        "Market resolve for game: " + gamesOnContract[m]
+                      );
                     });
 
-                    let marketAddress = await consumer.marketPerGameId(gamesOnContract[m]);
+                    let marketAddress = await consumer.marketPerGameId(
+                      gamesOnContract[m]
+                    );
                     console.log("Market resolved address: " + marketAddress);
-
                   } catch (e) {
                     console.log(e);
                   }
