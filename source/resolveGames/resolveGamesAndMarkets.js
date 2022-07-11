@@ -1,12 +1,8 @@
 require("dotenv").config();
 
 const constants = require("../constants.js");
-const thalesData = require("thales-data");
 const ethers = require("ethers");
-const privateKeyBuffer = Buffer.from(constants.privateKey, "hex");
 const wallet = new ethers.Wallet(constants.privateKey, constants.etherprovider);
-const fetch = require("node-fetch");
-const w3utils = require("web3-utils");
 const bytes32 = require("bytes32");
 
 const axios = require("axios");
