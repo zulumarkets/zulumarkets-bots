@@ -115,6 +115,7 @@ async function doCreate() {
             gamesListResponse[n].homeTeam == "TBD TBD" ||
             gamesListResponse[n].awayTeam == "TBD TBD"
           ) {
+            console.log("Game ID which is TBD: " + gamesListResponse[n].id);
             numberOfTBDGames++;
           }
         }
