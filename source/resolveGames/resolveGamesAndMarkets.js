@@ -171,6 +171,9 @@ async function doResolve() {
         let gameId = await queues.gamesResolvedQueue(i);
         console.log("GameID: " + gameId);
 
+        let marketAddress = await consumer.marketPerGameId(gameId);
+        console.log("Market resolved address: " + marketAddress);
+
         try {
           // consider resolving all in batches
           let tx = await consumer.resolveMarketForGame(gameId);
@@ -178,9 +181,6 @@ async function doResolve() {
           await tx.wait().then((e) => {
             console.log("Market resolve for game: " + gameId);
           });
-
-          let marketAddress = await consumer.marketPerGameId(gameId);
-          console.log("Market resolved address: " + marketAddress);
         } catch (e) {
           let isMarketResolved = await consumer.marketResolved(marketAddress);
           if (!isMarketResolved){

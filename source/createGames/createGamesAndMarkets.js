@@ -172,7 +172,7 @@ async function doCreate() {
           console.log("Market created for game: " + gameId);
         });
 
-        await delay(1500); // wait to be populated
+        await delay(1000); // wait to be populated
 
         marketAddress = await consumer.marketPerGameId(gameId);
         console.log("Market address: " + marketAddress);
@@ -205,10 +205,10 @@ async function doIndefinitely() {
 doIndefinitely();
 
 function getTeam(teams, teamsN, number) {
-  if (typeof teams != "undefined" && teams.length > 1) {
-    return teams[number].name;
-  } else if (typeof teamsN != "undefined" && teamsN.length > 1) {
+  if (typeof teamsN != "undefined" && teamsN.length > 1) {
     return teamsN[number].name + " " + teamsN[number].mascot;
+  } else if (typeof teams != "undefined" && teams.length > 1) {
+    return teams[number].name;
   }
   return "TBD TBD"; // count as TBD
 }

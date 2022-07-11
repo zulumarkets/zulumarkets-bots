@@ -140,7 +140,7 @@ async function doPull() {
                   let drawOdd = await consumer.getOddsDraw(gamesOnContract[m]);
                   console.log("drawOdd contract: " + drawOdd + " id: " + gamesOnContract[m]);
 
-                  let marketAddress = await consumer.marketPerGameId(gamesOnContract[m]);;
+                  let marketAddress = await consumer.marketPerGameId(gamesOnContract[m]);
                   let invalidOdds = await consumer.invalidOdds(marketAddress);
                   console.log("Is game paused: " + invalidOdds);
 
