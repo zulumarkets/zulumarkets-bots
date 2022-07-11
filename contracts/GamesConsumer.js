@@ -705,6 +705,19 @@ const gamesConsumerContract = {
       {
         "inputs": [
           {
+            "internalType": "bytes32[]",
+            "name": "_gameIds",
+            "type": "bytes32[]"
+          }
+        ],
+        "name": "createAllMarketsForGames",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
             "internalType": "bytes32",
             "name": "_gameId",
             "type": "bytes32"
@@ -1168,52 +1181,6 @@ const gamesConsumerContract = {
             ],
             "internalType": "struct TherundownConsumer.GameResolve",
             "name": "",
-            "type": "tuple"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "bytes32",
-            "name": "_requestId",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "uint256",
-            "name": "_idx",
-            "type": "uint256"
-          }
-        ],
-        "name": "getGameResolvedByRequestId",
-        "outputs": [
-          {
-            "components": [
-              {
-                "internalType": "bytes32",
-                "name": "gameId",
-                "type": "bytes32"
-              },
-              {
-                "internalType": "uint8",
-                "name": "homeScore",
-                "type": "uint8"
-              },
-              {
-                "internalType": "uint8",
-                "name": "awayScore",
-                "type": "uint8"
-              },
-              {
-                "internalType": "uint8",
-                "name": "statusId",
-                "type": "uint8"
-              }
-            ],
-            "internalType": "struct TherundownConsumer.GameResolve",
-            "name": "game",
             "type": "tuple"
           }
         ],
@@ -1851,6 +1818,19 @@ const gamesConsumerContract = {
           }
         ],
         "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32[]",
+            "name": "_gameIds",
+            "type": "bytes32[]"
+          }
+        ],
+        "name": "resolveAllMarketsForGames",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
       },
       {
