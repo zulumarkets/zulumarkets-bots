@@ -324,7 +324,6 @@ function getOdds(lines, oddNumber) {
   });
 
   if (odd.length == 0) {
-    console.log("Odds not found!");
     return 0;
   } else if (oddNumber == 1) {
     return odd[0].moneyline.moneyline_home * 100;
@@ -336,8 +335,15 @@ function getOdds(lines, oddNumber) {
 }
 
 function getPercentageChange(oldNumber, newNumber) {
-  var decreaseValue = oldNumber - newNumber;
-  return Math.abs((decreaseValue / oldNumber) * 100);
+	if (oldNumber == 0 && (newNumber == 0 || newNumber == 0.01)) {
+  	return 0;
+  } else if (oldNumber == 0 && (newNumber != 0 || newNumber != 0.01)){
+  	return 100;
+  }
+	else{
+    var decreaseValue = oldNumber - newNumber;
+    return Math.abs((decreaseValue / oldNumber) * 100);
+  }
 }
 
 function delay(time) {

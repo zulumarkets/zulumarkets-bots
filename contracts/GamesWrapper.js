@@ -19,7 +19,17 @@ const gamesWraperContract = {
           },
           {
             "internalType": "uint256",
-            "name": "_payment",
+            "name": "_paymentCreate",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_paymentResolve",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_paymentOdds",
             "type": "uint256"
           }
         ],
@@ -110,11 +120,37 @@ const gamesWraperContract = {
           {
             "indexed": false,
             "internalType": "uint256",
-            "name": "_payment",
+            "name": "_paymentCreate",
             "type": "uint256"
           }
         ],
-        "name": "NewPaymentAmount",
+        "name": "NewPaymentAmountCreate",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "_paymentOdds",
+            "type": "uint256"
+          }
+        ],
+        "name": "NewPaymentAmountOdds",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "_paymentResolve",
+            "type": "uint256"
+          }
+        ],
+        "name": "NewPaymentAmountResolve",
         "type": "event"
       },
       {
@@ -315,7 +351,33 @@ const gamesWraperContract = {
       },
       {
         "inputs": [],
-        "name": "payment",
+        "name": "paymentCreate",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "paymentOdds",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "paymentResolve",
         "outputs": [
           {
             "internalType": "uint256",
@@ -470,11 +532,37 @@ const gamesWraperContract = {
         "inputs": [
           {
             "internalType": "uint256",
-            "name": "_payment",
+            "name": "_paymentCreate",
             "type": "uint256"
           }
         ],
-        "name": "setPayment",
+        "name": "setPaymentCreate",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "_paymentOdds",
+            "type": "uint256"
+          }
+        ],
+        "name": "setPaymentOdds",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "_paymentResolve",
+            "type": "uint256"
+          }
+        ],
+        "name": "setPaymentResolve",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
