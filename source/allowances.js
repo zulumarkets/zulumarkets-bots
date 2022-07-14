@@ -27,12 +27,6 @@ async function checkAllowanceAndAllow(makerToken, addressToApprove) {
   const isAllowedToken = await isAllowed(makerToken, addressToApprove);
   if (!isAllowedToken) {
     console.log("Approving " + makerToken + " to " + addressToApprove);
-    let gasp = await constants.etherprovider.getGasPrice();
-    let scaledGasP = gasp.toString() / 1e9;
-    if (scaledGasP > process.env.MAX_GAS_GWEI * 2) {
-      console.log("Not doing allowance as gas is above doubled gwei threshold");
-      return;
-    }
     await allowToken(makerToken, addressToApprove);
     console.log(makerToken + "approved");
   }
@@ -40,7 +34,6 @@ async function checkAllowanceAndAllow(makerToken, addressToApprove) {
 
 async function allowToken(makerToken, addressToApprove) {
   try {
-    let gasp = await constants.etherprovider.getGasPrice();
     const erc20Instance = new ethers.Contract(
       makerToken,
       linkToken.linkTokenContract.abi,
@@ -48,8 +41,7 @@ async function allowToken(makerToken, addressToApprove) {
     );
     let approveTx = await erc20Instance.approve(
       addressToApprove,
-      ethers.constants.MaxUint256,
-      { gasPrice: gasp.add(gasp.div(5)) }
+      ethers.constants.MaxUint256
     );
 
     await approveTx.wait().then((e) => {

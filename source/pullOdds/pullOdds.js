@@ -12,6 +12,8 @@ const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 
+const oddslib = require("oddslib");
+
 async function doPull() {
   const queues = new ethers.Contract(
     process.env.GAME_QUEUE_CONTRACT,
@@ -111,11 +113,17 @@ async function doPull() {
 
             // check if odd changed more then ODDS_PERCENRAGE_CHANGE
             for (let n = 0; n < gamesListResponse.length; n++) {
+              if (sendRequestForOdds) {
+                break;
+              }
               console.log("Game status -> " + gamesListResponse[n].status);
               console.log(
                 "Obtaining game id (as string): -> " + gamesListResponse[n].id
               );
               for (let m = 0; m < gamesOnContract.length; m++) {
+                if (sendRequestForOdds) {
+                  break;
+                }
                 // when game is found and status is not canceled
                 if (
                   gamesListResponse[n].id ==
@@ -183,6 +191,15 @@ async function doPull() {
                     await consumer.isSportTwoPositionsSport(sportIds[j]);
 
                   if (
+                    homeOdd === undefined ||
+                    homeOddPinnacle === undefined ||
+                    awayOdd === undefined ||
+                    awayOddPinnacle === undefined
+                  ) {
+                    continue;
+                  }
+
+                  if (
                     getPercentageChange(homeOdd, homeOddPinnacle) >=
                       process.env.ODDS_PERCENRAGE_CHANGE ||
                     getPercentageChange(awayOdd, awayOddPinnacle) >=
@@ -190,13 +207,23 @@ async function doPull() {
                     getPercentageChange(drawOdd, drawOddPinnacle) >=
                       process.env.ODDS_PERCENRAGE_CHANGE
                   ) {
+                    console.log("Setting sendRequestForOdds to true");
+                    console.log(getPercentageChange(homeOdd, homeOddPinnacle));
+                    console.log(getPercentageChange(awayOdd, awayOddPinnacle));
+                    console.log(getPercentageChange(drawOdd, drawOddPinnacle));
                     sendRequestForOdds = true;
                   } else if (
                     homeOddPinnacle != 0.01 &&
                     awayOddPinnacle != 0.01 &&
-                    (isSportTwoPositionsSport || drawOddPinnacle != 0.01) &&
+                    homeOddPinnacle != 0 &&
+                    awayOddPinnacle != 0 &&
+                    (isSportTwoPositionsSport ||
+                      (drawOddPinnacle != 0.01 && drawOddPinnacle != 0)) &&
                     invalidOdds
                   ) {
+                    console.log(
+                      "Setting sendRequestForOdds to true due to receiving valid odds!"
+                    );
                     sendRequestForOdds = true;
                   }
                 } else if (
@@ -335,14 +362,26 @@ function getOdds(lines, oddNumber) {
 }
 
 function getPercentageChange(oldNumber, newNumber) {
-	if (oldNumber == 0 && (newNumber == 0 || newNumber == 0.01)) {
-  	return 0;
-  } else if (oldNumber == 0 && (newNumber != 0 || newNumber != 0.01)){
-  	return 100;
+  if (oldNumber === newNumber) {
+    return 0;
   }
-	else{
-    var decreaseValue = oldNumber - newNumber;
-    return Math.abs((decreaseValue / oldNumber) * 100);
+  if (oldNumber == 0 && (newNumber == 0 || newNumber == 0.01)) {
+    return 0;
+  } else if (oldNumber == 0 && (newNumber != 0 || newNumber != 0.01)) {
+    return 100;
+  } else {
+    let oldNumberImplied = oddslib
+      .from("moneyline", oldNumber / 100)
+      .to("impliedProbability");
+    let newNumberImplied = oddslib
+      .from("moneyline", newNumber / 100)
+      .to("impliedProbability");
+    var decreaseValue = oldNumberImplied - newNumberImplied;
+    let percentageChange = Math.abs((decreaseValue / oldNumberImplied) * 100);
+    if (percentageChange > process.env.ODDS_PERCENRAGE_CHANGE) {
+      console.log("Odds changed more than threshold!");
+    }
+    return percentageChange;
   }
 }
 
