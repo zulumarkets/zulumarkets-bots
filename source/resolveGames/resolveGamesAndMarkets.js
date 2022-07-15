@@ -163,59 +163,55 @@ async function doResolve() {
   await delay(10000); // wait to be populated
   console.log("Resolving Markets...");
 
-  processed = false;
-  while (!processed) {
-    processed = true;
-    let firstResolved = await queues.firstResolved();
-    console.log("Start:  " + firstResolved);
-    let lastResolved = await queues.lastResolved();
-    console.log("End:  " + lastResolved);
+  let firstResolved = await queues.firstResolved();
+  console.log("Start:  " + firstResolved);
+  let lastResolved = await queues.lastResolved();
+  console.log("End:  " + lastResolved);
 
-    // there is new elements in queue
-    if (parseInt(firstResolved) <= parseInt(lastResolved)) {
-      console.log("Processing...");
-      let gameIds = [];
-      for (let i = parseInt(firstResolved); i <= parseInt(lastResolved); i++) {
-        console.log("Process game from queue:  " + i);
+  // there is new elements in queue
+  if (parseInt(firstResolved) <= parseInt(lastResolved)) {
+    console.log("Processing...");
+    let gameIds = [];
+    for (let i = parseInt(firstResolved); i <= parseInt(lastResolved); i++) {
+      console.log("Process game from queue:  " + i);
 
-        let gameId = await queues.gamesResolvedQueue(i);
-        console.log("GameID: " + gameId);
+      let gameId = await queues.gamesResolvedQueue(i);
+      console.log("GameID: " + gameId);
 
-        let marketAddress = await consumer.marketPerGameId(gameId);
-        console.log("Market resolved address: " + marketAddress);
+      let marketAddress = await consumer.marketPerGameId(gameId);
+      console.log("Market resolved address: " + marketAddress);
 
-        gameIds.push(gameId);
+      gameIds.push(gameId);
 
-        if (
-          (gameIds.length > 0 &&
-            gameIds.length % process.env.RESOLVE_BATCH == 0) ||
-          parseInt(lastResolved) == i
-        ) {
-          try {
-            // send all ids
-            let tx = await consumer.resolveAllMarketsForGames(gameIds);
+      if (
+        (gameIds.length > 0 &&
+          gameIds.length % process.env.RESOLVE_BATCH == 0) ||
+        parseInt(lastResolved) == i
+      ) {
+        try {
+          // send all ids
+          let tx = await consumer.resolveAllMarketsForGames(gameIds);
 
-            await tx.wait().then((e) => {
-              console.log(
-                "Market resolve for number of games: " + gameIds.length
-              );
-              console.log(gameIds);
-            });
+          await tx.wait().then((e) => {
+            console.log(
+              "Market resolve for number of games: " + gameIds.length
+            );
+            console.log(gameIds);
+          });
 
-            await delay(1000); // wait to be populated
+          await delay(1000); // wait to be populated
 
-            gameIds = [];
-          } catch (e) {
-            console.log(e);
-            break;
-          }
-        } else {
-          continue;
+          gameIds = [];
+        } catch (e) {
+          console.log(e);
+          break;
         }
+      } else {
+        continue;
       }
-    } else {
-      console.log("Nothing to process...");
     }
+  } else {
+    console.log("Nothing to process...");
   }
 
   console.log("Ended batch...");
