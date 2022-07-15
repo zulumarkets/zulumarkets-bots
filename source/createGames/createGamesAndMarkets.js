@@ -68,13 +68,7 @@ async function doCreate() {
         const dayOfWeekDigit = new Date(parseInt(unixDate) * 1000).getDay();
         console.log("Day of week: " + dayOfWeekDigit);
 
-        let gamesOnContract = await consumer.getGamesPerDatePerSport(
-          sportIds[j],
-          unixDate
-        );
-        console.log(
-          "Count games on a date, contract: " + gamesOnContract.length
-        );
+        let sendRequestForCreate = false;
 
         const urlBuild =
           baseUrl +
@@ -89,7 +83,6 @@ async function doCreate() {
         });
 
         const gamesListResponse = [];
-        let numberOfTBDGames = 0;
 
         response.data.events.forEach((event) => {
           gamesListResponse.push({
@@ -107,21 +100,27 @@ async function doCreate() {
         );
 
         for (let n = 0; n < gamesListResponse.length; n++) {
+          let isGameAlreadyFullFilled = await consumer.gameFulfilledCreated(
+            bytes32({ input: gamesListResponse[n].id })
+          );
+          // if game is not fullfilled and not TBD awayTeam and homeTeam send request
           if (
-            gamesListResponse[n].homeTeam == "TBD TBD" ||
-            gamesListResponse[n].awayTeam == "TBD TBD"
+            !isGameAlreadyFullFilled &&
+            gamesListResponse[n].awayTeam != "TBD TBD" &&
+            gamesListResponse[n].homeTeam != "TBD TBD"
           ) {
-            console.log("Game ID which is TBD: " + gamesListResponse[n].id);
-            numberOfTBDGames++;
+            console.log(
+              "Game: " +
+                bytes32({ input: gamesListResponse[n].id }) +
+                " fullfilled: " +
+                isGameAlreadyFullFilled
+            );
+            sendRequestForCreate = true;
+            break;
           }
         }
 
-        console.log("TBD teams: " + numberOfTBDGames);
-
-        if (
-          gamesListResponse.length > 0 &&
-          gamesOnContract.length < gamesListResponse.length - numberOfTBDGames
-        ) {
+        if (sendRequestForCreate) {
           try {
             console.log("Send request...");
 
