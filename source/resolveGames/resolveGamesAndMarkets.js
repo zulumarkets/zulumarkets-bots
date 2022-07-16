@@ -51,6 +51,9 @@ async function doResolve() {
   let unproccessedGames = await queues.getLengthUnproccessedGames();
   console.log("GAMES length = " + unproccessedGames);
 
+  let cancelStatuses = process.env.CANCEL_STATUSES.split(",");
+  let resolvedStatuses = process.env.RESOLVE_STATUSES.split(",");
+
   // do for all games
   for (let j = 0; j < unproccessedGames; j++) {
     let gameID = await queues.unproccessedGames(j);
@@ -126,9 +129,8 @@ async function doResolve() {
       for (let n = 0; n < gamesListResponse.length; n++) {
         // if the game is in right status
         if (
-          gamesListResponse[n].id == stringId &&
-          (gamesListResponse[n].status == "STATUS_FINAL" ||
-            gamesListResponse[n].status == "STATUS_FULL_TIME")
+          gamesListResponse[n].id == stringId && 
+          (isGameInRightStatus(cancelStatuses, gamesListResponse[n].status) || isGameInRightStatus(resolvedStatuses, gamesListResponse[n].status))
         ) {
           try {
             console.log("Send request...");
@@ -232,6 +234,16 @@ function dateConverter(UNIXTimestamp) {
   var date = new Date(UNIXTimestamp);
   var month = date.getUTCMonth() + 1; // starts from zero (0) -> January
   return date.getUTCFullYear() + "-" + month + "-" + date.getUTCDate();
+}
+
+function isGameInRightStatus(statuses, status) {
+  console.log("Game is in status: " + status)
+  for (let j = 0; j < statuses.length; j++) {
+    if(statuses[j] == status){
+      return true;
+    }
+  }
+  return false;
 }
 
 doIndefinitely();

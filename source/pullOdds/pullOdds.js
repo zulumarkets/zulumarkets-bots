@@ -41,6 +41,8 @@ async function doPull() {
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
 
+  let cancelStatuses = process.env.CANCEL_STATUSES.split(",");
+
   // resolve market
   const market = process.env.MARKET_RESOLVE;
 
@@ -227,9 +229,8 @@ async function doPull() {
                     sendRequestForOdds = true;
                   }
                 } else if (
-                  gamesListResponse[n].id ==
-                    bytes32({ input: gamesOnContract[m] }) &&
-                  gamesListResponse[n].status == "STATUS_CANCELED"
+                  gamesListResponse[n].id == bytes32({ input: gamesOnContract[m] }) && 
+                  isGameInRightStatus(cancelStatuses, gamesListResponse[n].status)
                 ) {
                   let gameStart = await queues.gameStartPerGameId(
                     gamesOnContract[m]
@@ -383,6 +384,16 @@ function getPercentageChange(oldNumber, newNumber) {
     }
     return percentageChange;
   }
+}
+
+function isGameInRightStatus(statuses, status) {
+  console.log("Game is in status: " + status)
+  for (let j = 0; j < statuses.length; j++) {
+    if(statuses[j] == status){
+      return true;
+    }
+  }
+  return false;
 }
 
 function delay(time) {
