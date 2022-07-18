@@ -34,6 +34,7 @@ async function doPull() {
   );
 
   const jobId = bytes32({ input: process.env.JOB_ID_ODDS });
+  const jobIdResolve = bytes32({ input: process.env.JOB_ID_RESOLVE });
 
   // number of days in front for calculation
   const daysInFront = process.env.CREATION_DAYS_INFRONT;
@@ -229,53 +230,67 @@ async function doPull() {
                     sendRequestForOdds = true;
                   }
                 } else if (
-                  gamesListResponse[n].id == bytes32({ input: gamesOnContract[m] }) && 
-                  isGameInRightStatus(cancelStatuses, gamesListResponse[n].status)
+                  gamesListResponse[n].id ==
+                    bytes32({ input: gamesOnContract[m] }) &&
+                  isGameInRightStatus(
+                    cancelStatuses,
+                    gamesListResponse[n].status
+                  )
                 ) {
-                  let gameStart = await queues.gameStartPerGameId(
+                  let market = await consumer.marketPerGameId(
                     gamesOnContract[m]
                   );
-                  console.log("GAME start:  " + gameStart);
+                  console.log("MARKET:  " + market);
 
-                  try {
-                    console.log("Send request...");
+                  let isMarketCanceled = await consumer.marketCanceled(market);
+                  console.log("Canceled already:  " + isMarketCanceled);
 
-                    let tx = await wrapper.requestGamesResolveWithFilters(
-                      jobId,
-                      market,
-                      sportIds[j],
-                      gameStart,
-                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
-                      [gamesListResponse[n].id]
-                    );
-
-                    await tx.wait().then((e) => {
-                      console.log(
-                        "Requested for: " +
-                          gameStart +
-                          " with game id: " +
-                          gamesListResponse[n].id
-                      );
-                    });
-
-                    await delay(10000); // wait to be populated
-
-                    let tx_resolve = await consumer.resolveMarketForGame(
+                  if (!isMarketCanceled) {
+                    let gameStart = await queues.gameStartPerGameId(
                       gamesOnContract[m]
                     );
+                    console.log("GAME start:  " + gameStart);
 
-                    await tx_resolve.wait().then((e) => {
-                      console.log(
-                        "Market resolve for game: " + gamesOnContract[m]
+                    try {
+                      console.log("Send request...");
+
+                      let tx = await wrapper.requestGamesResolveWithFilters(
+                        jobIdResolve,
+                        market,
+                        sportIds[j],
+                        gameStart,
+                        [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
+                        [gamesListResponse[n].id]
                       );
-                    });
 
-                    let marketAddress = await consumer.marketPerGameId(
-                      gamesOnContract[m]
-                    );
-                    console.log("Market resolved address: " + marketAddress);
-                  } catch (e) {
-                    console.log(e);
+                      await tx.wait().then((e) => {
+                        console.log(
+                          "Requested for: " +
+                            gameStart +
+                            " with game id: " +
+                            gamesListResponse[n].id
+                        );
+                      });
+
+                      await delay(10000); // wait to be populated
+
+                      let tx_resolve = await consumer.resolveMarketForGame(
+                        gamesOnContract[m]
+                      );
+
+                      await tx_resolve.wait().then((e) => {
+                        console.log(
+                          "Market resolve for game: " + gamesOnContract[m]
+                        );
+                      });
+
+                      let marketAddress = await consumer.marketPerGameId(
+                        gamesOnContract[m]
+                      );
+                      console.log("Market resolved address: " + marketAddress);
+                    } catch (e) {
+                      console.log(e);
+                    }
                   }
                 }
               }
@@ -387,9 +402,9 @@ function getPercentageChange(oldNumber, newNumber) {
 }
 
 function isGameInRightStatus(statuses, status) {
-  console.log("Game is in status: " + status)
+  console.log("Game is in status: " + status);
   for (let j = 0; j < statuses.length; j++) {
-    if(statuses[j] == status){
+    if (statuses[j] == status) {
       return true;
     }
   }
