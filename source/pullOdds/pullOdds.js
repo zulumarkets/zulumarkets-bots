@@ -81,7 +81,7 @@ async function doPull() {
           );
           console.log("Having sport on a date:  " + isSportOnADate);
 
-          let gamesOnContract = await consumer.getGamesPerdate(unixDate); // consumer.getGamesPerDatePerSport(sportIds[j], unixDate);
+          let gamesOnContract = await consumer.getGamesPerDatePerSport(sportIds[j], unixDate);
           console.log("Count games on a date: " + gamesOnContract.length);
 
           // that day have games inside
@@ -135,99 +135,123 @@ async function doPull() {
                 ) {
                   console.log("Odds, checking...");
 
-                  let homeOddPinnacle = gamesListResponse[n].homeOdd;
-                  console.log(
-                    "homeOdd Pinnacle: " +
-                      homeOddPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-                  let homeOdd = await consumer.getOddsHomeTeam(
-                    gamesOnContract[m]
-                  );
-                  console.log(
-                    "homeOdd contract: " +
-                      homeOdd +
-                      " id: " +
-                      gamesOnContract[m]
-                  );
-
-                  let awayOddPinnacle = gamesListResponse[n].awayOdd;
-                  console.log(
-                    "awayOdd Pinnacle: " +
-                      awayOddPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-                  let awayOdd = await consumer.getOddsAwayTeam(
-                    gamesOnContract[m]
-                  );
-                  console.log(
-                    "awayOdd contract: " +
-                      awayOdd +
-                      " id: " +
-                      gamesOnContract[m]
-                  );
-
-                  let drawOddPinnacle = gamesListResponse[n].drawOdd;
-                  console.log(
-                    "drawOdd Pinnacle: " +
-                      drawOddPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-                  let drawOdd = await consumer.getOddsDraw(gamesOnContract[m]);
-                  console.log(
-                    "drawOdd contract: " +
-                      drawOdd +
-                      " id: " +
-                      gamesOnContract[m]
-                  );
-
                   let marketAddress = await consumer.marketPerGameId(
                     gamesOnContract[m]
                   );
-                  let invalidOdds = await consumer.invalidOdds(marketAddress);
-                  console.log("Is game paused: " + invalidOdds);
 
-                  let isSportTwoPositionsSport =
-                    await consumer.isSportTwoPositionsSport(sportIds[j]);
+                  let isMarketResolved = await consumer.marketResolved(
+                    marketAddress
+                  );
+                  console.log("Market resolved: " + isMarketResolved);
 
-                  if (
-                    homeOdd === undefined ||
-                    homeOddPinnacle === undefined ||
-                    awayOdd === undefined ||
-                    awayOddPinnacle === undefined
-                  ) {
-                    continue;
-                  }
+                  let isMarketCanceled = await consumer.marketCanceled(
+                    marketAddress
+                  );
+                  console.log("Market canceled: " + isMarketCanceled);
 
-                  if (
-                    getPercentageChange(homeOdd, homeOddPinnacle) >=
-                      process.env.ODDS_PERCENRAGE_CHANGE ||
-                    getPercentageChange(awayOdd, awayOddPinnacle) >=
-                      process.env.ODDS_PERCENRAGE_CHANGE ||
-                    getPercentageChange(drawOdd, drawOddPinnacle) >=
-                      process.env.ODDS_PERCENRAGE_CHANGE
-                  ) {
-                    console.log("Setting sendRequestForOdds to true");
-                    console.log(getPercentageChange(homeOdd, homeOddPinnacle));
-                    console.log(getPercentageChange(awayOdd, awayOddPinnacle));
-                    console.log(getPercentageChange(drawOdd, drawOddPinnacle));
-                    sendRequestForOdds = true;
-                  } else if (
-                    homeOddPinnacle != 0.01 &&
-                    awayOddPinnacle != 0.01 &&
-                    homeOddPinnacle != 0 &&
-                    awayOddPinnacle != 0 &&
-                    (isSportTwoPositionsSport ||
-                      (drawOddPinnacle != 0.01 && drawOddPinnacle != 0)) &&
-                    invalidOdds
-                  ) {
+                  if (!isMarketResolved && !isMarketCanceled) {
+                    let homeOddPinnacle = gamesListResponse[n].homeOdd;
                     console.log(
-                      "Setting sendRequestForOdds to true due to receiving valid odds!"
+                      "homeOdd Pinnacle: " +
+                        homeOddPinnacle +
+                        " id: " +
+                        gamesListResponse[n].id
                     );
-                    sendRequestForOdds = true;
+                    let oddsForGame = await consumer.getOddsForGame(
+                      gamesOnContract[m]
+                    );
+                    console.log(
+                      "homeOdd contract: " +
+                        oddsForGame[0] +
+                        " id: " +
+                        gamesOnContract[m]
+                    );
+
+                    let awayOddPinnacle = gamesListResponse[n].awayOdd;
+                    console.log(
+                      "awayOdd Pinnacle: " +
+                        awayOddPinnacle +
+                        " id: " +
+                        gamesListResponse[n].id
+                    );
+                    console.log(
+                      "awayOdd contract: " +
+                        oddsForGame[1] +
+                        " id: " +
+                        gamesOnContract[m]
+                    );
+
+                    let drawOddPinnacle = gamesListResponse[n].drawOdd;
+                    console.log(
+                      "drawOdd Pinnacle: " +
+                        drawOddPinnacle +
+                        " id: " +
+                        gamesListResponse[n].id
+                    );
+                    console.log(
+                      "drawOdd contract: " +
+                        oddsForGame[2] +
+                        " id: " +
+                        gamesOnContract[m]
+                    );
+
+                    let invalidOdds = await consumer.invalidOdds(marketAddress);
+                    console.log(
+                      "Is game paused by invalid odds: " + invalidOdds
+                    );
+                    let isPausedByCanceledStatus =
+                      await consumer.isPausedByCanceledStatus(marketAddress);
+                    console.log(
+                      "Is game paused by status: " + isPausedByCanceledStatus
+                    );
+
+                    let isSportTwoPositionsSport =
+                      await consumer.isSportTwoPositionsSport(sportIds[j]);
+
+                    if (
+                      homeOdd === undefined ||
+                      homeOddPinnacle === undefined ||
+                      awayOdd === undefined ||
+                      awayOddPinnacle === undefined
+                    ) {
+                      continue;
+                    }
+
+                    if (
+                      getPercentageChange(homeOdd, homeOddPinnacle) >=
+                        process.env.ODDS_PERCENRAGE_CHANGE ||
+                      getPercentageChange(awayOdd, awayOddPinnacle) >=
+                        process.env.ODDS_PERCENRAGE_CHANGE ||
+                      getPercentageChange(drawOdd, drawOddPinnacle) >=
+                        process.env.ODDS_PERCENRAGE_CHANGE
+                    ) {
+                      console.log("Setting sendRequestForOdds to true");
+                      console.log(
+                        getPercentageChange(homeOdd, homeOddPinnacle)
+                      );
+                      console.log(
+                        getPercentageChange(awayOdd, awayOddPinnacle)
+                      );
+                      console.log(
+                        getPercentageChange(drawOdd, drawOddPinnacle)
+                      );
+                      sendRequestForOdds = true;
+                    } else if (
+                      homeOddPinnacle != 0.01 &&
+                      awayOddPinnacle != 0.01 &&
+                      homeOddPinnacle != 0 &&
+                      awayOddPinnacle != 0 &&
+                      (isSportTwoPositionsSport ||
+                        (drawOddPinnacle != 0.01 && drawOddPinnacle != 0)) &&
+                      (invalidOdds || isPausedByCanceledStatus)
+                    ) {
+                      console.log(
+                        "Setting sendRequestForOdds to true due to receiving valid odds!"
+                      );
+                      sendRequestForOdds = true;
+                    }
+                  } else{
+                    console.log("Market for game already resolved!");
                   }
                 } else if (
                   gamesListResponse[n].id ==
@@ -237,15 +261,17 @@ async function doPull() {
                     gamesListResponse[n].status
                   )
                 ) {
-                  let market = await consumer.marketPerGameId(
+                  let marketAdd = await consumer.marketPerGameId(
                     gamesOnContract[m]
                   );
-                  console.log("MARKET:  " + market);
+                  console.log(
+                    "MARKET:  " +
+                      marketAdd +
+                      " paused: " +
+                      isPausedByCanceledStatus
+                  );
 
-                  let isMarketCanceled = await consumer.marketCanceled(market);
-                  console.log("Canceled already:  " + isMarketCanceled);
-
-                  if (!isMarketCanceled) {
+                  if (!isPausedByCanceledStatus) {
                     let gameStart = await queues.gameStartPerGameId(
                       gamesOnContract[m]
                     );

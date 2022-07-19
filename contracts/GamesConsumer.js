@@ -376,6 +376,31 @@ const gamesConsumerContract = {
           {
             "indexed": false,
             "internalType": "address",
+            "name": "_wrapperAddress",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "contract GamesQueue",
+            "name": "_queues",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "address",
+            "name": "_sportsManager",
+            "type": "address"
+          }
+        ],
+        "name": "NewSportContracts",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "address",
             "name": "_sportsManager",
             "type": "address"
           }
@@ -1257,46 +1282,18 @@ const gamesConsumerContract = {
             "type": "bytes32"
           }
         ],
-        "name": "getOddsAwayTeam",
+        "name": "getOddsForGame",
         "outputs": [
           {
             "internalType": "int24",
             "name": "",
             "type": "int24"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "bytes32",
-            "name": "_gameId",
-            "type": "bytes32"
-          }
-        ],
-        "name": "getOddsDraw",
-        "outputs": [
+          },
           {
             "internalType": "int24",
             "name": "",
             "type": "int24"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "bytes32",
-            "name": "_gameId",
-            "type": "bytes32"
-          }
-        ],
-        "name": "getOddsHomeTeam",
-        "outputs": [
+          },
           {
             "internalType": "int24",
             "name": "",
@@ -1415,6 +1412,25 @@ const gamesConsumerContract = {
           }
         ],
         "name": "isGameResolvedOrCanceled",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "isPausedByCanceledStatus",
         "outputs": [
           {
             "internalType": "bool",
@@ -1931,25 +1947,22 @@ const gamesConsumerContract = {
       {
         "inputs": [
           {
+            "internalType": "address",
+            "name": "_wrapperAddress",
+            "type": "address"
+          },
+          {
             "internalType": "contract GamesQueue",
             "name": "_queues",
             "type": "address"
-          }
-        ],
-        "name": "setQueueAddress",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
+          },
           {
             "internalType": "address",
             "name": "_sportsManager",
             "type": "address"
           }
         ],
-        "name": "setSportsManager",
+        "name": "setSportContracts",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -2022,19 +2035,6 @@ const gamesConsumerContract = {
           }
         ],
         "name": "setTwoPositionSport",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "_wrapperAddress",
-            "type": "address"
-          }
-        ],
-        "name": "setWrapperAddress",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
