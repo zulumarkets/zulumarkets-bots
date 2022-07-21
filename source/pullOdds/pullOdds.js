@@ -81,7 +81,10 @@ async function doPull() {
           );
           console.log("Having sport on a date:  " + isSportOnADate);
 
-          let gamesOnContract = await consumer.getGamesPerDatePerSport(sportIds[j], unixDate);
+          let gamesOnContract = await consumer.getGamesPerDatePerSport(
+            sportIds[j],
+            unixDate
+          );
           console.log("Count games on a date: " + gamesOnContract.length);
 
           // that day have games inside
@@ -127,7 +130,7 @@ async function doPull() {
                 if (sendRequestForOdds) {
                   break;
                 }
-                // when game is found and status is not canceled
+                // when game is found and status and status is STATUS_SCHEDULED
                 if (
                   gamesListResponse[n].id ==
                     bytes32({ input: gamesOnContract[m] }) &&
@@ -149,6 +152,7 @@ async function doPull() {
                   );
                   console.log("Market canceled: " + isMarketCanceled);
 
+                  // only ongoing games not resolved or already canceled
                   if (!isMarketResolved && !isMarketCanceled) {
                     let homeOddPinnacle = gamesListResponse[n].homeOdd;
                     console.log(
@@ -217,6 +221,7 @@ async function doPull() {
                       continue;
                     }
 
+                    // percentage change >= ODDS_PERCENRAGE_CHANGE send request
                     if (
                       getPercentageChange(homeOdd, homeOddPinnacle) >=
                         process.env.ODDS_PERCENRAGE_CHANGE ||
@@ -237,6 +242,7 @@ async function doPull() {
                       );
                       sendRequestForOdds = true;
                     } else if (
+                      // odds appear and game was paused by invalid odds or cancel status send request
                       homeOddPinnacle != 0.01 &&
                       awayOddPinnacle != 0.01 &&
                       homeOddPinnacle != 0 &&
@@ -246,13 +252,14 @@ async function doPull() {
                       (invalidOdds || isPausedByCanceledStatus)
                     ) {
                       console.log(
-                        "Setting sendRequestForOdds to true due to receiving valid odds!"
+                        "Receiving valid odds or unpause by wrong cancel status!"
                       );
                       sendRequestForOdds = true;
                     }
-                  } else{
+                  } else {
                     console.log("Market for game already resolved!");
                   }
+                // game is in cancel/resolved status on API
                 } else if (
                   gamesListResponse[n].id ==
                     bytes32({ input: gamesOnContract[m] }) &&
@@ -261,16 +268,25 @@ async function doPull() {
                     gamesListResponse[n].status
                   )
                 ) {
-                  let marketAdd = await consumer.marketPerGameId(
+                  let marketAddress = await consumer.marketPerGameId(
                     gamesOnContract[m]
                   );
+
+                  let isPausedByCanceledStatus =
+                    await consumer.isPausedByCanceledStatus(marketAddress);
+                  console.log(
+                    "Is game paused by status: " + isPausedByCanceledStatus
+                  );
+
                   console.log(
                     "MARKET:  " +
-                      marketAdd +
+                      marketAddress +
                       " paused: " +
                       isPausedByCanceledStatus
                   );
-
+                  
+                  // checking if it is already paused by cancel/resolved status
+                  // if not pause it
                   if (!isPausedByCanceledStatus) {
                     let gameStart = await queues.gameStartPerGameId(
                       gamesOnContract[m]
@@ -306,17 +322,14 @@ async function doPull() {
 
                       await tx_resolve.wait().then((e) => {
                         console.log(
-                          "Market resolve for game: " + gamesOnContract[m]
+                          "Market resolved for game: " + gamesOnContract[m]
                         );
                       });
-
-                      let marketAddress = await consumer.marketPerGameId(
-                        gamesOnContract[m]
-                      );
-                      console.log("Market resolved address: " + marketAddress);
                     } catch (e) {
                       console.log(e);
                     }
+                  } else {
+                    console.log("Market already paused!");
                   }
                 }
               }
