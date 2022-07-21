@@ -1239,25 +1239,6 @@ const gamesConsumerContract = {
       {
         "inputs": [
           {
-            "internalType": "uint256",
-            "name": "_date",
-            "type": "uint256"
-          }
-        ],
-        "name": "getGamesPerdate",
-        "outputs": [
-          {
-            "internalType": "bytes32[]",
-            "name": "",
-            "type": "bytes32[]"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
             "internalType": "bytes32",
             "name": "_gameId",
             "type": "bytes32"
