@@ -213,9 +213,9 @@ async function doPull() {
                       await consumer.isSportTwoPositionsSport(sportIds[j]);
 
                     if (
-                      homeOdd === undefined ||
+                      oddsForGame[0] === undefined ||
                       homeOddPinnacle === undefined ||
-                      awayOdd === undefined ||
+                      oddsForGame[1] === undefined ||
                       awayOddPinnacle === undefined
                     ) {
                       continue;
@@ -223,22 +223,22 @@ async function doPull() {
 
                     // percentage change >= ODDS_PERCENRAGE_CHANGE send request
                     if (
-                      getPercentageChange(homeOdd, homeOddPinnacle) >=
+                      getPercentageChange(oddsForGame[0], homeOddPinnacle) >=
                         process.env.ODDS_PERCENRAGE_CHANGE ||
-                      getPercentageChange(awayOdd, awayOddPinnacle) >=
+                      getPercentageChange(oddsForGame[1], awayOddPinnacle) >=
                         process.env.ODDS_PERCENRAGE_CHANGE ||
-                      getPercentageChange(drawOdd, drawOddPinnacle) >=
+                      getPercentageChange(oddsForGame[2], drawOddPinnacle) >=
                         process.env.ODDS_PERCENRAGE_CHANGE
                     ) {
                       console.log("Setting sendRequestForOdds to true");
                       console.log(
-                        getPercentageChange(homeOdd, homeOddPinnacle)
+                        getPercentageChange(oddsForGame[0], homeOddPinnacle)
                       );
                       console.log(
-                        getPercentageChange(awayOdd, awayOddPinnacle)
+                        getPercentageChange(oddsForGame[1], awayOddPinnacle)
                       );
                       console.log(
-                        getPercentageChange(drawOdd, drawOddPinnacle)
+                        getPercentageChange(oddsForGame[2], drawOddPinnacle)
                       );
                       sendRequestForOdds = true;
                     } else if (
