@@ -49,6 +49,21 @@ async function doPull() {
 
   const baseUrl = process.env.RUNDOWN_BASE_URL;
 
+  const ODDS_PERCENTAGE_CHANGE_BY_SPORT = {
+    2: process.env.ODDS_PERCENTAGE_CHANGE_NFL,
+    3: process.env.ODDS_PERCENTAGE_CHANGE_MLB,
+    4: process.env.ODDS_PERCENTAGE_CHANGE_NBA,
+    6: process.env.ODDS_PERCENTAGE_CHANGE_NHL,
+    7: process.env.ODDS_PERCENTAGE_CHANGE_UFC,
+    10: process.env.ODDS_PERCENTAGE_CHANGE_MLS,
+    11: process.env.ODDS_PERCENTAGE_CHANGE_EPL,
+    12: process.env.ODDS_PERCENTAGE_CHANGE_FRA,
+    13: process.env.ODDS_PERCENTAGE_CHANGE_GER,
+    14: process.env.ODDS_PERCENTAGE_CHANGE_ESP,
+    15: process.env.ODDS_PERCENTAGE_CHANGE_ITA,
+    16: process.env.ODDS_PERCENTAGE_CHANGE_UCL,
+  };
+
   console.log("Pulling Odds...");
 
   let processed = false;
@@ -110,6 +125,8 @@ async function doPull() {
             response.data.events.forEach((event) => {
               gamesListResponse.push({
                 id: event.event_id,
+                homeTeam: getTeam(event.teams, event.teams_normalized, 0),
+                awayTeam: getTeam(event.teams, event.teams_normalized, 1),
                 status: event.score.event_status,
                 homeOdd: getOdds(event.lines, 1),
                 awayOdd: getOdds(event.lines, 2),
@@ -117,7 +134,7 @@ async function doPull() {
               });
             });
 
-            // check if odd changed more then ODDS_PERCENRAGE_CHANGE
+            // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
             for (let n = 0; n < gamesListResponse.length; n++) {
               if (sendRequestForOdds) {
                 break;
@@ -125,6 +142,12 @@ async function doPull() {
               console.log("Game status -> " + gamesListResponse[n].status);
               console.log(
                 "Obtaining game id (as string): -> " + gamesListResponse[n].id
+              );
+              console.log(
+                "Game: " +
+                  gamesListResponse[n].homeTeam +
+                  " " +
+                  gamesListResponse[n].awayTeam
               );
               for (let m = 0; m < gamesOnContract.length; m++) {
                 if (sendRequestForOdds) {
@@ -221,24 +244,52 @@ async function doPull() {
                       continue;
                     }
 
-                    // percentage change >= ODDS_PERCENRAGE_CHANGE send request
+                    // percentage change >= ODDS_PERCENTAGE_CHANGE_BY_SPORT send request
                     if (
-                      getPercentageChange(oddsForGame[0], homeOddPinnacle) >=
-                        process.env.ODDS_PERCENRAGE_CHANGE ||
-                      getPercentageChange(oddsForGame[1], awayOddPinnacle) >=
-                        process.env.ODDS_PERCENRAGE_CHANGE ||
-                      getPercentageChange(oddsForGame[2], drawOddPinnacle) >=
-                        process.env.ODDS_PERCENRAGE_CHANGE
+                      getPercentageChange(
+                        oddsForGame[0],
+                        homeOddPinnacle,
+                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
+                      ) >=
+                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[
+                          parseInt(sportIds[j])
+                        ] ||
+                      getPercentageChange(
+                        oddsForGame[1],
+                        awayOddPinnacle,
+                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
+                      ) >=
+                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[
+                          parseInt(sportIds[j])
+                        ] ||
+                      getPercentageChange(
+                        oddsForGame[2],
+                        drawOddPinnacle,
+                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
+                      ) >=
+                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
                     ) {
                       console.log("Setting sendRequestForOdds to true");
                       console.log(
-                        getPercentageChange(oddsForGame[0], homeOddPinnacle)
+                        getPercentageChange(
+                          oddsForGame[0],
+                          homeOddPinnacle,
+                          ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
+                        )
                       );
                       console.log(
-                        getPercentageChange(oddsForGame[1], awayOddPinnacle)
+                        getPercentageChange(
+                          oddsForGame[1],
+                          awayOddPinnacle,
+                          ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
+                        )
                       );
                       console.log(
-                        getPercentageChange(oddsForGame[2], drawOddPinnacle)
+                        getPercentageChange(
+                          oddsForGame[2],
+                          drawOddPinnacle,
+                          ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
+                        )
                       );
                       sendRequestForOdds = true;
                     } else if (
@@ -259,7 +310,7 @@ async function doPull() {
                   } else {
                     console.log("Market for game already resolved!");
                   }
-                // game is in cancel/resolved status on API
+                  // game is in cancel/resolved status on API
                 } else if (
                   gamesListResponse[n].id ==
                     bytes32({ input: gamesOnContract[m] }) &&
@@ -284,7 +335,7 @@ async function doPull() {
                       " paused: " +
                       isPausedByCanceledStatus
                   );
-                  
+
                   // checking if it is already paused by cancel/resolved status
                   // if not pause it
                   if (!isPausedByCanceledStatus) {
@@ -416,7 +467,7 @@ function getOdds(lines, oddNumber) {
   }
 }
 
-function getPercentageChange(oldNumber, newNumber) {
+function getPercentageChange(oldNumber, newNumber, percentage) {
   if (oldNumber === newNumber) {
     return 0;
   }
@@ -433,11 +484,20 @@ function getPercentageChange(oldNumber, newNumber) {
       .to("impliedProbability");
     var decreaseValue = oldNumberImplied - newNumberImplied;
     let percentageChange = Math.abs((decreaseValue / oldNumberImplied) * 100);
-    if (percentageChange > process.env.ODDS_PERCENRAGE_CHANGE) {
+    if (percentageChange > percentage) {
       console.log("Odds changed more than threshold!");
     }
     return percentageChange;
   }
+}
+
+function getTeam(teams, teamsN, number) {
+  if (typeof teamsN != "undefined" && teamsN.length > 1) {
+    return teamsN[number].name + " " + teamsN[number].mascot;
+  } else if (typeof teams != "undefined" && teams.length > 1) {
+    return teams[number].name;
+  }
+  return "TBD TBD"; // count as TBD
 }
 
 function isGameInRightStatus(statuses, status) {
