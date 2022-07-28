@@ -32,8 +32,18 @@ async function doResolve() {
   );
 
   const EXPECTED_GAME_DURATIN = {
+    2: process.env.EXPECTED_GAME_NFL,
     3: process.env.EXPECTED_GAME_MLB,
+    4: process.env.EXPECTED_GAME_NBA,
+    6: process.env.EXPECTED_GAME_NHL,
+    7: process.env.EXPECTED_GAME_UFC,
     10: process.env.EXPECTED_GAME_FOOTBAL,
+    11: process.env.EXPECTED_GAME_FOOTBAL,
+    12: process.env.EXPECTED_GAME_FOOTBAL,
+    13: process.env.EXPECTED_GAME_FOOTBAL,
+    14: process.env.EXPECTED_GAME_FOOTBAL,
+    15: process.env.EXPECTED_GAME_FOOTBAL,
+    16: process.env.EXPECTED_GAME_FOOTBAL,
   };
 
   const jobId = bytes32({ input: process.env.JOB_ID_RESOLVE });
