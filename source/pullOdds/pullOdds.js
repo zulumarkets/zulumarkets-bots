@@ -125,8 +125,8 @@ async function doPull() {
             response.data.events.forEach((event) => {
               gamesListResponse.push({
                 id: event.event_id,
-                homeTeam: getTeam(event.teams, event.teams_normalized, 0),
-                awayTeam: getTeam(event.teams, event.teams_normalized, 1),
+                homeTeam: getTeam(event.teams, event.teams_normalized, 1),
+                awayTeam: getTeam(event.teams, event.teams_normalized, 0),
                 status: event.score.event_status,
                 homeOdd: getOdds(event.lines, 1),
                 awayOdd: getOdds(event.lines, 2),
