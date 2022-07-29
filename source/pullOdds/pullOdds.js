@@ -364,18 +364,6 @@ async function doPull() {
                             gamesListResponse[n].id
                         );
                       });
-
-                      await delay(10000); // wait to be populated
-
-                      let tx_resolve = await consumer.resolveMarketForGame(
-                        gamesOnContract[m]
-                      );
-
-                      await tx_resolve.wait().then((e) => {
-                        console.log(
-                          "Market resolved for game: " + gamesOnContract[m]
-                        );
-                      });
                     } catch (e) {
                       console.log(e);
                     }
