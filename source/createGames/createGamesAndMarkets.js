@@ -87,8 +87,11 @@ async function doCreate() {
         response.data.events.forEach((event) => {
           gamesListResponse.push({
             id: event.event_id,
-            homeTeam: getTeam(event.teams, event.teams_normalized, 0),
-            awayTeam: getTeam(event.teams, event.teams_normalized, 1),
+            homeTeam: getTeam(event.teams, event.teams_normalized, 1),
+            awayTeam: getTeam(event.teams, event.teams_normalized, 0),
+            homeOdd: getOdds(event.lines, 1),
+            awayOdd: getOdds(event.lines, 2),
+            drawOdd: getOdds(event.lines, 0),
           });
         });
 
@@ -99,6 +102,10 @@ async function doCreate() {
             dateConverter(unixDateMiliseconds)
         );
 
+        let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(
+          sportIds[j]
+        );
+
         for (let n = 0; n < gamesListResponse.length; n++) {
           let isGameAlreadyFullFilled = await consumer.gameFulfilledCreated(
             bytes32({ input: gamesListResponse[n].id })
@@ -107,7 +114,14 @@ async function doCreate() {
           if (
             !isGameAlreadyFullFilled &&
             gamesListResponse[n].awayTeam != "TBD TBD" &&
-            gamesListResponse[n].homeTeam != "TBD TBD"
+            gamesListResponse[n].homeTeam != "TBD TBD" &&
+            gamesListResponse[n].homeOdd != 0.01 &&
+            gamesListResponse[n].awayOdd != 0.01 &&
+            gamesListResponse[n].homeOdd != 0 &&
+            gamesListResponse[n].awayOdd != 0 &&
+            (isSportTwoPositionsSport ||
+              (gamesListResponse[n].drawOdd != 0.01 &&
+                gamesListResponse[n].drawOdd != 0))
           ) {
             console.log(
               "Game: " +
@@ -115,6 +129,25 @@ async function doCreate() {
                 " fullfilled: " +
                 isGameAlreadyFullFilled
             );
+            console.log(
+              "homeOdd Pinnacle: " +
+                gamesListResponse[n].homeOdd +
+                " id: " +
+                gamesListResponse[n].id
+            );
+            console.log(
+              "awayOdd Pinnacle: " +
+                gamesListResponse[n].awayOdd +
+                " id: " +
+                gamesListResponse[n].id
+            );
+            console.log(
+              "drawOdd Pinnacle: " +
+                gamesListResponse[n].drawOdd +
+                " id: " +
+                gamesListResponse[n].id
+            );
+
             sendRequestForCreate = true;
             break;
           }
@@ -217,6 +250,27 @@ function getTeam(teams, teamsN, number) {
     return teams[number].name;
   }
   return "TBD TBD"; // count as TBD
+}
+
+function getOdds(lines, oddNumber) {
+  var odds = [];
+  for (key in lines) {
+    odds.push(Object.assign(lines[key], { name: key }));
+  }
+
+  let odd = odds.filter(function (bookmaker) {
+    return bookmaker.name == "3"; // Pinnacle
+  });
+
+  if (odd.length == 0) {
+    return 0;
+  } else if (oddNumber == 1) {
+    return odd[0].moneyline.moneyline_home * 100;
+  } else if (oddNumber == 2) {
+    return odd[0].moneyline.moneyline_away * 100;
+  } else {
+    return odd[0].moneyline.moneyline_draw * 100;
+  }
 }
 
 function getSecondsToDate(dateFrom) {
