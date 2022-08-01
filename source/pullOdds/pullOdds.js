@@ -78,10 +78,15 @@ async function doPull() {
     if (unproccessedGames > 0) {
       // do for all sportIds
       for (let j = 0; j < sportIds.length; j++) {
+        let percentageChangePerSport =
+          ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]] !== undefined
+            ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]]
+            : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
         // from today!!! maybe some games still running
         for (let i = 0; i <= daysInFront; i++) {
           console.log("------------------------");
           console.log("SPORT ID =>  " + sportIds[j]);
+          console.log("CHANGE: " + percentageChangePerSport);
           console.log("Processing: TODAY +  " + i);
 
           let unixDate = await getSecondsToDate(i);
@@ -244,51 +249,44 @@ async function doPull() {
                       continue;
                     }
 
-                    // percentage change >= ODDS_PERCENTAGE_CHANGE_BY_SPORT send request
+                    // percentage change >= percentageChangePerSport send request
                     if (
                       getPercentageChange(
                         oddsForGame[0],
                         homeOddPinnacle,
-                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
-                      ) >=
-                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[
-                          parseInt(sportIds[j])
-                        ] ||
+                        percentageChangePerSport
+                      ) >= percentageChangePerSport ||
                       getPercentageChange(
                         oddsForGame[1],
                         awayOddPinnacle,
-                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
-                      ) >=
-                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[
-                          parseInt(sportIds[j])
-                        ] ||
+                        percentageChangePerSport
+                      ) >= percentageChangePerSport ||
                       getPercentageChange(
                         oddsForGame[2],
                         drawOddPinnacle,
-                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
-                      ) >=
-                        ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
+                        percentageChangePerSport
+                      ) >= percentageChangePerSport
                     ) {
                       console.log("Setting sendRequestForOdds to true");
                       console.log(
                         getPercentageChange(
                           oddsForGame[0],
                           homeOddPinnacle,
-                          ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
+                          percentageChangePerSport
                         )
                       );
                       console.log(
                         getPercentageChange(
                           oddsForGame[1],
                           awayOddPinnacle,
-                          ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
+                          percentageChangePerSport
                         )
                       );
                       console.log(
                         getPercentageChange(
                           oddsForGame[2],
                           drawOddPinnacle,
-                          ODDS_PERCENTAGE_CHANGE_BY_SPORT[parseInt(sportIds[j])]
+                          percentageChangePerSport
                         )
                       );
                       sendRequestForOdds = true;
