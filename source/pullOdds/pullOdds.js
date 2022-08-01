@@ -50,18 +50,13 @@ async function doPull() {
   const baseUrl = process.env.RUNDOWN_BASE_URL;
 
   const ODDS_PERCENTAGE_CHANGE_BY_SPORT = {
-    2: process.env.ODDS_PERCENTAGE_CHANGE_NFL,
     3: process.env.ODDS_PERCENTAGE_CHANGE_MLB,
-    4: process.env.ODDS_PERCENTAGE_CHANGE_NBA,
-    6: process.env.ODDS_PERCENTAGE_CHANGE_NHL,
-    7: process.env.ODDS_PERCENTAGE_CHANGE_UFC,
     10: process.env.ODDS_PERCENTAGE_CHANGE_MLS,
     11: process.env.ODDS_PERCENTAGE_CHANGE_EPL,
     12: process.env.ODDS_PERCENTAGE_CHANGE_FRA,
     13: process.env.ODDS_PERCENTAGE_CHANGE_GER,
     14: process.env.ODDS_PERCENTAGE_CHANGE_ESP,
     15: process.env.ODDS_PERCENTAGE_CHANGE_ITA,
-    16: process.env.ODDS_PERCENTAGE_CHANGE_UCL,
   };
 
   console.log("Pulling Odds...");
