@@ -52,11 +52,6 @@ async function doPull() {
   const ODDS_PERCENTAGE_CHANGE_BY_SPORT = {
     3: process.env.ODDS_PERCENTAGE_CHANGE_MLB,
     10: process.env.ODDS_PERCENTAGE_CHANGE_MLS,
-    11: process.env.ODDS_PERCENTAGE_CHANGE_EPL,
-    12: process.env.ODDS_PERCENTAGE_CHANGE_FRA,
-    13: process.env.ODDS_PERCENTAGE_CHANGE_GER,
-    14: process.env.ODDS_PERCENTAGE_CHANGE_ESP,
-    15: process.env.ODDS_PERCENTAGE_CHANGE_ITA,
   };
 
   console.log("Pulling Odds...");
