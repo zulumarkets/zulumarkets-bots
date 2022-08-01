@@ -5,6 +5,10 @@ const ethers = require("ethers");
 const wallet = new ethers.Wallet(constants.privateKey, constants.etherprovider);
 const bytes32 = require("bytes32");
 
+const Discord = require("discord.js");
+const overtimeBot = new Discord.Client();
+overtimeBot.login(process.env.BOT_OVERTIME_ODDS);
+
 const axios = require("axios");
 
 const gamesQueue = require("../../contracts/GamesQueue.js");
@@ -280,6 +284,16 @@ async function doPull() {
                         )
                       );
                       sendRequestForOdds = true;
+                      await sendMessageToDiscordOddsChanged(
+                        gamesListResponse[n].homeTeam,
+                        gamesListResponse[n].awayTeam,
+                        oddsForGame[0],
+                        homeOddPinnacle,
+                        oddsForGame[1],
+                        awayOddPinnacle,
+                        oddsForGame[2],
+                        drawOddPinnacle
+                      );
                     } else if (
                       // odds appear and game was paused by invalid odds or cancel status send request
                       homeOddPinnacle != 0.01 &&
@@ -294,6 +308,16 @@ async function doPull() {
                         "Receiving valid odds or unpause by wrong cancel status!"
                       );
                       sendRequestForOdds = true;
+                      await sendMessageToDiscordOddsChanged(
+                        gamesListResponse[n].homeTeam,
+                        gamesListResponse[n].awayTeam,
+                        oddsForGame[0],
+                        homeOddPinnacle,
+                        oddsForGame[1],
+                        awayOddPinnacle,
+                        oddsForGame[2],
+                        drawOddPinnacle
+                      );
                     }
                   } else {
                     console.log("Market for game already resolved!");
@@ -352,6 +376,10 @@ async function doPull() {
                             gamesListResponse[n].id
                         );
                       });
+                      await sendMessageToDiscordGameCanceled(
+                        gamesListResponse[n].homeTeam,
+                        gamesListResponse[n].awayTeam
+                      );
                     } catch (e) {
                       console.log(e);
                     }
@@ -406,6 +434,101 @@ async function doIndefinitely() {
     await doPull();
     await delay(process.env.ODDS_FREQUENCY);
   }
+}
+
+async function sendMessageToDiscordOddsChanged(
+  homeTeam,
+  awayTeam,
+  homeOddContract,
+  homeOddPinnacle,
+  awayOddContract,
+  awayOddPinnacle,
+  drawOddContract,
+  drawOddPinnacle
+) {
+  homeOddPinnacle = homeOddPinnacle == 0.01 ? 0 : homeOddPinnacle / 100;
+  awayOddPinnacle = awayOddPinnacle == 0.01 ? 0 : awayOddPinnacle / 100;
+  drawOddPinnacle = drawOddPinnacle == 0.01 ? 0 : drawOddPinnacle / 100;
+
+  homeOddContract = homeOddContract == 0 ? 0 : homeOddContract / 100;
+  awayOddContract = awayOddContract == 0 ? 0 : awayOddContract / 100;
+  drawOddContract = drawOddContract == 0 ? 0 : drawOddContract / 100;
+
+  let homeOddContractImp = oddslib
+    .from("moneyline", homeOddContract)
+    .to("impliedProbability");
+  let awayOddContractImp = oddslib
+    .from("moneyline", awayOddContract)
+    .to("impliedProbability");
+  let drawOddContractImp = oddslib
+    .from("moneyline", drawOddContract)
+    .to("impliedProbability");
+
+  let homeOddPinnacleImpl = oddslib
+    .from("moneyline", homeOddPinnacle)
+    .to("impliedProbability");
+  let awayOddPinnacleImp = oddslib
+    .from("moneyline", awayOddPinnacle)
+    .to("impliedProbability");
+  let drawOddPinnacleImp = oddslib
+    .from("moneyline", drawOddPinnacle)
+    .to("impliedProbability");
+
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Odds changed more than threshold!",
+        value: "\u200b",
+      },
+      {
+        name: ":classical_building: Overtime game:",
+        value: homeTeam + " - " + awayTeam,
+      },
+      {
+        name: ":arrow_up_down: Home odds changed (implied probability):",
+        value:
+          "Old odd: " +
+          homeOddContractImp.toFixed(3) +
+          ", New odd Pinnacle: " +
+          homeOddPinnacleImpl.toFixed(3),
+      },
+      {
+        name: ":arrow_up_down: Away odds changed (implied probability):",
+        value:
+          "Old odd: " +
+          awayOddContractImp.toFixed(3) +
+          ", New odd Pinnacle: " +
+          awayOddPinnacleImp.toFixed(3),
+      },
+      {
+        name: ":arrow_up_down: Draw odds changed (implied probability):",
+        value:
+          "Old odd: " +
+          drawOddContractImp.toFixed(3) +
+          ", New odd Pinnacle: " +
+          drawOddPinnacleImp.toFixed(3),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeOdds = await overtimeBot.channels.fetch("1002145721543311370");
+  overtimeOdds.send(message);
+}
+
+async function sendMessageToDiscordGameCanceled(homeTeam, awayTeam) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Game paused by cancel status!",
+        value: "\u200b",
+      },
+      {
+        name: ":classical_building: Overtime game:",
+        value: homeTeam + " - " + awayTeam,
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeOdds = await overtimeBot.channels.fetch("1002507873198293012");
+  overtimeOdds.send(message);
 }
 
 doIndefinitely();
