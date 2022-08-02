@@ -188,6 +188,10 @@ async function doPull() {
                   );
                   console.log("Market canceled: " + isMarketCanceled);
 
+                  let gameStart = await queues.gameStartPerGameId(
+                    gamesOnContract[m]
+                  );
+
                   // only ongoing games not resolved or already canceled
                   if (!isMarketResolved && !isMarketCanceled) {
                     let homeOddPinnacle = gamesListResponse[n].homeOdd;
@@ -275,29 +279,30 @@ async function doPull() {
                         percentageChangePerSport
                       ) >= percentageChangePerSport
                     ) {
+                      let percentageChangeHome = getPercentageChange(
+                        oddsForGame[0],
+                        homeOddPinnacle,
+                        percentageChangePerSport
+                      );
+                      let percentageChangeAway = getPercentageChange(
+                        oddsForGame[1],
+                        awayOddPinnacle,
+                        percentageChangePerSport
+                      );
+                      let percentageChangeDraw = getPercentageChange(
+                        oddsForGame[2],
+                        drawOddPinnacle,
+                        percentageChangePerSport
+                      );
+
+                      console.log("Home change odd: " + percentageChangeHome);
+                      console.log("Away change odd: " + percentageChangeAway);
+                      console.log("Draw change odd: " + percentageChangeDraw);
+
                       console.log("Setting sendRequestForOdds to true");
-                      console.log(
-                        getPercentageChange(
-                          oddsForGame[0],
-                          homeOddPinnacle,
-                          percentageChangePerSport
-                        )
-                      );
-                      console.log(
-                        getPercentageChange(
-                          oddsForGame[1],
-                          awayOddPinnacle,
-                          percentageChangePerSport
-                        )
-                      );
-                      console.log(
-                        getPercentageChange(
-                          oddsForGame[2],
-                          drawOddPinnacle,
-                          percentageChangePerSport
-                        )
-                      );
+
                       sendRequestForOdds = true;
+
                       await sendMessageToDiscordOddsChanged(
                         gamesListResponse[n].homeTeam,
                         gamesListResponse[n].awayTeam,
@@ -306,7 +311,11 @@ async function doPull() {
                         oddsForGame[1],
                         awayOddPinnacle,
                         oddsForGame[2],
-                        drawOddPinnacle
+                        drawOddPinnacle,
+                        gameStart,
+                        percentageChangeHome,
+                        percentageChangeAway,
+                        percentageChangeDraw
                       );
                     } else if (
                       // odds appear and game was paused by invalid odds or cancel status send request
@@ -330,7 +339,11 @@ async function doPull() {
                         oddsForGame[1],
                         awayOddPinnacle,
                         oddsForGame[2],
-                        drawOddPinnacle
+                        drawOddPinnacle,
+                        gameStart,
+                        100,
+                        100,
+                        isSportTwoPositionsSport ? 0 : 100
                       );
                     }
                   } else {
@@ -392,7 +405,8 @@ async function doPull() {
                       });
                       await sendMessageToDiscordGameCanceled(
                         gamesListResponse[n].homeTeam,
-                        gamesListResponse[n].awayTeam
+                        gamesListResponse[n].awayTeam,
+                        gameStart
                       );
                     } catch (e) {
                       console.log(e);
@@ -458,7 +472,11 @@ async function sendMessageToDiscordOddsChanged(
   awayOddContract,
   awayOddPinnacle,
   drawOddContract,
-  drawOddPinnacle
+  drawOddPinnacle,
+  gameTime,
+  percentageChangeHome,
+  percentageChangeAway,
+  percentageChangeDraw
 ) {
   homeOddPinnacle = homeOddPinnacle == 0.01 ? 0 : homeOddPinnacle / 100;
   awayOddPinnacle = awayOddPinnacle == 0.01 ? 0 : awayOddPinnacle / 100;
@@ -504,7 +522,10 @@ async function sendMessageToDiscordOddsChanged(
           "Old odd: " +
           homeOddContractImp.toFixed(3) +
           ", New odd Pinnacle: " +
-          homeOddPinnacleImpl.toFixed(3),
+          homeOddPinnacleImpl.toFixed(3) +
+          ", change = " +
+          percentageChangeHome.toFixed(3) +
+          "%",
       },
       {
         name: ":arrow_up_down: Away odds changed (implied probability):",
@@ -512,7 +533,10 @@ async function sendMessageToDiscordOddsChanged(
           "Old odd: " +
           awayOddContractImp.toFixed(3) +
           ", New odd Pinnacle: " +
-          awayOddPinnacleImp.toFixed(3),
+          awayOddPinnacleImp.toFixed(3) +
+          ", change = " +
+          percentageChangeAway.toFixed(3) +
+          "%",
       },
       {
         name: ":arrow_up_down: Draw odds changed (implied probability):",
@@ -520,7 +544,14 @@ async function sendMessageToDiscordOddsChanged(
           "Old odd: " +
           drawOddContractImp.toFixed(3) +
           ", New odd Pinnacle: " +
-          drawOddPinnacleImp.toFixed(3),
+          drawOddPinnacleImp.toFixed(3) +
+          ", change = " +
+          percentageChangeDraw.toFixed(3) +
+          "%",
+      },
+      {
+        name: ":alarm_clock: Game time:",
+        value: new Date(gameTime * 1000),
       }
     )
     .setColor("#0037ff");
@@ -528,7 +559,7 @@ async function sendMessageToDiscordOddsChanged(
   overtimeOdds.send(message);
 }
 
-async function sendMessageToDiscordGameCanceled(homeTeam, awayTeam) {
+async function sendMessageToDiscordGameCanceled(homeTeam, awayTeam, gameTime) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
@@ -538,6 +569,10 @@ async function sendMessageToDiscordGameCanceled(homeTeam, awayTeam) {
       {
         name: ":classical_building: Overtime game:",
         value: homeTeam + " - " + awayTeam,
+      },
+      {
+        name: ":alarm_clock: Game time:",
+        value: new Date(gameTime * 1000),
       }
     )
     .setColor("#0037ff");
