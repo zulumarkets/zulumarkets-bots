@@ -315,7 +315,8 @@ async function doPull() {
                         gameStart,
                         percentageChangeHome,
                         percentageChangeAway,
-                        percentageChangeDraw
+                        percentageChangeDraw,
+                        percentageChangePerSport
                       );
                     } else if (
                       // odds appear and game was paused by invalid odds or cancel status send request
@@ -343,7 +344,8 @@ async function doPull() {
                         gameStart,
                         100,
                         100,
-                        isSportTwoPositionsSport ? 0 : 100
+                        isSportTwoPositionsSport ? 0 : 100,
+                        percentageChangePerSport
                       );
                     }
                   } else {
@@ -476,7 +478,8 @@ async function sendMessageToDiscordOddsChanged(
   gameTime,
   percentageChangeHome,
   percentageChangeAway,
-  percentageChangeDraw
+  percentageChangeDraw,
+  percentageChangePerSport
 ) {
   homeOddPinnacle = homeOddPinnacle == 0.01 ? 0 : homeOddPinnacle / 100;
   awayOddPinnacle = awayOddPinnacle == 0.01 ? 0 : awayOddPinnacle / 100;
@@ -513,7 +516,11 @@ async function sendMessageToDiscordOddsChanged(
         value: "\u200b",
       },
       {
-        name: ":classical_building: Overtime game:",
+        name: ":abacus: Value of threshold: ",
+        value: percentageChangePerSport + "%",
+      },
+      {
+        name: ":stadium: Overtime game:",
         value: homeTeam + " - " + awayTeam,
       },
       {
