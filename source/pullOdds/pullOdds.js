@@ -58,6 +58,8 @@ async function doPull() {
     10: process.env.ODDS_PERCENTAGE_CHANGE_MLS,
   };
 
+  let americanSports = [3, 4, 10];
+
   console.log("Pulling Odds...");
 
   let processed = false;
@@ -124,8 +126,20 @@ async function doPull() {
             response.data.events.forEach((event) => {
               gamesListResponse.push({
                 id: event.event_id,
-                homeTeam: getTeam(event.teams, event.teams_normalized, 1),
-                awayTeam: getTeam(event.teams, event.teams_normalized, 0),
+                homeTeam: getTeam(
+                  event.teams,
+                  event.teams_normalized,
+                  1,
+                  americanSports,
+                  sportIds[j]
+                ),
+                awayTeam: getTeam(
+                  event.teams,
+                  event.teams_normalized,
+                  0,
+                  americanSports,
+                  sportIds[j]
+                ),
                 status: event.score.event_status,
                 homeOdd: getOdds(event.lines, 1),
                 awayOdd: getOdds(event.lines, 2),
@@ -590,13 +604,26 @@ function getPercentageChange(oldNumber, newNumber, percentage) {
   }
 }
 
-function getTeam(teams, teamsN, number) {
+function getTeam(teams, teamsN, number, americanSports, sport) {
   if (typeof teamsN != "undefined" && teamsN.length > 1) {
-    return teamsN[number].name + " " + teamsN[number].mascot;
+    if (isAmericanSport(americanSports, sport)) {
+      return teamsN[number].name + " " + teamsN[number].mascot;
+    } else {
+      return teamsN[number].name;
+    }
   } else if (typeof teams != "undefined" && teams.length > 1) {
     return teams[number].name;
   }
   return "TBD TBD"; // count as TBD
+}
+
+function isAmericanSport(americanSports, sport) {
+  for (let j = 0; j < americanSports.length; j++) {
+    if (americanSports[j] == sport) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isGameInRightStatus(statuses, status) {
