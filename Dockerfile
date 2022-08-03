@@ -1,4 +1,5 @@
 FROM node:12
+# FROM amd64/node:12
 
 # update and add all the steps for running with xvfb
 RUN apt-get update &&\

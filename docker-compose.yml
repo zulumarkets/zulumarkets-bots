@@ -50,6 +50,8 @@ services:
       - "ODDS_PERCENTAGE_CHANGE_MLS=1"
       - "ODDS_PERCENTAGE_CHANGE_DEFAULT=2"
       - "BOT_OVERTIME_ODDS=''"
+      - "BOT_OVERTIME_CREATOR=''"
+      - "BOT_OVERTIME_RESOLVER=''"
 
 volumes:
   redis-data:

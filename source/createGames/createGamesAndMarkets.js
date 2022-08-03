@@ -5,6 +5,10 @@ const ethers = require("ethers");
 const wallet = new ethers.Wallet(constants.privateKey, constants.etherprovider);
 const bytes32 = require("bytes32");
 
+const Discord = require("discord.js");
+const overtimeBot = new Discord.Client();
+overtimeBot.login(process.env.BOT_OVERTIME_CREATOR);
+
 const axios = require("axios");
 
 const gamesQueue = require("../../contracts/GamesQueue.js");
@@ -46,6 +50,7 @@ async function doCreate() {
   console.log("Create Games...");
 
   let processed = false;
+  let requestWasSend = false;
   while (!processed) {
     processed = true;
 
@@ -167,8 +172,14 @@ async function doCreate() {
             await tx_request.wait().then((e) => {
               console.log("Requested for: " + unixDate);
             });
+            requestWasSend = true;
           } catch (e) {
             console.log(e);
+            await sendErrorMessageToDiscordRequestCL(
+              "Request to CL creator-bot went wrong! Please check LINK amount on bot, or kill and debug!",
+              sportIds[j],
+              unixDate
+            );
           }
         }
       }
@@ -217,6 +228,10 @@ async function doCreate() {
           gameIds = [];
         } catch (e) {
           console.log(e);
+          await sendErrorMessageToDiscordCreateMarkets(
+            "Market creation went wrong! Please check ETH on bot, or kill and debug!",
+            gameIds
+          );
           break;
         }
       } else {
@@ -224,7 +239,14 @@ async function doCreate() {
       }
     }
   } else {
-    console.log("Nothing to process...");
+    if (requestWasSend) {
+      console.log("Nothing but request is send!!!!");
+      await sendErrorMessageToDiscordRequestWasSendButNoGamesCreated(
+        "Request was send, but no games created, please check and debug! Stoping bot is mandatory!"
+      );
+    } else {
+      console.log("Nothing to process...");
+    }
   }
 
   console.log("Ended batch...");
@@ -271,6 +293,86 @@ function getOdds(lines, oddNumber) {
   } else {
     return odd[0].moneyline.moneyline_draw * 100;
   }
+}
+
+async function sendErrorMessageToDiscordRequestCL(
+  messageForPrint,
+  sportId,
+  dateTimestamp
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on creation bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":hammer_pick: Input params:",
+        value: "SportId: " + sportId + ", date (unix date): " + dateTimestamp,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
+  overtimeCreate.send(message);
+}
+
+async function sendErrorMessageToDiscordCreateMarkets(
+  messageForPrint,
+  gameIds
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on creation bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":hammer_pick: Input params:",
+        value: gameIds,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
+  overtimeCreate.send(message);
+}
+
+async function sendErrorMessageToDiscordRequestWasSendButNoGamesCreated(
+  messageForPrint
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on creation bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
+  overtimeCreate.send(message);
 }
 
 function getSecondsToDate(dateFrom) {

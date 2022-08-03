@@ -412,6 +412,12 @@ async function doPull() {
                       );
                     } catch (e) {
                       console.log(e);
+                      await sendErrorMessageToDiscordStatusCancel(
+                        "Request to CL odds-bot went wrong, can not pause game by cancel status! Please check LINK amount on bot, or kill and debug!",
+                        sportIds[j],
+                        gameStart,
+                        gamesListResponse[n].id
+                      );
                     }
                   } else {
                     console.log("Market already paused!");
@@ -440,6 +446,11 @@ async function doPull() {
                 });
               } catch (e) {
                 console.log(e);
+                await sendErrorMessageToDiscordRequestOddsfromCL(
+                  "Request to CL odds-bot went wrong, can not pull odds! Please check LINK amount on bot, or kill and debug!",
+                  sportIds[j],
+                  unixDate
+                );
               }
             } else {
               console.log("Not still for processing...");
@@ -492,22 +503,80 @@ async function sendMessageToDiscordOddsChanged(
   let homeOddContractImp = oddslib
     .from("moneyline", homeOddContract)
     .to("impliedProbability");
+  homeOddContractImp == 1 ? 0 : homeOddContractImp;
   let awayOddContractImp = oddslib
     .from("moneyline", awayOddContract)
     .to("impliedProbability");
+  awayOddContractImp == 1 ? 0 : awayOddContractImp;
   let drawOddContractImp = oddslib
     .from("moneyline", drawOddContract)
     .to("impliedProbability");
+  drawOddContractImp == 1 ? 0 : drawOddContractImp;
 
   let homeOddPinnacleImpl = oddslib
     .from("moneyline", homeOddPinnacle)
     .to("impliedProbability");
+  homeOddPinnacleImpl == 1 ? 0 : homeOddPinnacleImpl;
   let awayOddPinnacleImp = oddslib
     .from("moneyline", awayOddPinnacle)
     .to("impliedProbability");
+  awayOddPinnacleImp == 1 ? 0 : awayOddPinnacleImp;
   let drawOddPinnacleImp = oddslib
     .from("moneyline", drawOddPinnacle)
     .to("impliedProbability");
+  drawOddPinnacleImp == 1 ? 0 : drawOddPinnacleImp;
+
+  var messageHomeChange;
+  var messageAwayChange;
+  var messageDrawChange;
+
+  if (percentageChangeHome === 100) {
+    messageHomeChange =
+      "Odds appear, " + "New odd Pinnacle: " + homeOddPinnacleImpl.toFixed(3);
+  } else if (percentageChangeAway == 0) {
+    messageHomeChange = "No change of homeodds";
+  } else {
+    messageHomeChange =
+      "Old odd: " +
+      homeOddContractImp.toFixed(3) +
+      ", New odd Pinnacle: " +
+      homeOddPinnacleImpl.toFixed(3) +
+      ", change = " +
+      percentageChangeHome.toFixed(3) +
+      "%";
+  }
+
+  if (percentageChangeAway == 100) {
+    messageAwayChange =
+      "Odds appear, " + "New odd Pinnacle: " + awayOddPinnacleImp.toFixed(3);
+  } else if (percentageChangeAway == 0) {
+    messageHomeChange = "No change of awayodds";
+  } else {
+    messageAwayChange =
+      "Old odd: " +
+      awayOddContractImp.toFixed(3) +
+      ", New odd Pinnacle: " +
+      awayOddPinnacleImp.toFixed(3) +
+      ", change = " +
+      percentageChangeAway.toFixed(3) +
+      "%";
+  }
+
+  if (percentageChangeDraw === 100) {
+    messageDrawChange =
+      "Odds appear, " + "New odd Pinnacle: " + drawOddPinnacleImp.toFixed(3);
+  } else if (percentageChangeAway == 0) {
+    messageHomeChange = "No change of drawodds";
+  } else {
+    messageDrawChange =
+      "Old odd: " +
+      drawOddContractImp.toFixed(3) +
+      ", New odd Pinnacle: " +
+      drawOddPinnacleImp.toFixed(3) +
+      ", change = " +
+      percentageChangeDraw.toFixed(3) +
+      "%";
+  }
 
   var message = new Discord.MessageEmbed()
     .addFields(
@@ -525,36 +594,15 @@ async function sendMessageToDiscordOddsChanged(
       },
       {
         name: ":arrow_up_down: Home odds changed (implied probability):",
-        value:
-          "Old odd: " +
-          homeOddContractImp.toFixed(3) +
-          ", New odd Pinnacle: " +
-          homeOddPinnacleImpl.toFixed(3) +
-          ", change = " +
-          percentageChangeHome.toFixed(3) +
-          "%",
+        value: messageHomeChange,
       },
       {
         name: ":arrow_up_down: Away odds changed (implied probability):",
-        value:
-          "Old odd: " +
-          awayOddContractImp.toFixed(3) +
-          ", New odd Pinnacle: " +
-          awayOddPinnacleImp.toFixed(3) +
-          ", change = " +
-          percentageChangeAway.toFixed(3) +
-          "%",
+        value: messageAwayChange,
       },
       {
         name: ":arrow_up_down: Draw odds changed (implied probability):",
-        value:
-          "Old odd: " +
-          drawOddContractImp.toFixed(3) +
-          ", New odd Pinnacle: " +
-          drawOddPinnacleImp.toFixed(3) +
-          ", change = " +
-          percentageChangeDraw.toFixed(3) +
-          "%",
+        value: messageDrawChange,
       },
       {
         name: ":alarm_clock: Game time:",
@@ -584,6 +632,71 @@ async function sendMessageToDiscordGameCanceled(homeTeam, awayTeam, gameTime) {
     )
     .setColor("#0037ff");
   let overtimeOdds = await overtimeBot.channels.fetch("1002507873198293012");
+  overtimeOdds.send(message);
+}
+
+async function sendErrorMessageToDiscordStatusCancel(
+  messageForPrint,
+  sportId,
+  dateTimestamp,
+  gameId
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on odds bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":hammer_pick: Input params:",
+        value:
+          "SportId: " +
+          sportId +
+          ", date (unix date): " +
+          dateTimestamp +
+          ", for a gameId: " +
+          gameId,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeOdds = await overtimeBot.channels.fetch("1004388531319353425");
+  overtimeOdds.send(message);
+}
+
+async function sendErrorMessageToDiscordRequestOddsfromCL(
+  messageForPrint,
+  sportId,
+  dateTimestamp
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on odds bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":hammer_pick: Input params:",
+        value: "SportId: " + sportId + ", date (unix date): " + dateTimestamp,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeOdds = await overtimeBot.channels.fetch("1004388531319353425");
   overtimeOdds.send(message);
 }
 
