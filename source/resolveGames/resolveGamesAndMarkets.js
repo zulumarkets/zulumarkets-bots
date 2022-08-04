@@ -58,9 +58,10 @@ async function doResolve() {
   );
 
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
-  console.log("Amount token in wallet: " + amountOfToken);
+  console.log("Amount token in wallet: " + parseInt(amountOfToken));
+  console.log("Trashhold: " + parseInt(process.env.LINK_TRASHOLD));
 
-  if (amountOfToken < process.env.LINK_TRASHOLD) {
+  if (parseInt(amountOfToken) < parseInt(process.env.LINK_TRASHOLD)) {
     await sendWarningMessageToDiscordAmountOfLinkInBotLessThenTrashhold(
       "Amount of LINK in a resolver-bot is: " + amountOfToken,
       process.env.LINK_TRASHOLD,
