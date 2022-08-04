@@ -59,12 +59,12 @@ async function doResolve() {
 
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
   console.log("Amount token in wallet: " + parseInt(amountOfToken));
-  console.log("Trashhold: " + parseInt(process.env.LINK_TRASHOLD));
+  console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
 
-  if (parseInt(amountOfToken) < parseInt(process.env.LINK_TRASHOLD)) {
-    await sendWarningMessageToDiscordAmountOfLinkInBotLessThenTrashhold(
+  if (parseInt(amountOfToken) < parseInt(process.env.LINK_THRESHOLD)) {
+    await sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
       "Amount of LINK in a resolver-bot is: " + amountOfToken,
-      process.env.LINK_TRASHOLD,
+      process.env.LINK_THRESHOLD,
       wallet.address
     );
   }
@@ -382,20 +382,20 @@ async function sendErrorMessageToDiscordRequestWasSendButNoGamesResolved(
   overtimeCreate.send(message);
 }
 
-async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenTrashhold(
+async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
   messageForPrint,
-  trashhold,
+  threshold,
   wallet
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
-        name: "Amount of LINK in resolver-bot less then trashhold!",
+        name: "Amount of LINK in resolver-bot less then threshold!",
         value: "\u200b",
       },
       {
-        name: ":coin: Trashlod:",
-        value: trashhold,
+        name: ":coin: Threshold:",
+        value: threshold,
       },
       {
         name: ":credit_card: Bot wallet address:",
