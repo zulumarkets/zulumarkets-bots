@@ -59,6 +59,7 @@ async function doPull() {
   };
 
   let americanSports = [3, 4, 10];
+  let failedCounter = 0;
 
   console.log("Pulling Odds...");
 
@@ -418,6 +419,8 @@ async function doPull() {
                         gameStart,
                         gamesListResponse[n].id
                       );
+                      failedCounter++;
+                      await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
                     }
                   } else {
                     console.log("Market already paused!");
@@ -451,6 +454,8 @@ async function doPull() {
                   sportIds[j],
                   unixDate
                 );
+                failedCounter++;
+                await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
               }
             } else {
               console.log("Not still for processing...");

@@ -69,6 +69,7 @@ async function doResolve() {
   let resolvedStatuses = process.env.RESOLVE_STATUSES.split(",");
 
   let requestWasSend = false;
+  let failedCounter = 0;
 
   // do for all games
   for (let j = 0; j < unproccessedGames; j++) {
@@ -175,6 +176,8 @@ async function doResolve() {
               gameStart,
               stringId
             );
+            failedCounter++;
+            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           }
         }
       }
@@ -234,6 +237,8 @@ async function doResolve() {
             "Market resolve went wrong! Please check ETH on bot, or kill and debug!",
             gameIds
           );
+          failedCounter++;
+          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           break;
         }
       } else {
@@ -246,6 +251,8 @@ async function doResolve() {
       await sendErrorMessageToDiscordRequestWasSendButNoGamesResolved(
         "Request was send, but no games resolved, please check and debug! Stoping bot is mandatory!"
       );
+      failedCounter++;
+      await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
     } else {
       console.log("Nothing to process...");
     }

@@ -51,6 +51,7 @@ async function doCreate() {
 
   let processed = false;
   let requestWasSend = false;
+  let failedCounter = 0;
   while (!processed) {
     processed = true;
 
@@ -180,6 +181,8 @@ async function doCreate() {
               sportIds[j],
               unixDate
             );
+            failedCounter++;
+            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           }
         }
       }
@@ -232,6 +235,8 @@ async function doCreate() {
             "Market creation went wrong! Please check ETH on bot, or kill and debug!",
             gameIds
           );
+          failedCounter++;
+          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           break;
         }
       } else {
@@ -244,6 +249,8 @@ async function doCreate() {
       await sendErrorMessageToDiscordRequestWasSendButNoGamesCreated(
         "Request was send, but no games created, please check and debug! Stoping bot is mandatory!"
       );
+      failedCounter++;
+      await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
     } else {
       console.log("Nothing to process...");
     }
