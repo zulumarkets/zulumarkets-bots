@@ -52,6 +52,7 @@ services:
       - "BOT_OVERTIME_ODDS=''"
       - "BOT_OVERTIME_CREATOR=''"
       - "BOT_OVERTIME_RESOLVER=''"
+      - "LINK_TRASHOLD=5000000000000000000"
 
 volumes:
   redis-data:

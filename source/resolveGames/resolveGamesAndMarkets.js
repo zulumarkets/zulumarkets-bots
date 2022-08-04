@@ -15,6 +15,7 @@ const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
+const linkToken = require("../../contracts/LinkToken.js");
 
 async function doResolve() {
   const queues = new ethers.Contract(
@@ -49,6 +50,23 @@ async function doResolve() {
     15: process.env.EXPECTED_GAME_FOOTBAL,
     16: process.env.EXPECTED_GAME_FOOTBAL,
   };
+
+  const erc20Instance = new ethers.Contract(
+    process.env.LINK_CONTRACT,
+    linkToken.linkTokenContract.abi,
+    wallet
+  );
+
+  let amountOfToken = await erc20Instance.balanceOf(wallet.address);
+  console.log("Amount token in wallet: " + amountOfToken);
+
+  if (amountOfToken < process.env.LINK_TRASHOLD) {
+    await sendWarningMessageToDiscordAmountOfLinkInBotLessThenTrashhold(
+      "Amount of LINK in a resolver-bot is: " + amountOfToken,
+      process.env.LINK_TRASHOLD,
+      wallet.address
+    );
+  }
 
   const jobId = bytes32({ input: process.env.JOB_ID_RESOLVE });
 
@@ -360,6 +378,39 @@ async function sendErrorMessageToDiscordRequestWasSendButNoGamesResolved(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004360121540956200");
+  overtimeCreate.send(message);
+}
+
+async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenTrashhold(
+  messageForPrint,
+  trashhold,
+  wallet
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Amount of LINK in resolver-bot less then trashhold!",
+        value: "\u200b",
+      },
+      {
+        name: ":coin: Trashlod:",
+        value: trashhold,
+      },
+      {
+        name: ":credit_card: Bot wallet address:",
+        value: wallet,
+      },
+      {
+        name: ":warning: Warning message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1004756643977900062");
   overtimeCreate.send(message);
 }
 
