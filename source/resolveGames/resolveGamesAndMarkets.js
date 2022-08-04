@@ -5,12 +5,17 @@ const ethers = require("ethers");
 const wallet = new ethers.Wallet(constants.privateKey, constants.etherprovider);
 const bytes32 = require("bytes32");
 
+const Discord = require("discord.js");
+const overtimeBot = new Discord.Client();
+overtimeBot.login(process.env.BOT_OVERTIME_RESOLVER);
+
 const axios = require("axios");
 
 const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
+const linkToken = require("../../contracts/LinkToken.js");
 
 async function doResolve() {
   const queues = new ethers.Contract(
@@ -46,6 +51,23 @@ async function doResolve() {
     16: process.env.EXPECTED_GAME_FOOTBAL,
   };
 
+  const erc20Instance = new ethers.Contract(
+    process.env.LINK_CONTRACT,
+    linkToken.linkTokenContract.abi,
+    wallet
+  );
+
+  let amountOfToken = await erc20Instance.balanceOf(wallet.address);
+  console.log("Amount token in wallet: " + amountOfToken);
+
+  if (amountOfToken < process.env.LINK_TRASHOLD) {
+    await sendWarningMessageToDiscordAmountOfLinkInBotLessThenTrashhold(
+      "Amount of LINK in a resolver-bot is: " + amountOfToken,
+      process.env.LINK_TRASHOLD,
+      wallet.address
+    );
+  }
+
   const jobId = bytes32({ input: process.env.JOB_ID_RESOLVE });
 
   const baseUrl = process.env.RUNDOWN_BASE_URL;
@@ -63,6 +85,9 @@ async function doResolve() {
 
   let cancelStatuses = process.env.CANCEL_STATUSES.split(",");
   let resolvedStatuses = process.env.RESOLVE_STATUSES.split(",");
+
+  let requestWasSend = false;
+  let failedCounter = 0;
 
   // do for all games
   for (let j = 0; j < unproccessedGames; j++) {
@@ -139,8 +164,9 @@ async function doResolve() {
       for (let n = 0; n < gamesListResponse.length; n++) {
         // if the game is in right status
         if (
-          gamesListResponse[n].id == stringId && 
-          (isGameInRightStatus(cancelStatuses, gamesListResponse[n].status) || isGameInRightStatus(resolvedStatuses, gamesListResponse[n].status))
+          gamesListResponse[n].id == stringId &&
+          (isGameInRightStatus(cancelStatuses, gamesListResponse[n].status) ||
+            isGameInRightStatus(resolvedStatuses, gamesListResponse[n].status))
         ) {
           try {
             console.log("Send request...");
@@ -159,8 +185,17 @@ async function doResolve() {
                 "Requested for: " + gameStart + " with game id: " + stringId
               );
             });
+            requestWasSend = true;
           } catch (e) {
             console.log(e);
+            await sendErrorMessageToDiscordRequestToCL(
+              "Request to CL from resolver-bot went wrong! Please check LINK amount on bot, or kill and debug!",
+              sportId,
+              gameStart,
+              stringId
+            );
+            failedCounter++;
+            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           }
         }
       }
@@ -216,6 +251,12 @@ async function doResolve() {
           gameIds = [];
         } catch (e) {
           console.log(e);
+          await sendErrorMessageToDiscordMarketResolve(
+            "Market resolve went wrong! Please check ETH on bot, or kill and debug!",
+            gameIds
+          );
+          failedCounter++;
+          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           break;
         }
       } else {
@@ -223,7 +264,16 @@ async function doResolve() {
       }
     }
   } else {
-    console.log("Nothing to process...");
+    if (requestWasSend) {
+      console.log("Nothing but request is send!!!!");
+      await sendErrorMessageToDiscordRequestWasSendButNoGamesResolved(
+        "Request was send, but no games resolved, please check and debug! Stoping bot is mandatory!"
+      );
+      failedCounter++;
+      await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+    } else {
+      console.log("Nothing to process...");
+    }
   }
 
   console.log("Ended batch...");
@@ -240,6 +290,130 @@ async function doIndefinitely() {
   }
 }
 
+async function sendErrorMessageToDiscordRequestToCL(
+  messageForPrint,
+  sportId,
+  timestamp,
+  gameId
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on resolve bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":hammer_pick: Input params:",
+        value:
+          "GameId: " +
+          gameId +
+          ", sportId: " +
+          sportId +
+          ", date (unix date): " +
+          timestamp,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeResolver = await overtimeBot.channels.fetch(
+    "1004360121540956200"
+  );
+  overtimeResolver.send(message);
+}
+
+async function sendErrorMessageToDiscordMarketResolve(
+  messageForPrint,
+  gameIds
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on resolve bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":hammer_pick: Input params:",
+        value: gameIds,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeResolver = await overtimeBot.channels.fetch(
+    "1004360121540956200"
+  );
+  overtimeResolver.send(message);
+}
+
+async function sendErrorMessageToDiscordRequestWasSendButNoGamesResolved(
+  messageForPrint
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on creation bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1004360121540956200");
+  overtimeCreate.send(message);
+}
+
+async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenTrashhold(
+  messageForPrint,
+  trashhold,
+  wallet
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Amount of LINK in resolver-bot less then trashhold!",
+        value: "\u200b",
+      },
+      {
+        name: ":coin: Trashlod:",
+        value: trashhold,
+      },
+      {
+        name: ":credit_card: Bot wallet address:",
+        value: wallet,
+      },
+      {
+        name: ":warning: Warning message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1004756643977900062");
+  overtimeCreate.send(message);
+}
+
 function dateConverter(UNIXTimestamp) {
   var date = new Date(UNIXTimestamp);
   var month = date.getUTCMonth() + 1; // starts from zero (0) -> January
@@ -247,9 +421,9 @@ function dateConverter(UNIXTimestamp) {
 }
 
 function isGameInRightStatus(statuses, status) {
-  console.log("Game is in status: " + status)
+  console.log("Game is in status: " + status);
   for (let j = 0; j < statuses.length; j++) {
-    if(statuses[j] == status){
+    if (statuses[j] == status) {
       return true;
     }
   }

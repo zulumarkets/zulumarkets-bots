@@ -5,12 +5,17 @@ const ethers = require("ethers");
 const wallet = new ethers.Wallet(constants.privateKey, constants.etherprovider);
 const bytes32 = require("bytes32");
 
+const Discord = require("discord.js");
+const overtimeBot = new Discord.Client();
+overtimeBot.login(process.env.BOT_OVERTIME_CREATOR);
+
 const axios = require("axios");
 
 const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
+const linkToken = require("../../contracts/LinkToken.js");
 
 async function doCreate() {
   const queues = new ethers.Contract(
@@ -31,6 +36,23 @@ async function doCreate() {
     wallet
   );
 
+  const erc20Instance = new ethers.Contract(
+    process.env.LINK_CONTRACT,
+    linkToken.linkTokenContract.abi,
+    wallet
+  );
+
+  let amountOfToken = await erc20Instance.balanceOf(wallet.address);
+  console.log("Amount token in wallet: " + amountOfToken);
+
+  if (amountOfToken < process.env.LINK_TRASHOLD) {
+    await sendWarningMessageToDiscordAmountOfLinkInBotLessThenTrashhold(
+      "Amount of LINK in a creator-bot is: " + amountOfToken,
+      process.env.LINK_TRASHOLD,
+      wallet.address
+    );
+  }
+
   const jobId = bytes32({ input: process.env.JOB_ID_CREATION });
 
   const baseUrl = process.env.RUNDOWN_BASE_URL;
@@ -46,6 +68,8 @@ async function doCreate() {
   console.log("Create Games...");
 
   let processed = false;
+  let requestWasSend = false;
+  let failedCounter = 0;
   while (!processed) {
     processed = true;
 
@@ -167,8 +191,16 @@ async function doCreate() {
             await tx_request.wait().then((e) => {
               console.log("Requested for: " + unixDate);
             });
+            requestWasSend = true;
           } catch (e) {
             console.log(e);
+            await sendErrorMessageToDiscordRequestCL(
+              "Request to CL creator-bot went wrong! Please check LINK amount on bot, or kill and debug!",
+              sportIds[j],
+              unixDate
+            );
+            failedCounter++;
+            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           }
         }
       }
@@ -217,6 +249,12 @@ async function doCreate() {
           gameIds = [];
         } catch (e) {
           console.log(e);
+          await sendErrorMessageToDiscordCreateMarkets(
+            "Market creation went wrong! Please check ETH on bot, or kill and debug!",
+            gameIds
+          );
+          failedCounter++;
+          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           break;
         }
       } else {
@@ -224,7 +262,16 @@ async function doCreate() {
       }
     }
   } else {
-    console.log("Nothing to process...");
+    if (requestWasSend) {
+      console.log("Nothing but request is send!!!!");
+      await sendErrorMessageToDiscordRequestWasSendButNoGamesCreated(
+        "Request was send, but no games created, please check and debug! Stoping bot is mandatory!"
+      );
+      failedCounter++;
+      await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+    } else {
+      console.log("Nothing to process...");
+    }
   }
 
   console.log("Ended batch...");
@@ -271,6 +318,119 @@ function getOdds(lines, oddNumber) {
   } else {
     return odd[0].moneyline.moneyline_draw * 100;
   }
+}
+
+async function sendErrorMessageToDiscordRequestCL(
+  messageForPrint,
+  sportId,
+  dateTimestamp
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on creation bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":hammer_pick: Input params:",
+        value: "SportId: " + sportId + ", date (unix date): " + dateTimestamp,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
+  overtimeCreate.send(message);
+}
+
+async function sendErrorMessageToDiscordCreateMarkets(
+  messageForPrint,
+  gameIds
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on creation bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":hammer_pick: Input params:",
+        value: gameIds,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
+  overtimeCreate.send(message);
+}
+
+async function sendErrorMessageToDiscordRequestWasSendButNoGamesCreated(
+  messageForPrint
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on creation bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
+  overtimeCreate.send(message);
+}
+
+async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenTrashhold(
+  messageForPrint,
+  trashhold,
+  wallet
+) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Amount of LINK in creator-bot less then trashhold!",
+        value: "\u200b",
+      },
+      {
+        name: ":coin: Trashlod:",
+        value: trashhold,
+      },
+      {
+        name: ":credit_card: Bot wallet address:",
+        value: wallet,
+      },
+      {
+        name: ":warning: Warning message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1004753662859550790");
+  overtimeCreate.send(message);
 }
 
 function getSecondsToDate(dateFrom) {
