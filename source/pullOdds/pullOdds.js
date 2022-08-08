@@ -283,21 +283,23 @@ async function doPull() {
 
                     // percentage change >= percentageChangePerSport send request
                     if (
-                      getPercentageChange(
+                      (getPercentageChange(
                         oddsForGame[0],
                         homeOddPinnacle,
                         percentageChangePerSport
                       ) >= percentageChangePerSport ||
-                      getPercentageChange(
-                        oddsForGame[1],
-                        awayOddPinnacle,
-                        percentageChangePerSport
-                      ) >= percentageChangePerSport ||
-                      getPercentageChange(
-                        oddsForGame[2],
-                        drawOddPinnacle,
-                        percentageChangePerSport
-                      ) >= percentageChangePerSport
+                        getPercentageChange(
+                          oddsForGame[1],
+                          awayOddPinnacle,
+                          percentageChangePerSport
+                        ) >= percentageChangePerSport ||
+                        getPercentageChange(
+                          oddsForGame[2],
+                          drawOddPinnacle,
+                          percentageChangePerSport
+                        ) >= percentageChangePerSport) &&
+                      !invalidOdds &&
+                      !isPausedByCanceledStatus
                     ) {
                       let percentageChangeHome = getPercentageChange(
                         oddsForGame[0],
@@ -355,11 +357,11 @@ async function doPull() {
                       await sendMessageToDiscordOddsChanged(
                         gamesListResponse[n].homeTeam,
                         gamesListResponse[n].awayTeam,
-                        oddsForGame[0],
+                        0,
                         homeOddPinnacle,
-                        oddsForGame[1],
+                        0,
                         awayOddPinnacle,
-                        oddsForGame[2],
+                        0,
                         drawOddPinnacle,
                         gameStart,
                         100,
@@ -557,8 +559,10 @@ async function sendMessageToDiscordOddsChanged(
   if (percentageChangeHome === 100) {
     messageHomeChange =
       "Odds appear, " + "New odd Pinnacle: " + homeOddPinnacleImpl.toFixed(3);
-  } else if (percentageChangeAway == 0) {
+  } else if (percentageChangeAway === 0) {
     messageHomeChange = "No change of homeodds";
+  } else if (homeOddPinnacleImpl === 1) {
+    messageHomeChange = "Odd removed from API, pausing game, invalid odds";
   } else {
     messageHomeChange =
       "Old odd: " +
@@ -573,8 +577,10 @@ async function sendMessageToDiscordOddsChanged(
   if (percentageChangeAway == 100) {
     messageAwayChange =
       "Odds appear, " + "New odd Pinnacle: " + awayOddPinnacleImp.toFixed(3);
-  } else if (percentageChangeAway == 0) {
-    messageHomeChange = "No change of awayodds";
+  } else if (percentageChangeAway === 0) {
+    messageAwayChange = "No change of awayodds";
+  } else if (awayOddPinnacleImp === 1) {
+    messageAwayChange = "Odd removed from API, pausing game, invalid odds";
   } else {
     messageAwayChange =
       "Old odd: " +
@@ -589,8 +595,11 @@ async function sendMessageToDiscordOddsChanged(
   if (percentageChangeDraw === 100) {
     messageDrawChange =
       "Odds appear, " + "New odd Pinnacle: " + drawOddPinnacleImp.toFixed(3);
-  } else if (percentageChangeAway == 0) {
-    messageHomeChange = "No change of drawodds";
+  } else if (percentageChangeAway === 0) {
+    messageDrawChange = "No change of drawodds";
+  } else if (awayOddPinnacleImp === 1) {
+    messageDrawChange =
+      "There is no odd for draw! If two positional sport ignoring this odd, if three pausing game, invalid odds";
   } else {
     messageDrawChange =
       "Old odd: " +
