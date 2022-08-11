@@ -74,6 +74,7 @@ async function doPull() {
 
   const ODDS_PERCENTAGE_CHANGE_BY_SPORT = {
     3: process.env.ODDS_PERCENTAGE_CHANGE_MLB,
+    7: process.env.ODDS_PERCENTAGE_CHANGE_UFC,
     10: process.env.ODDS_PERCENTAGE_CHANGE_MLS,
   };
 
