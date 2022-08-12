@@ -80,7 +80,7 @@ async function doCreate() {
     // do for all sportIds
     for (let j = 0; j < sportIds.length; j++) {
       // do for next X days in front
-      for (let i = 1; i <= daysInFront; i++) {
+      for (let i = 0; i <= daysInFront; i++) {
         console.log("------------------------");
         console.log("SPORT ID =  " + sportIds[j]);
         console.log("TODAY +  " + i);
