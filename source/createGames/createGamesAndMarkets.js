@@ -66,6 +66,10 @@ async function doCreate() {
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
 
+  const primaryBookmaker = process.env.PRIMARY_ODDS_BOOKMAKER;
+  const useBackupBookmaker = process.env.USE_BACKUP_ODDS_BOOKMAKER === "true";
+  const backupBookmaker = process.env.BACKUP_ODDS_BOOKMAKER;
+
   console.log("Create Games...");
 
   let processed = false;
@@ -76,6 +80,9 @@ async function doCreate() {
 
     console.log("JOB ID =  " + jobId);
     console.log("MARKET =  " + market);
+    console.log("Primary bookmaker is (id): " + primaryBookmaker);
+    console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
+    console.log("Backup bookmaker is (id): " + backupBookmaker);
 
     // do for all sportIds
     for (let j = 0; j < sportIds.length; j++) {
@@ -94,6 +101,10 @@ async function doCreate() {
         console.log("Day of week: " + dayOfWeekDigit);
 
         let sendRequestForCreate = false;
+
+        let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(
+          sportIds[j]
+        );
 
         const urlBuild =
           baseUrl +
@@ -114,9 +125,30 @@ async function doCreate() {
             id: event.event_id,
             homeTeam: getTeam(event.teams, event.teams_normalized, 1),
             awayTeam: getTeam(event.teams, event.teams_normalized, 0),
-            homeOdd: getOdds(event.lines, 1),
-            awayOdd: getOdds(event.lines, 2),
-            drawOdd: getOdds(event.lines, 0),
+            homeOdd: getOdds(
+              event.lines,
+              1,
+              primaryBookmaker,
+              useBackupBookmaker,
+              backupBookmaker,
+              isSportTwoPositionsSport
+            ),
+            awayOdd: getOdds(
+              event.lines,
+              2,
+              primaryBookmaker,
+              useBackupBookmaker,
+              backupBookmaker,
+              isSportTwoPositionsSport
+            ),
+            drawOdd: getOdds(
+              event.lines,
+              0,
+              primaryBookmaker,
+              useBackupBookmaker,
+              backupBookmaker,
+              isSportTwoPositionsSport
+            ),
           });
         });
 
@@ -125,10 +157,6 @@ async function doCreate() {
             gamesListResponse.length +
             " in a date " +
             dateConverter(unixDateMiliseconds)
-        );
-
-        let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(
-          sportIds[j]
         );
 
         for (let n = 0; n < gamesListResponse.length; n++) {
@@ -300,24 +328,98 @@ function getTeam(teams, teamsN, number) {
   return "TBD TBD"; // count as TBD
 }
 
-function getOdds(lines, oddNumber) {
+function getOdds(
+  lines,
+  oddNumber,
+  primaryBookmaker,
+  useBackupBookmaker,
+  backupBookmaker,
+  isSportTwoPositionsSport
+) {
   var odds = [];
   for (key in lines) {
     odds.push(Object.assign(lines[key], { name: key }));
   }
 
-  let odd = odds.filter(function (bookmaker) {
-    return bookmaker.name == "3"; // Pinnacle
+  let oddPrimary = odds.filter(function (bookmaker) {
+    return bookmaker.name == primaryBookmaker; // primary example 3 - Pinnacle
   });
 
-  if (odd.length == 0) {
+  let oddBackup = odds.filter(function (bookmaker) {
+    return bookmaker.name == backupBookmaker; // bck example 11 - Luwvig
+  });
+
+  if (oddPrimary.length == 0) {
+    return useBackupBookmaker
+      ? getOddsFromBackupBookmaker(
+          oddBackup,
+          oddNumber,
+          isSportTwoPositionsSport
+        )
+      : 0;
+  } else if (oddNumber == 1) {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].moneyline.moneyline_home === 0.0001
+    ) {
+      return getOddsFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
+    } else {
+      return oddPrimary[0].moneyline.moneyline_home * 100;
+    }
+  } else if (oddNumber == 2) {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].moneyline.moneyline_away === 0.0001
+    ) {
+      return getOddsFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
+    } else {
+      return oddPrimary[0].moneyline.moneyline_away * 100;
+    }
+  } else {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].moneyline.moneyline_draw === 0.0001 &&
+      !isSportTwoPositionsSport
+    ) {
+      return getOddsFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
+    } else {
+      if (isSportTwoPositionsSport) {
+        return 0.01; // default
+      }
+      return oddPrimary[0].moneyline.moneyline_draw * 100;
+    }
+  }
+}
+
+function getOddsFromBackupBookmaker(
+  oddBackup,
+  oddNumber,
+  isSportTwoPositionsSport
+) {
+  if (oddBackup.length == 0) {
     return 0;
   } else if (oddNumber == 1) {
-    return odd[0].moneyline.moneyline_home * 100;
+    return oddBackup[0].moneyline.moneyline_home * 100;
   } else if (oddNumber == 2) {
-    return odd[0].moneyline.moneyline_away * 100;
+    return oddBackup[0].moneyline.moneyline_away * 100;
   } else {
-    return odd[0].moneyline.moneyline_draw * 100;
+    console.log("Sport is two positional: " + isSportTwoPositionsSport);
+    if (isSportTwoPositionsSport) {
+      return 0.01; // default
+    }
+    return oddBackup[0].moneyline.moneyline_draw * 100;
   }
 }
 

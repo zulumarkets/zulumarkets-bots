@@ -56,6 +56,9 @@ services:
       - "BOT_OVERTIME_CREATOR=''"
       - "BOT_OVERTIME_RESOLVER=''"
       - "LINK_THRESHOLD=5000000000000000000"
+      - "USE_BACKUP_ODDS_BOOKMAKER=true"
+      - "PRIMARY_ODDS_BOOKMAKER=3"
+      - "BACKUP_ODDS_BOOKMAKER=11"
 
 volumes:
   redis-data:
