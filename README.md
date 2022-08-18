@@ -29,8 +29,8 @@ services:
     environment:
       - "PRIVATE_KEY=''"
       - "WALLET=''"
-      - "INFURA=16f15a8ff9f54b2394086bda0b237611"
-      - "INFURA_URL=https://optimism-mainnet.infura.io/v3/16f15a8ff9f54b2394086bda0b237611"
+      - "INFURA=XXXX"
+      - "INFURA_URL=https://optimism-mainnet.infura.io/v3/XXXXXX"
       - "NETWORK=optimism"
       - "NETWORK_ID=10"
       - "REQUEST_KEY=''"
