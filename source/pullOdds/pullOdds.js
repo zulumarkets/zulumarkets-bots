@@ -62,6 +62,10 @@ async function doPull() {
   // number of days in front for calculation
   const daysInFront = process.env.CREATION_DAYS_INFRONT;
 
+  const primaryBookmaker = process.env.PRIMARY_ODDS_BOOKMAKER;
+  const useBackupBookmaker = process.env.USE_BACKUP_ODDS_BOOKMAKER === "true";
+  const backupBookmaker = process.env.BACKUP_ODDS_BOOKMAKER;
+
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
 
@@ -88,6 +92,9 @@ async function doPull() {
     processed = true;
 
     console.log("JOB ID =  " + jobId);
+    console.log("Primary bookmaker is (id): " + primaryBookmaker);
+    console.log("USE_BACKUP_ODDS_BOOKMAKER is set to: " + useBackupBookmaker);
+    console.log("Backup bookmaker is: " + backupBookmaker);
 
     let unproccessedGames = await queues.getLengthUnproccessedGames();
     console.log("GAMES length =  " + unproccessedGames);
@@ -123,6 +130,9 @@ async function doPull() {
             unixDate
           );
           console.log("Count games on a date: " + gamesOnContract.length);
+
+          let isSportTwoPositionsSport =
+            await consumer.isSportTwoPositionsSport(sportIds[j]);
 
           // that day have games inside
           if (isSportOnADate && gamesOnContract.length > 0) {
@@ -162,9 +172,30 @@ async function doPull() {
                   sportIds[j]
                 ),
                 status: event.score.event_status,
-                homeOdd: getOdds(event.lines, 1),
-                awayOdd: getOdds(event.lines, 2),
-                drawOdd: getOdds(event.lines, 0),
+                homeOdd: getOdds(
+                  event.lines,
+                  1,
+                  primaryBookmaker,
+                  useBackupBookmaker,
+                  backupBookmaker,
+                  isSportTwoPositionsSport
+                ),
+                awayOdd: getOdds(
+                  event.lines,
+                  2,
+                  primaryBookmaker,
+                  useBackupBookmaker,
+                  backupBookmaker,
+                  isSportTwoPositionsSport
+                ),
+                drawOdd: getOdds(
+                  event.lines,
+                  0,
+                  primaryBookmaker,
+                  useBackupBookmaker,
+                  backupBookmaker,
+                  isSportTwoPositionsSport
+                ),
               });
             });
 
@@ -217,7 +248,7 @@ async function doPull() {
                   if (!isMarketResolved && !isMarketCanceled) {
                     let homeOddPinnacle = gamesListResponse[n].homeOdd;
                     console.log(
-                      "homeOdd Pinnacle: " +
+                      "homeOdd API: " +
                         homeOddPinnacle +
                         " id: " +
                         gamesListResponse[n].id
@@ -234,7 +265,7 @@ async function doPull() {
 
                     let awayOddPinnacle = gamesListResponse[n].awayOdd;
                     console.log(
-                      "awayOdd Pinnacle: " +
+                      "awayOdd API: " +
                         awayOddPinnacle +
                         " id: " +
                         gamesListResponse[n].id
@@ -248,7 +279,7 @@ async function doPull() {
 
                     let drawOddPinnacle = gamesListResponse[n].drawOdd;
                     console.log(
-                      "drawOdd Pinnacle: " +
+                      "drawOdd API: " +
                         drawOddPinnacle +
                         " id: " +
                         gamesListResponse[n].id
@@ -269,9 +300,6 @@ async function doPull() {
                     console.log(
                       "Is game paused by status: " + isPausedByCanceledStatus
                     );
-
-                    let isSportTwoPositionsSport =
-                      await consumer.isSportTwoPositionsSport(sportIds[j]);
 
                     if (
                       oddsForGame[0] === undefined ||
@@ -559,7 +587,7 @@ async function sendMessageToDiscordOddsChanged(
 
   if (percentageChangeHome === 100) {
     messageHomeChange =
-      "Odds appear, " + "New odd Pinnacle: " + homeOddPinnacleImpl.toFixed(3);
+      "Odds appear, " + "New odd API: " + homeOddPinnacleImpl.toFixed(3);
   } else if (percentageChangeAway === 0) {
     messageHomeChange = "No change of homeodds";
   } else if (homeOddPinnacleImpl === 1) {
@@ -568,7 +596,7 @@ async function sendMessageToDiscordOddsChanged(
     messageHomeChange =
       "Old odd: " +
       homeOddContractImp.toFixed(3) +
-      ", New odd Pinnacle: " +
+      ", New odd API: " +
       homeOddPinnacleImpl.toFixed(3) +
       ", change = " +
       percentageChangeHome.toFixed(3) +
@@ -577,7 +605,7 @@ async function sendMessageToDiscordOddsChanged(
 
   if (percentageChangeAway == 100) {
     messageAwayChange =
-      "Odds appear, " + "New odd Pinnacle: " + awayOddPinnacleImp.toFixed(3);
+      "Odds appear, " + "New odd API: " + awayOddPinnacleImp.toFixed(3);
   } else if (percentageChangeAway === 0) {
     messageAwayChange = "No change of awayodds";
   } else if (awayOddPinnacleImp === 1) {
@@ -586,7 +614,7 @@ async function sendMessageToDiscordOddsChanged(
     messageAwayChange =
       "Old odd: " +
       awayOddContractImp.toFixed(3) +
-      ", New odd Pinnacle: " +
+      ", New odd API: " +
       awayOddPinnacleImp.toFixed(3) +
       ", change = " +
       percentageChangeAway.toFixed(3) +
@@ -595,7 +623,7 @@ async function sendMessageToDiscordOddsChanged(
 
   if (percentageChangeDraw === 100) {
     messageDrawChange =
-      "Odds appear, " + "New odd Pinnacle: " + drawOddPinnacleImp.toFixed(3);
+      "Odds appear, " + "New odd API: " + drawOddPinnacleImp.toFixed(3);
   } else if (percentageChangeAway === 0) {
     messageDrawChange = "No change of drawodds";
   } else if (awayOddPinnacleImp === 1) {
@@ -605,7 +633,7 @@ async function sendMessageToDiscordOddsChanged(
     messageDrawChange =
       "Old odd: " +
       drawOddContractImp.toFixed(3) +
-      ", New odd Pinnacle: " +
+      ", New odd API: " +
       drawOddPinnacleImp.toFixed(3) +
       ", change = " +
       percentageChangeDraw.toFixed(3) +
@@ -781,24 +809,98 @@ function dateConverter(UNIXTimestamp) {
   return date.getUTCFullYear() + "-" + month + "-" + date.getUTCDate();
 }
 
-function getOdds(lines, oddNumber) {
+function getOdds(
+  lines,
+  oddNumber,
+  primaryBookmaker,
+  useBackupBookmaker,
+  backupBookmaker,
+  isSportTwoPositionsSport
+) {
   var odds = [];
   for (key in lines) {
     odds.push(Object.assign(lines[key], { name: key }));
   }
 
-  let odd = odds.filter(function (bookmaker) {
-    return bookmaker.name == "3"; // Pinnacle
+  let oddPrimary = odds.filter(function (bookmaker) {
+    return bookmaker.name == primaryBookmaker; // primary example 3 - Pinnacle
   });
 
-  if (odd.length == 0) {
+  let oddBackup = odds.filter(function (bookmaker) {
+    return bookmaker.name == backupBookmaker; // bck example 11 - Luwvig
+  });
+
+  if (oddPrimary.length == 0) {
+    return useBackupBookmaker
+      ? getOddsFromBackupBookmaker(
+          oddBackup,
+          oddNumber,
+          isSportTwoPositionsSport
+        )
+      : 0;
+  } else if (oddNumber == 1) {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].moneyline.moneyline_home === 0.0001
+    ) {
+      return getOddsFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
+    } else {
+      return oddPrimary[0].moneyline.moneyline_home * 100;
+    }
+  } else if (oddNumber == 2) {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].moneyline.moneyline_away === 0.0001
+    ) {
+      return getOddsFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
+    } else {
+      return oddPrimary[0].moneyline.moneyline_away * 100;
+    }
+  } else {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].moneyline.moneyline_draw === 0.0001 &&
+      !isSportTwoPositionsSport
+    ) {
+      return getOddsFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
+    } else {
+      if (isSportTwoPositionsSport) {
+        return 0.01; // default
+      }
+      return oddPrimary[0].moneyline.moneyline_draw * 100;
+    }
+  }
+}
+
+function getOddsFromBackupBookmaker(
+  oddBackup,
+  oddNumber,
+  isSportTwoPositionsSport
+) {
+  if (oddBackup.length == 0) {
     return 0;
   } else if (oddNumber == 1) {
-    return odd[0].moneyline.moneyline_home * 100;
+    return oddBackup[0].moneyline.moneyline_home * 100;
   } else if (oddNumber == 2) {
-    return odd[0].moneyline.moneyline_away * 100;
+    return oddBackup[0].moneyline.moneyline_away * 100;
   } else {
-    return odd[0].moneyline.moneyline_draw * 100;
+    console.log("Sport is two positional: " + isSportTwoPositionsSport);
+    if (isSportTwoPositionsSport) {
+      return 0.01; // default
+    }
+    return oddBackup[0].moneyline.moneyline_draw * 100;
   }
 }
 
