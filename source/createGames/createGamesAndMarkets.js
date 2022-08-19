@@ -293,7 +293,7 @@ async function doCreate() {
   } else {
     if (requestWasSend) {
       console.log("Nothing but request is send!!!!");
-      await sendErrorMessageToDiscordRequestWasSendButNoGamesCreated(
+      await sendErrorMessageToDiscord(
         "Request was send, but no games created, please check and debug! Stoping bot is mandatory!"
       );
       failedCounter++;
@@ -312,8 +312,17 @@ async function doIndefinitely() {
     process.env.WRAPPER_CONTRACT
   );
   while (true) {
-    await doCreate();
-    await delay(process.env.CREATION_FREQUENCY);
+    try {
+      await doCreate();
+      await delay(process.env.CREATION_FREQUENCY);
+    } catch (e) {
+      console.log(e);
+      sendErrorMessageToDiscord(
+        "Please check creation-bot, error on execution"
+      );
+      // wait next process
+      await delay(process.env.CREATION_FREQUENCY);
+    }
   }
 }
 
@@ -480,9 +489,7 @@ async function sendErrorMessageToDiscordCreateMarkets(
   overtimeCreate.send(message);
 }
 
-async function sendErrorMessageToDiscordRequestWasSendButNoGamesCreated(
-  messageForPrint
-) {
+async function sendErrorMessageToDiscord(messageForPrint) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {

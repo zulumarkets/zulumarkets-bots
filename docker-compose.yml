@@ -59,6 +59,8 @@ services:
       - "USE_BACKUP_ODDS_BOOKMAKER=true"
       - "PRIMARY_ODDS_BOOKMAKER=3"
       - "BACKUP_ODDS_BOOKMAKER=11"
+      - "RESOLVE_DAYS_INBACK=1"
+      - "CL_RESOLVE_BATCH=5"
 
 volumes:
   redis-data:
