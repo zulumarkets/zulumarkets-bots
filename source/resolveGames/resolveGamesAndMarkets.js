@@ -466,7 +466,7 @@ async function sendErrorMessageToDiscord(messageForPrint) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
-        name: "Uuups! Something went wrong on creation bot!",
+        name: "Uuups! Something went wrong on resolve bot!",
         value: "\u200b",
       },
       {
