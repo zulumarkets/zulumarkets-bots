@@ -212,13 +212,6 @@ async function doResolve() {
                 !isGameResultAlreadyFulfilledInner
               ) {
                 gameIds.push(gamesListResponse[n].id);
-              } else {
-                console.log(
-                  "All games are resolved for date " +
-                    unixDate +
-                    " and sport " +
-                    sportIds[j]
-                );
               }
             }
           }
