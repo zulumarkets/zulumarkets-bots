@@ -71,6 +71,12 @@ async function doResolve() {
 
   const jobId = bytes32({ input: process.env.JOB_ID_RESOLVE });
 
+  // sportId
+  let sportIds = process.env.SPORT_IDS.split(",");
+
+  // how many days in back (day before and today is perfect because of timezone)
+  const daysInBack = process.env.RESOLVE_DAYS_INBACK * -1;
+
   const baseUrl = process.env.RUNDOWN_BASE_URL;
 
   // resolve market
@@ -90,121 +96,209 @@ async function doResolve() {
   let requestWasSend = false;
   let failedCounter = 0;
 
-  // do for all games
-  for (let j = 0; j < unproccessedGames; j++) {
-    let gameID = await queues.unproccessedGames(j);
-    console.log("GAME ID: " + gameID);
+  // if there is no games no triggering
+  if (unproccessedGames > 0) {
+    // do it for all sports
+    for (let j = 0; j < sportIds.length; j++) {
+      for (let i = daysInBack; i <= 0; i++) {
+        console.log("Processing: TODAY " + i);
 
-    let stringId = bytes32({ input: gameID });
-    console.log("Game id as string: " + stringId);
+        let unixDate = getSecondsToDate(i);
 
-    let sportId = await consumer.sportsIdPerGame(gameID);
-    console.log("Sport ID: " + sportId);
+        console.log("Unix date in seconds: " + unixDate);
+        let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
+        console.log("Unix date in miliseconds: " + unixDateMiliseconds);
 
-    let gameStart = await queues.gameStartPerGameId(gameID);
-    console.log("GAME start: " + gameStart);
+        let isSportOnADate = await consumer.isSportOnADate(
+          unixDate,
+          sportIds[j]
+        );
+        console.log("Having sport on a date:  " + isSportOnADate);
 
-    console.log(
-      "Time for sport ending: " +
-        parseInt(EXPECTED_GAME_DURATIN[parseInt(sportId)])
-    );
+        let gamesOnContract = await consumer.getGamesPerDatePerSport(
+          sportIds[j],
+          unixDate
+        );
+        console.log("Count games on a date: " + gamesOnContract.length);
 
-    let expectedTimeToProcess =
-      parseInt(gameStart) + parseInt(EXPECTED_GAME_DURATIN[parseInt(sportId)]); // add hours  .env
-    let expectedTimeToProcessInMiliseconds =
-      parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
-    console.log(
-      "Time of processing (gameStart + .env): " +
-        parseInt(expectedTimeToProcess)
-    );
-    console.log(
-      "Time of processing (miliseconds): " + expectedTimeToProcessInMiliseconds
-    );
+        let gameIds = [];
 
-    let timeInMiliseconds = new Date().getTime(); // miliseconds
-    console.log("Time is:  " + timeInMiliseconds);
+        let sendAPIrequest = false;
 
-    let isGameResultAlreadyFulfilled = await consumer.gameFulfilledResolved(
-      gameID
-    );
-    console.log(
-      "Result already in a contract: " + isGameResultAlreadyFulfilled
-    );
+        let timeInMiliseconds = new Date().getTime(); // miliseconds
+        console.log("Time for proocessing:  " + timeInMiliseconds);
 
-    // check if expected time
-    if (
-      expectedTimeToProcessInMiliseconds < timeInMiliseconds &&
-      !isGameResultAlreadyFulfilled
-    ) {
-      console.log(
-        "Date in request: " +
-          dateConverter(gameStart * parseInt(process.env.MILISECONDS))
-      );
+        // don't use API request if all games are already resolved
+        for (let z = 0; z < gamesOnContract.length; z++) {
+          if (sendAPIrequest) {
+            break;
+          }
 
-      const urlBuild =
-        baseUrl +
-        "/sports/" +
-        sportId +
-        "/events/" +
-        dateConverter(gameStart * parseInt(process.env.MILISECONDS));
-      let response = await axios.get(urlBuild, {
-        headers: {
-          "X-RapidAPI-Key": process.env.REQUEST_KEY,
-        },
-      });
+          let gameStart = await queues.gameStartPerGameId(gamesOnContract[z]);
+          console.log("GAME start: " + gameStart);
 
-      const gamesListResponse = [];
+          let expectedTimeToProcess =
+            parseInt(gameStart) +
+            parseInt(EXPECTED_GAME_DURATIN[parseInt(sportIds[j])]); // add hours  .env
+          let expectedTimeToProcessInMiliseconds =
+            parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
+          console.log(
+            "Time of processing (gameStart + .env): " +
+              parseInt(expectedTimeToProcess)
+          );
+          console.log(
+            "Time of processing (miliseconds): " +
+              expectedTimeToProcessInMiliseconds
+          );
 
-      response.data.events.forEach((event) => {
-        gamesListResponse.push({
-          id: event.event_id,
-          status: event.score.event_status,
-        });
-      });
+          let isGameResultAlreadyFulfilled =
+            await consumer.gameFulfilledResolved(gamesOnContract[z]);
 
-      for (let n = 0; n < gamesListResponse.length; n++) {
-        // if the game is in right status
-        if (
-          gamesListResponse[n].id == stringId &&
-          (isGameInRightStatus(cancelStatuses, gamesListResponse[n].status) ||
-            isGameInRightStatus(resolvedStatuses, gamesListResponse[n].status))
-        ) {
-          try {
-            console.log("Send request...");
-
-            let tx = await wrapper.requestGamesResolveWithFilters(
-              jobId,
-              market,
-              sportId,
-              gameStart,
-              [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
-              [stringId]
-            );
-
-            await tx.wait().then((e) => {
-              console.log(
-                "Requested for: " + gameStart + " with game id: " + stringId
-              );
-            });
-            requestWasSend = true;
-          } catch (e) {
-            console.log(e);
-            await sendErrorMessageToDiscordRequestToCL(
-              "Request to CL from resolver-bot went wrong! Please check LINK amount on bot, or kill and debug!",
-              sportId,
-              gameStart,
-              stringId
-            );
-            failedCounter++;
-            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+          if (
+            expectedTimeToProcessInMiliseconds < timeInMiliseconds &&
+            !isGameResultAlreadyFulfilled
+          ) {
+            sendAPIrequest = true;
           }
         }
+
+        // there is games and there are games that are ready to be resolved
+        if (isSportOnADate && gamesOnContract.length > 0 && sendAPIrequest) {
+          console.log("Processing sport and date...");
+
+          const urlBuild =
+            baseUrl +
+            "/sports/" +
+            sportIds[j] +
+            "/events/" +
+            dateConverter(unixDateMiliseconds);
+          let response = await axios.get(urlBuild, {
+            headers: {
+              "X-RapidAPI-Key": process.env.REQUEST_KEY,
+            },
+          });
+
+          const gamesListResponse = [];
+
+          response.data.events.forEach((event) => {
+            gamesListResponse.push({
+              id: event.event_id,
+              status: event.score.event_status,
+              updatedAt: event.score.updated_at,
+            });
+          });
+
+          // iterate over games on contract and API
+          for (let n = 0; n < gamesListResponse.length; n++) {
+            for (let m = 0; m < gamesOnContract.length; m++) {
+              // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
+              let isGameResultAlreadyFulfilledInner =
+                await consumer.gameFulfilledResolved(gamesOnContract[m]);
+              if (
+                gamesListResponse[n].id ==
+                  bytes32({ input: gamesOnContract[m] }) &&
+                (isGameInRightStatus(
+                  cancelStatuses,
+                  gamesListResponse[n].status
+                ) ||
+                  isGameInRightStatus(
+                    resolvedStatuses,
+                    gamesListResponse[n].status
+                  )) &&
+                scoreUpdatedAtCheck(
+                  timeInMiliseconds,
+                  gamesListResponse[n].updatedAt
+                ) &&
+                !isGameResultAlreadyFulfilledInner
+              ) {
+                gameIds.push(gamesListResponse[n].id);
+              }
+            }
+          }
+
+          if (gameIds.length > 0) {
+            try {
+              console.log("Send request...");
+              console.log("Games...");
+              console.log(gameIds);
+              // do it if less than batch number
+              if (gameIds.length <= process.env.CL_RESOLVE_BATCH) {
+                let tx = await wrapper.requestGamesResolveWithFilters(
+                  jobId,
+                  market,
+                  sportIds[j],
+                  unixDate,
+                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                  gameIds
+                );
+
+                await tx.wait().then((e) => {
+                  console.log(
+                    "Requested for: " + unixDate + " with game id: " + gameIds
+                  );
+                });
+                requestWasSend = true;
+              } else {
+                console.log("Executing in batch...");
+                let gamesInBatch = [];
+                for (let i = 0; i < gameIds.length; i++) {
+                  gamesInBatch.push(gameIds[i]);
+                  if (
+                    (gamesInBatch.length > 0 &&
+                      gamesInBatch.length % process.env.CL_RESOLVE_BATCH ==
+                        0) ||
+                    gameIds.length - 1 == i // last one
+                  ) {
+                    console.log("Batch...");
+                    console.log(gamesInBatch);
+
+                    let tx = await wrapper.requestGamesResolveWithFilters(
+                      jobId,
+                      market,
+                      sportIds[j],
+                      unixDate,
+                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                      gamesInBatch
+                    );
+
+                    await tx.wait().then((e) => {
+                      console.log(
+                        "Requested for: " +
+                          unixDate +
+                          " with game id: " +
+                          gamesInBatch
+                      );
+                    });
+                    requestWasSend = true;
+                    gamesInBatch = [];
+                    await delay(5000);
+                  } else {
+                    gamesInBatch.push(gameIds[i]);
+                  }
+                }
+              }
+            } catch (e) {
+              console.log(e);
+              await sendErrorMessageToDiscordRequestToCL(
+                "Request to CL from resolver-bot went wrong! Please check LINK amount on bot, or kill and debug!",
+                sportIds[j],
+                unixDate,
+                gameIds
+              );
+              failedCounter++;
+              await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+            }
+          }
+        } else {
+          console.log(
+            "No games on date: " +
+              unixDate +
+              " for sport " +
+              sportIds[j] +
+              ", or all are resolved / waiting right time to be resolved!"
+          );
+        }
       }
-    } else {
-      console.log(
-        "On to the next, less then expected time, or result already set in a contract"
-      );
-      continue;
     }
   }
 
@@ -267,7 +361,7 @@ async function doResolve() {
   } else {
     if (requestWasSend) {
       console.log("Nothing but request is send!!!!");
-      await sendErrorMessageToDiscordRequestWasSendButNoGamesResolved(
+      await sendErrorMessageToDiscord(
         "Request was send, but no games resolved, please check and debug! Stoping bot is mandatory!"
       );
       failedCounter++;
@@ -286,8 +380,17 @@ async function doIndefinitely() {
     process.env.WRAPPER_CONTRACT
   );
   while (true) {
-    await doResolve();
-    await delay(process.env.RESOLVE_FREQUENCY);
+    try {
+      await doResolve();
+      await delay(process.env.RESOLVE_FREQUENCY);
+    } catch (e) {
+      console.log(e);
+      sendErrorMessageToDiscord(
+        "Please check resolve-bot, error on execution, possible error: API is down, if not please debbug it!"
+      );
+      // wait next process
+      await delay(process.env.RESOLVE_FREQUENCY);
+    }
   }
 }
 
@@ -359,9 +462,7 @@ async function sendErrorMessageToDiscordMarketResolve(
   overtimeResolver.send(message);
 }
 
-async function sendErrorMessageToDiscordRequestWasSendButNoGamesResolved(
-  messageForPrint
-) {
+async function sendErrorMessageToDiscord(messageForPrint) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
@@ -422,13 +523,33 @@ function dateConverter(UNIXTimestamp) {
 }
 
 function isGameInRightStatus(statuses, status) {
-  console.log("Game is in status: " + status);
   for (let j = 0; j < statuses.length; j++) {
     if (statuses[j] == status) {
+      console.log("Game is in status: " + status);
       return true;
     }
   }
   return false;
+}
+
+function scoreUpdatedAtCheck(currentTime, updatedAt) {
+  console.log(Date.parse(updatedAt));
+  console.log(currentTime);
+  console.log(
+    "Ready for processing " +
+      (parseInt(Date.parse(updatedAt)) + parseInt(30 * 60 * 1000) <
+        parseInt(currentTime))
+  );
+  return (
+    parseInt(Date.parse(updatedAt)) + parseInt(30 * 60 * 1000) <
+    parseInt(currentTime)
+  );
+}
+
+function getSecondsToDate(dateFrom) {
+  const date = new Date(Date.now() + dateFrom * 3600 * 1000 * 24);
+  date.setUTCHours(0, 0, 0, 0);
+  return Math.floor(date.getTime() / 1000);
 }
 
 doIndefinitely();

@@ -527,8 +527,15 @@ async function doIndefinitely() {
     process.env.WRAPPER_CONTRACT
   );
   while (true) {
-    await doPull();
-    await delay(process.env.ODDS_FREQUENCY);
+    try {
+      await doPull();
+      await delay(process.env.ODDS_FREQUENCY);
+    } catch (e) {
+      console.log(e);
+      sendErrorMessageToDiscord("Please check odds-bot, error on execution");
+      // wait next process
+      await delay(process.env.ODDS_FREQUENCY);
+    }
   }
 }
 
@@ -751,6 +758,27 @@ async function sendErrorMessageToDiscordRequestOddsfromCL(
       {
         name: ":hammer_pick: Input params:",
         value: "SportId: " + sportId + ", date (unix date): " + dateTimestamp,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeOdds = await overtimeBot.channels.fetch("1004388531319353425");
+  overtimeOdds.send(message);
+}
+
+async function sendErrorMessageToDiscord(messageForPrint) {
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on odds bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
       },
       {
         name: ":alarm_clock: Timestamp:",
