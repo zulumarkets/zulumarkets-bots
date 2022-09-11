@@ -16,6 +16,7 @@ const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
+let ncaaSupportedTeams = require("./ncaaSupportedTeams.json");
 
 async function doCreate() {
   const queues = new ethers.Contract(
@@ -120,7 +121,23 @@ async function doCreate() {
 
         const gamesListResponse = [];
 
-        response.data.events.forEach((event) => {
+        let filteredResponse = [];
+        if (sportIds[j] == 1) {
+          response.data.events.forEach((o) => {
+            if (o.teams != undefined) {
+              if (
+                ncaaSupportedTeams.includes(o.teams[0].name) &&
+                ncaaSupportedTeams.includes(o.teams[1].name)
+              ) {
+                filteredResponse.push(o);
+              }
+            }
+          });
+        } else {
+          filteredResponse = response.data.events;
+        }
+
+        filteredResponse.forEach((event) => {
           gamesListResponse.push({
             id: event.event_id,
             homeTeam: getTeam(event.teams, event.teams_normalized, 1),
@@ -158,6 +175,10 @@ async function doCreate() {
             " in a date " +
             dateConverter(unixDateMiliseconds)
         );
+
+        if (gamesListResponse.length > 15) {
+          continue;
+        }
 
         for (let n = 0; n < gamesListResponse.length; n++) {
           let isGameAlreadyFullFilled = await consumer.gameFulfilledCreated(
@@ -207,17 +228,25 @@ async function doCreate() {
         }
 
         if (sendRequestForCreate) {
+          let gamesInBatch = [];
+          filteredResponse.forEach((o) => {
+            gamesInBatch.push(o.event_id);
+          });
           try {
             console.log("Send request...");
 
-            let tx_request = await wrapper.requestGames(
+            console.log("Requesting games: " + gamesInBatch.length);
+            console.log(gamesInBatch);
+            let tx = await wrapper.requestGamesResolveWithFilters(
               jobId,
               market,
               sportIds[j],
-              unixDate
+              unixDate,
+              [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+              gamesInBatch
             );
 
-            await tx_request.wait().then((e) => {
+            await tx.wait().then((e) => {
               console.log("Requested for: " + unixDate);
             });
             requestWasSend = true;

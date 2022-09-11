@@ -485,11 +485,18 @@ async function doPull() {
               try {
                 console.log("Send request...");
 
+                let gameIds = [];
+                if (sportIds[j] == 1) {
+                  gamesOnContract.forEach((g) => {
+                    gameIds.push(bytes32({ input: g }));
+                  });
+                }
+
                 let tx = await wrapper.requestOddsWithFilters(
                   jobId,
                   sportIds[j],
                   unixDate,
-                  [] //ids
+                  gameIds //ids
                 );
 
                 await tx.wait().then((e) => {

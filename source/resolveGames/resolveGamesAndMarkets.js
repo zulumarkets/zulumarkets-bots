@@ -16,6 +16,7 @@ const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
+let ncaaSupportedTeams = require("../createGames/ncaaSupportedTeams.json");
 
 async function doResolve() {
   const queues = new ethers.Contract(
@@ -37,6 +38,7 @@ async function doResolve() {
   );
 
   const EXPECTED_GAME_DURATIN = {
+    1: process.env.EXPECTED_GAME_NFL,
     2: process.env.EXPECTED_GAME_NFL,
     3: process.env.EXPECTED_GAME_MLB,
     4: process.env.EXPECTED_GAME_NBA,
@@ -180,7 +182,23 @@ async function doResolve() {
 
           const gamesListResponse = [];
 
-          response.data.events.forEach((event) => {
+          let filteredResponse = [];
+          if (sportIds[j] == 1) {
+            response.data.events.forEach((o) => {
+              if (o.teams != undefined) {
+                if (
+                  ncaaSupportedTeams.includes(o.teams[0].name) &&
+                  ncaaSupportedTeams.includes(o.teams[1].name)
+                ) {
+                  filteredResponse.push(o);
+                }
+              }
+            });
+          } else {
+            filteredResponse = response.data.events;
+          }
+
+          filteredResponse.forEach((event) => {
             gamesListResponse.push({
               id: event.event_id,
               status: event.score.event_status,
