@@ -82,7 +82,7 @@ async function doPull() {
     10: process.env.ODDS_PERCENTAGE_CHANGE_MLS,
   };
 
-  let americanSports = [2, 3, 4, 6, 10];
+  let americanSports = [1, 2, 3, 4, 6, 10];
   let failedCounter = 0;
 
   console.log("Pulling Odds...");
