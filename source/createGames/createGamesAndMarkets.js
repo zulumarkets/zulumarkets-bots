@@ -265,7 +265,7 @@ async function doCreate() {
     }
   }
 
-  await delay(10000); // wait to be populated
+  await delay(1000 * 60); // wait to be populated
   console.log("Create Markets...");
 
   let firstCreated = await queues.firstCreated();
