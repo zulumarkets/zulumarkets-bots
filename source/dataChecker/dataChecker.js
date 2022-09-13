@@ -373,7 +373,7 @@ async function doIndefinitely() {
     } catch (e) {
       console.log(e);
       sendErrorMessageToDiscord(
-        "Please check creation-bot, error on execution"
+        "Please check data-checker-bot, error on execution"
       );
       // wait next process
       await delay(process.env.DATA_CHECKER_FREQUENCY);
