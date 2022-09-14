@@ -71,6 +71,7 @@ async function doCheck() {
   console.log("Checking Games...");
 
   let processed = false;
+  let requestWasSend = true;
   while (!processed) {
     processed = true;
 
@@ -111,7 +112,6 @@ async function doCheck() {
           if (isSportOnADate && gamesOnContract.length > 0) {
             console.log("Processing sport and date...");
 
-            let sendRequestDataChanged = false;
             let sendRequestNewMarketCreated = false;
 
             const urlBuild =
@@ -151,18 +151,11 @@ async function doCheck() {
               });
             });
 
-            // go over games contract vs API and check data
-            for (let n = 0; n < gamesListResponse.length; n++) {
-              //break if you find one game which data changed
-              if (sendRequestDataChanged) {
-                break;
-              }
+            let gamesToBeProcessed = [];
 
+            // go over games (contract vs API) and check data
+            for (let n = 0; n < gamesListResponse.length; n++) {
               for (let m = 0; m < gamesOnContract.length; m++) {
-                //break if you find one game which data changed
-                if (sendRequestDataChanged) {
-                  break;
-                }
                 // get by ID
                 if (
                   gamesListResponse[n].id ==
@@ -211,7 +204,7 @@ async function doCheck() {
                     console.log("TEAMS not the same!!!");
                     console.log("Afected game: " + gamesListResponse[n].id);
                     if (canMarketBeUpdated && sportIds[j] == 7) {
-                      sendRequestDataChanged = true;
+                      gamesToBeProcessed.push(gamesListResponse[n].id);
                       sendRequestNewMarketCreated = true;
 
                       await sendMessageToDiscordTeamsNotTheSame(
@@ -224,6 +217,7 @@ async function doCheck() {
                         gamesListResponse[n].awayTeam,
                         parseInt(gameStartContract)
                       );
+                      // need to know if some other sport is having this issue so only print to discord
                     } else {
                       await sendMessageToDiscordTeamsNotTheSame(
                         "Game are not the same! This message is only to see if there is any cases outside the UFC",
@@ -244,7 +238,7 @@ async function doCheck() {
                   ) {
                     console.log("Time of a game UPDATED!!!");
                     console.log("Afected game: " + gamesListResponse[n].id);
-                    sendRequestDataChanged = true;
+                    gamesToBeProcessed.push(gamesListResponse[n].id);
                     await sendMessageToDiscordTimeOfAGameHasChanged(
                       "Time of a game/fight has changed!!!",
                       gamesListResponse[n].id,
@@ -259,26 +253,41 @@ async function doCheck() {
               }
             }
 
-            if (sendRequestDataChanged) {
+            if (gamesToBeProcessed.length > 0) {
               try {
                 console.log("Send request to CL...");
 
-                let tx_request = await wrapper.requestGames(
+                let tx_request = await wrapper.requestGamesResolveWithFilters(
                   jobId,
                   market,
                   sportIds[j],
-                  unixDate
+                  unixDate,
+                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                  gamesToBeProcessed
                 );
 
                 await tx_request.wait().then((e) => {
-                  console.log("Requested for: " + unixDate);
+                  console.log(
+                    "Requested for date: " +
+                      unixDate +
+                      ", sportID: " +
+                      sportIds[j] +
+                      ", and games: " +
+                      gamesToBeProcessed
+                  );
                 });
+
+                // this needs to create market -> flag for discord
+                if (sendRequestNewMarketCreated) {
+                  requestWasSend = true;
+                }
               } catch (e) {
                 console.log(e);
                 await sendErrorMessageToDiscordRequestCL(
                   "Request to CL data-checker-bot went wrong! Please check LINK amount on bot, or kill and debug!",
                   sportIds[j],
-                  unixDate
+                  unixDate,
+                  gamesToBeProcessed
                 );
                 failedCounter++;
                 await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -346,7 +355,7 @@ async function doCheck() {
       }
     }
   } else {
-    if (sendRequestDataChanged && sendRequestNewMarketCreated) {
+    if (requestWasSend) {
       console.log("Nothing but request is send!!!!");
       await sendErrorMessageToDiscord(
         "Request was send, team names was changed, but no games created, please check and debug! Stoping bot is mandatory!"
@@ -601,7 +610,8 @@ async function sendMessageToDiscordTeamsNotTheSame(
 async function sendErrorMessageToDiscordRequestCL(
   messageForPrint,
   sportId,
-  dateTimestamp
+  dateTimestamp,
+  games
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
@@ -615,7 +625,13 @@ async function sendErrorMessageToDiscordRequestCL(
       },
       {
         name: ":hammer_pick: Input params:",
-        value: "SportId: " + sportId + ", date (unix date): " + dateTimestamp,
+        value:
+          "SportId: " +
+          sportId +
+          ", date (unix date): " +
+          dateTimestamp +
+          ", and gameIds: " +
+          games,
       },
       {
         name: ":alarm_clock: Timestamp:",
