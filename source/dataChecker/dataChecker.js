@@ -127,6 +127,7 @@ async function doCheck() {
           response.data.events.forEach((event) => {
             gamesListResponse.push({
               id: event.event_id,
+              status: event.score.event_status,
               homeTeam: getTeam(
                 event.teams,
                 event.teams_normalized,
@@ -151,11 +152,14 @@ async function doCheck() {
 
           // go over games (contract vs API) and check data
           for (let n = 0; n < gamesListResponse.length; n++) {
+            console.log("Game status -> " + gamesListResponse[n].status);
+            console.log("Game id (as string): -> " + gamesListResponse[n].id);
             for (let m = 0; m < gamesOnContract.length; m++) {
-              // get by ID
+              // get by ID and only STATUS_SCHEDULED events
               if (
                 gamesListResponse[n].id ==
-                bytes32({ input: gamesOnContract[m] })
+                  bytes32({ input: gamesOnContract[m] }) &&
+                gamesListResponse[n].status == "STATUS_SCHEDULED"
               ) {
                 console.log("Team home API: " + gamesListResponse[n].homeTeam);
                 console.log("Team away API: " + gamesListResponse[n].awayTeam);
