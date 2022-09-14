@@ -178,8 +178,9 @@ async function doCheck() {
                   gamesOnContract[m]
                 );
 
-                let canMarketBeUpdated = false;
-                await consumer.canMarketBeUpdated(marketAddress);
+                let canMarketBeUpdated = await consumer.canMarketBeUpdated(
+                  marketAddress
+                );
                 console.log("Can market be updated: " + canMarketBeUpdated);
 
                 console.log("Game time Contract: " + gameStartContract);
