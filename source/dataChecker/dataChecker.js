@@ -181,7 +181,7 @@ async function doCheck() {
             ) {
               console.log("TEAMS not the same!!!");
               console.log("Afected game: " + gamesListResponse[n].id);
-              if (canMarketBeUpdated && sportIds[j] == 7) {
+              if (sportIds[j] == 7) {
                 gamesToBeProcessed.push(gamesListResponse[n].id);
                 sendRequestNewMarketCreated = true;
 
@@ -211,8 +211,9 @@ async function doCheck() {
 
               // start of a game has changed
             } else if (
+              canMarketBeUpdated &&
               parseInt(gameStartContract) !=
-              parseInt(gamesListResponse[n].gameStartTime)
+                parseInt(gamesListResponse[n].gameStartTime)
             ) {
               console.log("Time of a game UPDATED!!!");
               console.log("Afected game: " + gamesListResponse[n].id);
@@ -229,6 +230,8 @@ async function doCheck() {
             }
           }
         }
+
+        console.log(gamesToBeProcessed);
 
         if (gamesToBeProcessed.length > 0) {
           try {
