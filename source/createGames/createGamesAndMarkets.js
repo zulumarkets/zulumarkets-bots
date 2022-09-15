@@ -229,9 +229,11 @@ async function doCreate() {
 
         if (sendRequestForCreate) {
           let gamesInBatch = [];
-          filteredResponse.forEach((o) => {
-            gamesInBatch.push(o.event_id);
-          });
+          if (sportIds[j] == 1) {
+            filteredResponse.forEach((o) => {
+              gamesInBatch.push(o.event_id);
+            });
+          }
           try {
             console.log("Send request...");
 
@@ -265,7 +267,8 @@ async function doCreate() {
     }
   }
 
-  await delay(10000); // wait to be populated
+  console.log("waiting for queue to populate before Create Markets...");
+  await delay(1000 * 60); // wait to be populated
   console.log("Create Markets...");
 
   let firstCreated = await queues.firstCreated();
