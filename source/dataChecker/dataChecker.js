@@ -70,7 +70,7 @@ async function doCheck() {
 
   console.log("Checking Games...");
 
-  let requestWasSend = true;
+  let requestWasSend = false;
 
   console.log("JOB ID =  " + jobId);
 
