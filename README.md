@@ -87,8 +87,8 @@ volumes:
   ---------------------------
   PRIVATE_KEY=GetItFromMetamask
   WALLET=your wallet address
-  INFURA=27301cd3b3134269bfb2271a79a5beae
-  INFURA_URL=https://optimism-mainnet.infura.io/v3/27301cd3b3134269bfb2271a79a5beae
+  INFURA=getFronIfura
+  INFURA_URL=https://optimism-mainnet.infura.io/v3/getFronIfura
   NETWORK=kovan
   NETWORK_ID=42
   REQUEST_KEY=from rundown api
@@ -165,3 +165,27 @@ After testing it on kovan please check the following
 - RESOLVE_FREQUENCY
 - CREATION_FREQUENCY
   etc.
+
+# ADITIONAL DATA CHECKER BOT
+
+PRIVATE_KEY=GetItFromMetamask
+WALLET=your wallet address
+INFURA=infuraKey
+INFURA_URL=https://optimism-mainnet.infura.io/v3/infuraKey
+NETWORK=YYYYY
+NETWORK_ID=XX
+REQUEST_KEY=from rundown api
+RUNDOWN_BASE_URL=https://therundown-therundown-v1.p.rapidapi.com
+MILISECONDS=1000
+WRAPPER_CONTRACT=getFromDeployments
+GAME_QUEUE_CONTRACT=getFromDeployments
+CONSUMER_CONTRACT=getFromDeployments
+LINK_CONTRACT=getFromOP
+LINK_THRESHOLD=5000000000000000000
+BOT_OVERTIME_DATA_CHECKER=GET_ID
+CREATION_DAYS_INFRONT=7
+JOB_ID_CREATION=5c4b2ebb686b4cb58968ae0a7b5782f6
+MARKET_CREATION=create
+SPORT_IDS=4,10
+DATA_CHECKER_FREQUENCY=time
+CREATE_BATCH=10
