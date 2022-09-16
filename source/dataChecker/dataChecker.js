@@ -211,22 +211,33 @@ async function doCheck() {
 
               // start of a game has changed
             } else if (
-              canMarketBeUpdated &&
               parseInt(gameStartContract) !=
-                parseInt(gamesListResponse[n].gameStartTime)
+              parseInt(gamesListResponse[n].gameStartTime)
             ) {
               console.log("Time of a game UPDATED!!!");
               console.log("Afected game: " + gamesListResponse[n].id);
-              gamesToBeProcessed.push(gamesListResponse[n].id);
-              await sendMessageToDiscordTimeOfAGameHasChanged(
-                "Time of a game/fight has changed!!!",
-                gamesListResponse[n].id,
-                gameIdContract,
-                gameCreatedOnContract[5],
-                gameCreatedOnContract[6],
-                parseInt(gameStartContract),
-                parseInt(gamesListResponse[n].gameStartTime)
-              );
+              if (canMarketBeUpdated) {
+                gamesToBeProcessed.push(gamesListResponse[n].id);
+                await sendMessageToDiscordTimeOfAGameHasChanged(
+                  "Time of a game/fight has changed!!!",
+                  gamesListResponse[n].id,
+                  gameIdContract,
+                  gameCreatedOnContract[5],
+                  gameCreatedOnContract[6],
+                  parseInt(gameStartContract),
+                  parseInt(gamesListResponse[n].gameStartTime)
+                );
+              } else {
+                await sendMessageToDiscordTimeOfAGameHasChanged(
+                  "OLD MARKET! Time of a game/fight has changed!!! NEED MANUAL PAUSE IF GAME DATE IS NOW EARLIER",
+                  gamesListResponse[n].id,
+                  gameIdContract,
+                  gameCreatedOnContract[5],
+                  gameCreatedOnContract[6],
+                  parseInt(gameStartContract),
+                  parseInt(gamesListResponse[n].gameStartTime)
+                );
+              }
             }
           }
         }
