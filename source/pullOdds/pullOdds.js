@@ -171,7 +171,7 @@ async function doPull() {
                   americanSports,
                   sportIds[j]
                 ),
-                status: event.score.event_status,
+                status: checkIfUndefined(event.score),
                 homeOdd: getOdds(
                   event.lines,
                   1,
@@ -974,6 +974,13 @@ function getTeam(teams, teamsN, number, americanSports, sport) {
     return teams[number].name;
   }
   return "TBD TBD"; // count as TBD
+}
+
+function checkIfUndefined(eventScore) {
+  if (eventScore && eventScore.event_status) {
+    return eventScore.event_status;
+  }
+  return "STATUS_UNKNOWN";
 }
 
 function isAmericanSport(americanSports, sport) {

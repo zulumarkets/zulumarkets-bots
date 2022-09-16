@@ -113,7 +113,7 @@ async function doCheck() {
         response.data.events.forEach((event) => {
           gamesListResponse.push({
             id: event.event_id,
-            status: event.score.event_status,
+            status: checkIfUndefined(event.score),
             homeTeam: getTeam(
               event.teams,
               event.teams_normalized,
@@ -385,6 +385,13 @@ function getTeam(teams, teamsN, isHome, americanSports, sport) {
     return teams[returnIndex(teams, isHome)].name;
   }
   return "TBD TBD"; // count as TBD
+}
+
+function checkIfUndefined(eventScore) {
+  if (eventScore && eventScore.event_status) {
+    return eventScore.event_status;
+  }
+  return "STATUS_UNKNOWN";
 }
 
 function returnIndex(team, isHome) {
