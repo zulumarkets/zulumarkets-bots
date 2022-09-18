@@ -67,6 +67,8 @@ async function doCreate() {
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
 
+  let americanSports = [1, 2, 3, 4, 6, 10];
+
   const primaryBookmaker = process.env.PRIMARY_ODDS_BOOKMAKER;
   const useBackupBookmaker = process.env.USE_BACKUP_ODDS_BOOKMAKER === "true";
   const backupBookmaker = process.env.BACKUP_ODDS_BOOKMAKER;
@@ -140,8 +142,20 @@ async function doCreate() {
         filteredResponse.forEach((event) => {
           gamesListResponse.push({
             id: event.event_id,
-            homeTeam: getTeam(event.teams, event.teams_normalized, 1),
-            awayTeam: getTeam(event.teams, event.teams_normalized, 0),
+            homeTeam: getTeam(
+              event.teams,
+              event.teams_normalized,
+              true,
+              americanSports,
+              sportIds[j]
+            ),
+            awayTeam: getTeam(
+              event.teams,
+              event.teams_normalized,
+              false,
+              americanSports,
+              sportIds[j]
+            ),
             homeOdd: getOdds(
               event.lines,
               1,
@@ -176,15 +190,43 @@ async function doCreate() {
             dateConverter(unixDateMiliseconds)
         );
 
-        if (gamesListResponse.length > 15) {
-          continue;
-        }
-
         for (let n = 0; n < gamesListResponse.length; n++) {
           let isGameAlreadyFullFilled = await consumer.gameFulfilledCreated(
             bytes32({ input: gamesListResponse[n].id })
           );
           // if game is not fullfilled and not TBD awayTeam and homeTeam send request
+
+          console.log(
+            "Game: " +
+              gamesListResponse[n].homeTeam +
+              " vs " +
+              gamesListResponse[n].awayTeam
+          );
+          console.log(
+            "Game: " +
+              bytes32({ input: gamesListResponse[n].id }) +
+              " fullfilled: " +
+              isGameAlreadyFullFilled
+          );
+          console.log(
+            "homeOdd Pinnacle: " +
+              gamesListResponse[n].homeOdd +
+              " id: " +
+              gamesListResponse[n].id
+          );
+          console.log(
+            "awayOdd Pinnacle: " +
+              gamesListResponse[n].awayOdd +
+              " id: " +
+              gamesListResponse[n].id
+          );
+          console.log(
+            "drawOdd Pinnacle: " +
+              gamesListResponse[n].drawOdd +
+              " id: " +
+              gamesListResponse[n].id
+          );
+
           if (
             !isGameAlreadyFullFilled &&
             gamesListResponse[n].awayTeam != "TBD TBD" &&
@@ -197,31 +239,6 @@ async function doCreate() {
               (gamesListResponse[n].drawOdd != 0.01 &&
                 gamesListResponse[n].drawOdd != 0))
           ) {
-            console.log(
-              "Game: " +
-                bytes32({ input: gamesListResponse[n].id }) +
-                " fullfilled: " +
-                isGameAlreadyFullFilled
-            );
-            console.log(
-              "homeOdd Pinnacle: " +
-                gamesListResponse[n].homeOdd +
-                " id: " +
-                gamesListResponse[n].id
-            );
-            console.log(
-              "awayOdd Pinnacle: " +
-                gamesListResponse[n].awayOdd +
-                " id: " +
-                gamesListResponse[n].id
-            );
-            console.log(
-              "drawOdd Pinnacle: " +
-                gamesListResponse[n].drawOdd +
-                " id: " +
-                gamesListResponse[n].id
-            );
-
             sendRequestForCreate = true;
             break;
           }
@@ -360,13 +377,37 @@ async function doIndefinitely() {
 
 doIndefinitely();
 
-function getTeam(teams, teamsN, number) {
+function getTeam(teams, teamsN, isHome, americanSports, sport) {
   if (typeof teamsN != "undefined" && teamsN.length > 1) {
-    return teamsN[number].name + " " + teamsN[number].mascot;
+    if (isAmericanSport(americanSports, sport)) {
+      return (
+        teamsN[returnIndex(teamsN, isHome)].name +
+        " " +
+        teamsN[returnIndex(teamsN, isHome)].mascot
+      );
+    } else {
+      return teamsN[returnIndex(teamsN, isHome)].name;
+    }
   } else if (typeof teams != "undefined" && teams.length > 1) {
-    return teams[number].name;
+    return teams[returnIndex(teams, isHome)].name;
   }
   return "TBD TBD"; // count as TBD
+}
+
+function isAmericanSport(americanSports, sport) {
+  for (let j = 0; j < americanSports.length; j++) {
+    if (americanSports[j] == sport) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function returnIndex(team, isHome) {
+  if (team[1].is_home === isHome) {
+    return 1;
+  }
+  return 0;
 }
 
 function getOdds(
