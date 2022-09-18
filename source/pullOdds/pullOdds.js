@@ -160,14 +160,14 @@ async function doPull() {
                 homeTeam: getTeam(
                   event.teams,
                   event.teams_normalized,
-                  1,
+                  true,
                   americanSports,
                   sportIds[j]
                 ),
                 awayTeam: getTeam(
                   event.teams,
                   event.teams_normalized,
-                  0,
+                  false,
                   americanSports,
                   sportIds[j]
                 ),
@@ -963,15 +963,19 @@ function getPercentageChange(oldNumber, newNumber, percentage) {
   }
 }
 
-function getTeam(teams, teamsN, number, americanSports, sport) {
+function getTeam(teams, teamsN, isHome, americanSports, sport) {
   if (typeof teamsN != "undefined" && teamsN.length > 1) {
     if (isAmericanSport(americanSports, sport)) {
-      return teamsN[number].name + " " + teamsN[number].mascot;
+      return (
+        teamsN[returnIndex(teamsN, isHome)].name +
+        " " +
+        teamsN[returnIndex(teamsN, isHome)].mascot
+      );
     } else {
-      return teamsN[number].name;
+      return teamsN[returnIndex(teamsN, isHome)].name;
     }
   } else if (typeof teams != "undefined" && teams.length > 1) {
-    return teams[number].name;
+    return teams[returnIndex(teams, isHome)].name;
   }
   return "TBD TBD"; // count as TBD
 }
@@ -990,6 +994,13 @@ function isAmericanSport(americanSports, sport) {
     }
   }
   return false;
+}
+
+function returnIndex(team, isHome) {
+  if (team[1].is_home === isHome) {
+    return 1;
+  }
+  return 0;
 }
 
 function isGameInRightStatus(statuses, status) {
