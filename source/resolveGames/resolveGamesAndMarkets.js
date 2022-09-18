@@ -135,6 +135,7 @@ async function doResolve() {
           if (sendAPIrequest) {
             break;
           }
+          console.log("GAME: " + gamesOnContract[z]);
 
           let gameStart = await queues.gameStartPerGameId(gamesOnContract[z]);
           console.log("GAME start: " + gameStart);
@@ -155,6 +156,10 @@ async function doResolve() {
 
           let isGameResultAlreadyFulfilled =
             await consumer.gameFulfilledResolved(gamesOnContract[z]);
+
+          console.log(
+            "isGameResultAlreadyFulfilled: " + isGameResultAlreadyFulfilled
+          );
 
           if (
             expectedTimeToProcessInMiliseconds < timeInMiliseconds &&
@@ -201,38 +206,42 @@ async function doResolve() {
           filteredResponse.forEach((event) => {
             gamesListResponse.push({
               id: event.event_id,
-              status: event.score.event_status,
+              status: checkIfUndefined(event.score),
               updatedAt: event.score.updated_at,
             });
           });
 
           // iterate over games on contract and API
           for (let n = 0; n < gamesListResponse.length; n++) {
-            for (let m = 0; m < gamesOnContract.length; m++) {
-              // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
-              let isGameResultAlreadyFulfilledInner =
-                await consumer.gameFulfilledResolved(gamesOnContract[m]);
-              if (
-                gamesListResponse[n].id ==
-                  bytes32({ input: gamesOnContract[m] }) &&
-                (isGameInRightStatus(
-                  cancelStatuses,
+            let gameIdContract = bytes32({ input: gamesListResponse[n].id });
+            console.log("Game id (on contract): -> " + gameIdContract);
+            console.log("Game id API: " + gamesListResponse[n].id);
+            // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
+            let isGameResultAlreadyFulfilledInner =
+              await consumer.gameFulfilledResolved(gameIdContract);
+            console.log("Status: " + gamesListResponse[n].status);
+            console.log("UpdatedAt: " + gamesListResponse[n].updatedAt);
+            if (
+              (isGameInRightStatus(
+                cancelStatuses,
+                gamesListResponse[n].status
+              ) ||
+                isGameInRightStatus(
+                  resolvedStatuses,
                   gamesListResponse[n].status
-                ) ||
-                  isGameInRightStatus(
-                    resolvedStatuses,
-                    gamesListResponse[n].status
-                  )) &&
-                scoreUpdatedAtCheck(
-                  timeInMiliseconds,
-                  gamesListResponse[n].updatedAt
-                ) &&
-                !isGameResultAlreadyFulfilledInner
-              ) {
-                gameIds.push(gamesListResponse[n].id);
-              }
+                )) &&
+              scoreUpdatedAtCheck(
+                timeInMiliseconds,
+                gamesListResponse[n].updatedAt
+              ) &&
+              !isGameResultAlreadyFulfilledInner
+            ) {
+              gameIds.push(gamesListResponse[n].id);
             }
           }
+
+          console.log("Game to be processed....");
+          console.log(gameIds);
 
           if (gameIds.length > 0) {
             try {
@@ -562,6 +571,13 @@ function scoreUpdatedAtCheck(currentTime, updatedAt) {
     parseInt(Date.parse(updatedAt)) + parseInt(30 * 60 * 1000) <
     parseInt(currentTime)
   );
+}
+
+function checkIfUndefined(eventScore) {
+  if (eventScore && eventScore.event_status) {
+    return eventScore.event_status;
+  }
+  return "STATUS_UNKNOWN";
 }
 
 function getSecondsToDate(dateFrom) {
