@@ -192,8 +192,8 @@ async function doResolve() {
             response.data.events.forEach((o) => {
               if (o.teams != undefined) {
                 if (
-                  ncaaSupportedTeams.includes(o.teams[0].name) &&
-                  ncaaSupportedTeams.includes(o.teams[1].name)
+                  ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
+                  ncaaSupportedTeams.includes(o.teams_normalized[1].name)
                 ) {
                   filteredResponse.push(o);
                 }
