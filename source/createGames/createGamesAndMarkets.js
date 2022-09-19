@@ -100,8 +100,13 @@ async function doCreate() {
         let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
         console.log("Unix date in miliseconds: " + unixDateMiliseconds);
 
-        const dayOfWeekDigit = new Date(parseInt(unixDate) * 1000).getDay();
+        const dayOfWeekDigit = new Date(parseInt(unixDateMiliseconds)).getDay();
         console.log("Day of week: " + dayOfWeekDigit);
+
+        if (sportIds[j] == 7 && dayOfWeekDigit != 0 && dayOfWeekDigit != 6) {
+          console.log("Skiping UFC fights if not weekend fights!");
+          continue;
+        }
 
         let sendRequestForCreate = false;
 
