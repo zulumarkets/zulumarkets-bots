@@ -68,6 +68,14 @@ async function doCreate() {
   let sportIds = process.env.SPORT_IDS.split(",");
 
   let americanSports = [1, 2, 3, 4, 6, 10];
+  let invalidNames = [
+    "TBD",
+    "TBD TBD",
+    "TBA",
+    "TBA TBA",
+    "Opponent TBA",
+    "Opponent TBA TBA",
+  ];
 
   const primaryBookmaker = process.env.PRIMARY_ODDS_BOOKMAKER;
   const useBackupBookmaker = process.env.USE_BACKUP_ODDS_BOOKMAKER === "true";
@@ -131,10 +139,49 @@ async function doCreate() {
         let filteredResponse = [];
         if (sportIds[j] == 1) {
           response.data.events.forEach((o) => {
-            if (o.teams != undefined) {
+            if (o.teams_normalized != undefined) {
               if (
                 ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
                 ncaaSupportedTeams.includes(o.teams_normalized[1].name)
+              ) {
+                filteredResponse.push(o);
+              }
+            }
+          });
+        } else if (sportIds[j] == 7) {
+          console.log("Filter out UFC fights only!");
+          const scheduleListResponse = [];
+
+          const urlBuildSchedule =
+            baseUrl + "/sports/" + sportIds[j] + "/schedule";
+          let responseSchedule = await axios.get(urlBuildSchedule, {
+            headers: {
+              "X-RapidAPI-Key": process.env.REQUEST_KEY,
+            },
+          });
+
+          responseSchedule.data.schedules.forEach((schedule) => {
+            scheduleListResponse.push({
+              id: schedule.event_id,
+              leagueName: schedule.league_name,
+            });
+          });
+
+          console.log(
+            "Schedule endpoint fetch number of elements: " +
+              scheduleListResponse.length
+          );
+
+          response.data.events.forEach((o) => {
+            for (let n = 0; n < scheduleListResponse.length; n++) {
+              if (
+                scheduleListResponse[n].id == o.event_id &&
+                scheduleListResponse[n].leagueName ==
+                  "Ultimate Fighting Championship" &&
+                o.score.event_status == "STATUS_SCHEDULED" &&
+                o.teams_normalized != undefined &&
+                !isNameInalid(invalidNames, o.teams_normalized[0].name) &&
+                !isNameInalid(invalidNames, o.teams_normalized[1].name)
               ) {
                 filteredResponse.push(o);
               }
@@ -195,6 +242,8 @@ async function doCreate() {
             dateConverter(unixDateMiliseconds)
         );
 
+        console.log(gamesListResponse);
+
         for (let n = 0; n < gamesListResponse.length; n++) {
           let isGameAlreadyFullFilled = await consumer.gameFulfilledCreated(
             bytes32({ input: gamesListResponse[n].id })
@@ -234,15 +283,12 @@ async function doCreate() {
 
           if (
             !isGameAlreadyFullFilled &&
-            gamesListResponse[n].awayTeam != "TBD TBD" &&
-            gamesListResponse[n].homeTeam != "TBD TBD" &&
-            gamesListResponse[n].homeOdd != 0.01 &&
-            gamesListResponse[n].awayOdd != 0.01 &&
-            gamesListResponse[n].homeOdd != 0 &&
-            gamesListResponse[n].awayOdd != 0 &&
+            !isNameInalid(invalidNames, gamesListResponse[n].awayTeam) &&
+            !isNameInalid(invalidNames, gamesListResponse[n].homeTeam) &&
+            isOddValid(gamesListResponse[n].homeOdd) &&
+            isOddValid(gamesListResponse[n].awayOdd) &&
             (isSportTwoPositionsSport ||
-              (gamesListResponse[n].drawOdd != 0.01 &&
-                gamesListResponse[n].drawOdd != 0))
+              isOddValid(gamesListResponse[n].drawOdd))
           ) {
             sendRequestForCreate = true;
             break;
@@ -251,7 +297,7 @@ async function doCreate() {
 
         if (sendRequestForCreate) {
           let gamesInBatch = [];
-          if (sportIds[j] == 1) {
+          if (sportIds[j] == 1 && sportIds[j] == 7) {
             filteredResponse.forEach((o) => {
               gamesInBatch.push(o.event_id);
             });
@@ -406,6 +452,20 @@ function isAmericanSport(americanSports, sport) {
     }
   }
   return false;
+}
+
+function isNameInalid(invalidNames, name) {
+  for (let j = 0; j < invalidNames.length; j++) {
+    if (invalidNames[j] == name) {
+      console.log("Invalid name! Name: " + name);
+      return true;
+    }
+  }
+  return false;
+}
+
+function isOddValid(odd) {
+  return odd != 0.01 && odd != 0;
 }
 
 function returnIndex(team, isHome) {
