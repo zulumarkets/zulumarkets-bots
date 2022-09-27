@@ -7,7 +7,7 @@ node source/pullOdds/pullOdds.js
 APEX scripts:
 
 -   **CREATE RACE**
-    node .\source\apex\createRaces.js formula1
+    node .\source\apex\createRace.js formula1
 
 Parameters:
 

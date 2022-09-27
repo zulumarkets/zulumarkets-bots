@@ -109,6 +109,15 @@ async function doCreate() {
                 );
                 process.exit(1);
             }
+            let oldHomeOdds = 0;
+            let oldAwayOdds = 0;
+            let oldArePostQualifyingOddsFetched = false;
+            if (gameFulfilledCreated) {
+                const gameOdds = await consumer.gameOdds(gameId);
+                oldHomeOdds = gameOdds.homeOdds;
+                oldAwayOdds = gameOdds.awayOdds;
+                oldArePostQualifyingOddsFetched = gameOdds.arePostQualifyingOddsFetched;
+            }
 
             if (!skipMatchupRequest) {
                 console.log(`Sending matchup request for game #${i}...`);
@@ -127,9 +136,18 @@ async function doCreate() {
             console.log("-------------------------------------------------");
             if (gameFulfilledCreated) {
                 const gameCreated = await consumer.gameCreated(gameId);
+                const gameOdds = await consumer.gameOdds(gameId);
                 console.log(`GAME INFO: `);
                 console.log(`* matchup: ${gameCreated.homeTeam} vs ${gameCreated.awayTeam}`);
-                console.log(`* odds: ${gameCreated.homeOdds} vs ${gameCreated.awayOdds}`);
+                if ((qualifyingStatus === "pre" && updateOddsOnly) || qualifyingStatus === "post") {
+                    console.log(`* old odds: ${oldHomeOdds} vs ${oldAwayOdds}`);
+                    console.log(`* new odds: ${gameOdds.homeOdds} vs ${gameOdds.awayOdds}`);
+                    console.log(`* old odds type: ${oldArePostQualifyingOddsFetched ? "post" : "pre"}`);
+                    console.log(`* new odds type: ${gameOdds.arePostQualifyingOddsFetched ? "post" : "pre"}`);
+                } else {
+                    console.log(`* odds: ${gameOdds.homeOdds} vs ${gameOdds.awayOdds}`);
+                    console.log(`* odds type: ${gameOdds.arePostQualifyingOddsFetched ? "post" : "pre"}`);
+                }
                 console.log(`* start time: ${dateConverter(gameCreated.startTime * 1000)} (UTC)`);
 
                 const today = new Date().getTime();
@@ -139,7 +157,7 @@ async function doCreate() {
                             gameCreated.startTime * 1000
                         )} (UTC) is in the past! Stopping script... Check game data and try again.`
                     );
-                    // process.exit(1);
+                    process.exit(1);
                 }
 
                 if (qualifyingStatus === "pre" && !updateOddsOnly) {
