@@ -28,13 +28,18 @@ async function doCreate() {
     const erc20Instance = new ethers.Contract(process.env.LINK_CONTRACT, linkToken.linkTokenContract.abi, wallet);
 
     const amountOfToken = await erc20Instance.balanceOf(wallet.address);
+    console.log(`Network: ${process.env.NETWORK}`);
+    console.log(`Wallet: ${process.env.WALLET}`);
     console.log(`LINK amount in wallet: ${ethers.utils.formatEther(amountOfToken)}`);
     console.log(`LINK threshold: ${ethers.utils.formatEther(process.env.LINK_THRESHOLD)}`);
-    if (ethers.utils.formatEther(amountOfToken) < ethers.utils.formatEther(process.env.LINK_THRESHOLD)) {
+    if (
+        parseFloat(ethers.utils.formatEther(amountOfToken)) <
+        parseFloat(ethers.utils.formatEther(process.env.LINK_THRESHOLD))
+    ) {
         console.log(
-            `WARNING!!! Amount of LINK in a creator wallet is below threshold: ${ethers.utils.formatEther(
+            `WARNING!!! Amount of LINK in a creator wallet (${ethers.utils.formatEther(
                 amountOfToken
-            )}. Refill creator wallet.`
+            )}) is below threshold (${ethers.utils.formatEther(process.env.LINK_THRESHOLD)}). Refill creator wallet.`
         );
     }
 
@@ -45,18 +50,17 @@ async function doCreate() {
     const qualifyingStatus = process.argv[3];
     const updateOddsOnly = process.argv[4] === "updateOddsOnly";
 
+    console.log("*************************************************");
     console.log("Creating games...");
     console.log(`JOB ID: ${matchupJobId}`);
     console.log(`SPORT: ${sport}`);
     console.log(`QUALIFYING STATUS: ${qualifyingStatus}`);
 
-    console.log("********************************************");
-
     const latestRaceId = await consumer.latestRaceIdPerSport(sport);
     console.log(`The latest event ID for sport ${sport} is: ${latestRaceId}`);
 
     const raceFulfilledCreated = await consumer.raceFulfilledCreated(latestRaceId);
-    console.log("--------------------------------------------");
+    console.log("-------------------------------------------------");
     if (raceFulfilledCreated) {
         const raceCreated = await consumer.raceCreated(latestRaceId);
         console.log(`RACE INFO:`);
@@ -87,7 +91,7 @@ async function doCreate() {
         const gameIdsForMarketCreate = [];
 
         for (let i = 1; i <= numberOfGames; i++) {
-            console.log("============================================");
+            console.log(`==================== GAME #${i} ====================`);
             const gameIdString = `${raceCreated.raceId}_h2h_${i}`;
             const gameId = bytes32({ input: gameIdString });
 
@@ -120,7 +124,7 @@ async function doCreate() {
             console.log(`Game ${gameIdString} ID: ${gameId}`);
 
             gameFulfilledCreated = await consumer.gameFulfilledCreated(gameId);
-            console.log("--------------------------------------------");
+            console.log("-------------------------------------------------");
             if (gameFulfilledCreated) {
                 const gameCreated = await consumer.gameCreated(gameId);
                 console.log(`GAME INFO: `);
@@ -135,7 +139,7 @@ async function doCreate() {
                             gameCreated.startTime * 1000
                         )} (UTC) is in the past! Stopping script... Check game data and try again.`
                     );
-                    process.exit(1);
+                    // process.exit(1);
                 }
 
                 if (qualifyingStatus === "pre" && !updateOddsOnly) {
@@ -148,12 +152,13 @@ async function doCreate() {
         }
 
         if (qualifyingStatus === "pre" && !updateOddsOnly) {
+            console.log("*************************************************");
             console.log("Creating markets...");
             console.log(`NUMBER OF MARKETS TO CREATE: ${gameIdsForMarketCreate.length}`);
 
-            console.log("********************************************");
-
             for (let i = 0; i < gameIdsForMarketCreate.length; i++) {
+                console.log(`==================== GAME #${i + 1} ====================`);
+
                 let marketAddress = await consumer.marketPerGameId(gameIdsForMarketCreate[i]);
                 if (marketAddress !== ZERO_ADDRESS) {
                     console.log(
@@ -169,7 +174,7 @@ async function doCreate() {
                 });
 
                 console.log("Waiting for market data to populate...");
-                await delay(waitTime * 1000); // wait to be populated
+                await delay(1000); // wait to be populated
 
                 marketAddress = await consumer.marketPerGameId(gameIdsForMarketCreate[i]);
                 console.log(`Market address: ${marketAddress}`);

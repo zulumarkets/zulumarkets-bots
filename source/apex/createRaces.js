@@ -25,13 +25,18 @@ async function doCreate() {
     const erc20Instance = new ethers.Contract(process.env.LINK_CONTRACT, linkToken.linkTokenContract.abi, wallet);
 
     const amountOfToken = await erc20Instance.balanceOf(wallet.address);
+    console.log(`Network: ${process.env.NETWORK}`);
+    console.log(`Wallet: ${process.env.WALLET}`);
     console.log(`LINK amount in wallet: ${ethers.utils.formatEther(amountOfToken)}`);
     console.log(`LINK threshold: ${ethers.utils.formatEther(process.env.LINK_THRESHOLD)}`);
-    if (ethers.utils.formatEther(amountOfToken) < ethers.utils.formatEther(process.env.LINK_THRESHOLD)) {
+    if (
+        parseFloat(ethers.utils.formatEther(amountOfToken)) <
+        parseFloat(ethers.utils.formatEther(process.env.LINK_THRESHOLD))
+    ) {
         console.log(
-            `WARNING!!! Amount of LINK in a creator wallet is below threshold: ${ethers.utils.formatEther(
+            `WARNING!!! Amount of LINK in a creator wallet (${ethers.utils.formatEther(
                 amountOfToken
-            )}. Refill creator wallet.`
+            )}) is below threshold (${ethers.utils.formatEther(process.env.LINK_THRESHOLD)}). Refill creator wallet.`
         );
     }
 
@@ -39,11 +44,11 @@ async function doCreate() {
     const waitTime = parseInt(process.env.APEX_WAIT_TIME);
     const sport = process.argv[2];
 
+    console.log("*************************************************");
     console.log("Creating race...");
     console.log(`JOB ID: ${metdataJobId}`);
     console.log(`SPORT: ${sport}`);
-
-    console.log("********************************************");
+    console.log(`==================== SPORT ${sport} ====================`);
     console.log(`Sending metadata request for ${sport}...`);
     const tx = await wrapper.requestMetaData(sport);
 
@@ -58,7 +63,7 @@ async function doCreate() {
     console.log(`The latest event ID for sport ${sport} is: ${latestRaceId}`);
 
     const raceFulfilledCreated = await consumer.raceFulfilledCreated(latestRaceId);
-    console.log("--------------------------------------------");
+    console.log("-------------------------------------------------");
     if (raceFulfilledCreated) {
         const raceCreated = await consumer.raceCreated(latestRaceId);
         console.log(`RACE INFO:`);
