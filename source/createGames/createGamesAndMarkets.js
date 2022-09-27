@@ -307,19 +307,56 @@ async function doCreate() {
 
             console.log("Requesting games: " + gamesInBatch.length);
             console.log(gamesInBatch);
-            let tx = await wrapper.requestGamesResolveWithFilters(
-              jobId,
-              market,
-              sportIds[j],
-              unixDate,
-              [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-              gamesInBatch
-            );
+            if (gamesInBatch.length > process.env.CL_CREATE_BATCH) {
+              let gamesInBatchforCL = [];
+              for (let i = 0; i < gamesInBatch.length; i++) {
+                gamesInBatchforCL.push(gamesInBatch[i]);
+                if (
+                  (gamesInBatchforCL.length > 0 &&
+                    gamesInBatchforCL.length % process.env.CL_CREATE_BATCH ==
+                      0) ||
+                  gamesInBatch.length - 1 == i // last one
+                ) {
+                  console.log("Batch...");
+                  console.log(gamesInBatchforCL);
 
-            await tx.wait().then((e) => {
-              console.log("Requested for: " + unixDate);
-            });
-            requestWasSend = true;
+                  let tx = await wrapper.requestGamesResolveWithFilters(
+                    jobId,
+                    market,
+                    sportIds[j],
+                    unixDate,
+                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                    gamesInBatchforCL
+                  );
+
+                  await tx.wait().then((e) => {
+                    console.log(
+                      "Requested for: " +
+                        unixDate +
+                        " with game id: " +
+                        gamesInBatchforCL
+                    );
+                  });
+                  requestWasSend = true;
+                  gamesInBatchforCL = [];
+                  await delay(5000);
+                }
+              }
+            } else {
+              let tx = await wrapper.requestGamesResolveWithFilters(
+                jobId,
+                market,
+                sportIds[j],
+                unixDate,
+                [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                gamesInBatch
+              );
+
+              await tx.wait().then((e) => {
+                console.log("Requested for: " + unixDate);
+              });
+              requestWasSend = true;
+            }
           } catch (e) {
             console.log(e);
             await sendErrorMessageToDiscordRequestCL(
