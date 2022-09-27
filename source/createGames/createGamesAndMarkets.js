@@ -297,7 +297,7 @@ async function doCreate() {
 
         if (sendRequestForCreate) {
           let gamesInBatch = [];
-          if (sportIds[j] == 1 && sportIds[j] == 7) {
+          if (sportIds[j] == 1 || sportIds[j] == 7) {
             filteredResponse.forEach((o) => {
               gamesInBatch.push(o.event_id);
             });
