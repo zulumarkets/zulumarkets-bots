@@ -161,9 +161,18 @@ async function doResolve() {
             "isGameResultAlreadyFulfilled: " + isGameResultAlreadyFulfilled
           );
 
+          let marketPerGameId = await consumer.marketPerGameId(
+            gamesOnContract[z]
+          );
+          console.log("marketPerGameId: " + marketPerGameId);
+
+          let marketCreated = await consumer.marketCreated(marketPerGameId);
+          console.log("marketCreated: " + marketCreated);
+
           if (
             expectedTimeToProcessInMiliseconds < timeInMiliseconds &&
-            !isGameResultAlreadyFulfilled
+            !isGameResultAlreadyFulfilled &&
+            marketCreated
           ) {
             sendAPIrequest = true;
           }
