@@ -299,8 +299,6 @@ async function doResolve() {
                     requestWasSend = true;
                     gamesInBatch = [];
                     await delay(5000);
-                  } else {
-                    gamesInBatch.push(gameIds[i]);
                   }
                 }
               }
