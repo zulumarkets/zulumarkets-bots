@@ -40,13 +40,11 @@ async function doCreate() {
         );
     }
 
-    const metdataJobId = process.env.APEX_JOB_ID_REQUEST_METADATA;
     const waitTime = parseInt(process.env.APEX_WAIT_TIME);
     const sport = process.argv[2];
 
     console.log("*************************************************");
     console.log("Creating race...");
-    console.log(`JOB ID: ${metdataJobId}`);
     console.log(`SPORT: ${sport}`);
     console.log(`==================== SPORT ${sport} ====================`);
     console.log(`Sending metadata request for ${sport}...`);
@@ -74,7 +72,7 @@ async function doCreate() {
         console.log(`* start time: ${dateConverter(raceCreated.startTime * 1000)} (UTC)`);
 
         const today = new Date().getTime();
-        if (raceCreated.startTime * 1000 < today) {
+        if (raceCreated.qualifyingStartTime * 1000 < today) {
             console.log(
                 `WARNING - WRONG DATA!!! The race qualifying start time: ${dateConverter(
                     raceCreated.qualifyingStartTime * 1000
@@ -89,11 +87,11 @@ async function doCreate() {
             );
         }
     } else {
-        console.log(`WARNING - MISSING RACE DATA!!! The race info is missing! Check race data and try again.`);
+        console.log(`Race ${latestRaceId} not created! Check data and try again.`);
     }
 }
 
-async function createRaces() {
+async function createRace() {
     await allowances.checkAllowanceAndAllow(process.env.LINK_CONTRACT, process.env.APEX_CONSUMER_WRAPPER_CONTRACT);
     try {
         if (process.argv[2] !== "formula1" && process.argv[2] !== "motogp") {
@@ -109,7 +107,7 @@ async function createRaces() {
     }
 }
 
-createRaces();
+createRace();
 
 function dateConverter(UNIXTimestamp) {
     var date = new Date(UNIXTimestamp);

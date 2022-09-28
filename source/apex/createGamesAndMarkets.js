@@ -43,7 +43,6 @@ async function doCreate() {
         );
     }
 
-    const matchupJobId = process.env.APEX_JOB_ID_REQUEST_MATCHUP;
     const numberOfGames = process.env.APEX_NUMBER_OF_GAMES;
     const waitTime = parseInt(process.env.APEX_WAIT_TIME);
     const sport = process.argv[2];
@@ -52,7 +51,6 @@ async function doCreate() {
 
     console.log("*************************************************");
     console.log("Creating games...");
-    console.log(`JOB ID: ${matchupJobId}`);
     console.log(`SPORT: ${sport}`);
     console.log(`QUALIFYING STATUS: ${qualifyingStatus}`);
 
@@ -71,7 +69,7 @@ async function doCreate() {
         console.log(`* start time: ${dateConverter(raceCreated.startTime * 1000)} (UTC)`);
 
         const today = new Date().getTime();
-        if (raceCreated.startTime * 1000 < today) {
+        if (raceCreated.qualifyingStartTime * 1000 < today) {
             console.log(
                 `ERROR - WRONG DATA!!! The race qualifying start time: ${dateConverter(
                     raceCreated.qualifyingStartTime * 1000
@@ -99,13 +97,13 @@ async function doCreate() {
             let gameFulfilledCreated = await consumer.gameFulfilledCreated(gameId);
             if (gameFulfilledCreated && qualifyingStatus === "pre" && !updateOddsOnly) {
                 console.log(
-                    `Game ${gameId} already fullfilled! Skipping matchup request for 'pre' qualifying status... Call script with 'pre' qualifying status and 'updateOddsOnly' flag to update odds.`
+                    `Game ${gameId} already created! Skipping matchup request for 'pre' qualifying status... Call script with 'pre' qualifying status and 'updateOddsOnly' flag to update odds.`
                 );
                 skipMatchupRequest = true;
             }
             if (!gameFulfilledCreated && qualifyingStatus === "post") {
                 console.log(
-                    `Game ${gameId} not fullfilled! It is required for 'post' qualifying status. Stopping script... Check data and try again.`
+                    `Game ${gameId} not created! It is required for 'post' qualifying status. Stopping script... Check data and try again.`
                 );
                 process.exit(1);
             }
@@ -126,7 +124,7 @@ async function doCreate() {
                     console.log(`Requested matchup data for game #${i}`);
                 });
 
-                console.log("Waiting for race metadata to populate...");
+                console.log("Waiting for game metadata to populate...");
                 await delay(waitTime * 1000); // wait to be populated
             }
 
@@ -164,7 +162,7 @@ async function doCreate() {
                     gameIdsForMarketCreate.push(gameId);
                 }
             } else {
-                console.log(`Game ${gameId} not fullfilled! Stopping script... Check data and try again.`);
+                console.log(`Game ${gameId} not created! Stopping script... Check data and try again.`);
                 process.exit(1);
             }
         }
@@ -203,7 +201,7 @@ async function doCreate() {
     }
 }
 
-async function createGames() {
+async function createGamesAndMarkets() {
     await allowances.checkAllowanceAndAllow(process.env.LINK_CONTRACT, process.env.APEX_CONSUMER_WRAPPER_CONTRACT);
     try {
         if (process.argv[2] !== "formula1" && process.argv[2] !== "motogp") {
@@ -221,7 +219,7 @@ async function createGames() {
     }
 }
 
-createGames();
+createGamesAndMarkets();
 
 function dateConverter(UNIXTimestamp) {
     var date = new Date(UNIXTimestamp);
