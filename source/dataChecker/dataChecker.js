@@ -292,68 +292,68 @@ async function doCheck() {
 
   console.log("Create New Markets...");
 
-  let firstCreated = await queues.firstCreated();
-  console.log("Start:  " + firstCreated);
-  let lastCreated = await queues.lastCreated();
-  console.log("End:  " + lastCreated);
+  if (requestWasSend) {
+    let firstCreated = await queues.firstCreated();
+    console.log("Start:  " + firstCreated);
+    let lastCreated = await queues.lastCreated();
+    console.log("End:  " + lastCreated);
 
-  // there is new elements in queue
-  if (parseInt(firstCreated) <= parseInt(lastCreated)) {
-    console.log("Processing...");
-    let gameIds = [];
-    for (let i = parseInt(firstCreated); i <= parseInt(lastCreated); i++) {
-      console.log("Process game from queue:  " + i);
+    // there is new elements in queue
+    if (parseInt(firstCreated) <= parseInt(lastCreated)) {
+      console.log("Processing...");
+      let gameIds = [];
+      for (let i = parseInt(firstCreated); i <= parseInt(lastCreated); i++) {
+        console.log("Process game from queue:  " + i);
 
-      let gameId = await queues.gamesCreateQueue(i);
-      console.log("GameID: " + gameId);
+        let gameId = await queues.gamesCreateQueue(i);
+        console.log("GameID: " + gameId);
 
-      gameIds.push(gameId);
+        gameIds.push(gameId);
 
-      if (
-        (gameIds.length > 0 &&
-          gameIds.length % process.env.CREATE_BATCH == 0) ||
-        parseInt(lastCreated) == i
-      ) {
-        try {
-          console.log(gameIds);
-          // send all ids
-          let tx = await consumer.createAllMarketsForGames(gameIds);
-
-          await tx.wait().then((e) => {
-            console.log(
-              "Market created for number of games: " + gameIds.length
-            );
+        if (
+          (gameIds.length > 0 &&
+            gameIds.length % process.env.CREATE_BATCH == 0) ||
+          parseInt(lastCreated) == i
+        ) {
+          try {
             console.log(gameIds);
-          });
+            // send all ids
+            let tx = await consumer.createAllMarketsForGames(gameIds);
 
-          await delay(1000); // wait to be populated
+            await tx.wait().then((e) => {
+              console.log(
+                "Market created for number of games: " + gameIds.length
+              );
+              console.log(gameIds);
+            });
 
-          gameIds = [];
-        } catch (e) {
-          console.log(e);
-          await sendErrorMessageToDiscordCreateMarkets(
-            "Market creation went wrong, on data-checker bot! Please check ETH on bot, or kill and debug!",
-            gameIds
-          );
-          failedCounter++;
-          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
-          break;
+            await delay(1000); // wait to be populated
+
+            gameIds = [];
+          } catch (e) {
+            console.log(e);
+            await sendErrorMessageToDiscordCreateMarkets(
+              "Market creation went wrong, on data-checker bot! Please check ETH on bot, or kill and debug!",
+              gameIds
+            );
+            failedCounter++;
+            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+            break;
+          }
+        } else {
+          continue;
         }
-      } else {
-        continue;
       }
-    }
-  } else {
-    if (requestWasSend) {
+    } else {
       console.log("Nothing but request is send!!!!");
       await sendErrorMessageToDiscord(
         "Request was send, team names was changed, but no games created, please check and debug! Stoping bot is mandatory!"
       );
       failedCounter++;
       await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
-    } else {
-      console.log("Nothing to process...");
     }
+  } else {
+    console.log("Nothing to process...");
   }
 
   console.log("Ended batch...");
