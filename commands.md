@@ -1,35 +1,31 @@
-Run scripts locally:
+## Run scripts locally
 
-node source/createGames/createGamesAndMarkets.js  
-node source/resolveGames/resolveGamesAndMarkets.js
-node source/pullOdds/pullOdds.js
+### Rundown scripts:
+
+`node source/createGames/createGamesAndMarkets.js`  
+`node source/resolveGames/resolveGamesAndMarkets.js`
+`node source/pullOdds/pullOdds.js`
 
 APEX scripts:
 
--   **CREATE RACE**
-    node .\source\apex\createRace.js formula1
-
-Parameters:
+-   **CREATE RACE**: `node .\source\apex\createRace.js formula1`
+    Parameters:
 
 1. sport - possible values: "formula1", "motogp"
 
--   **CREATE GAMES AND MARKETS**
-    node .\source\apex\createGamesAndMarkets.js formula1 pre
-
-Parameters:
+-   **CREATE GAMES AND MARKETS** `node .\source\apex\createGamesAndMarkets.js formula1 pre`
+    Parameters:
 
 1. sport - possible values: "formula1", "motogp"
 2. qualifying status - possible values: "pre", "post"
 3. update odds only (optional) - possible values: "updateOddsOnly"
 
--   **RESOLVE GAMES AND MARKETS**
-    node .\source\apex\resolveGamesAndMarkets.js formula1
-
-Parameters:
+-   **RESOLVE GAMES AND MARKETS** `node .\source\apex\resolveGamesAndMarkets.js formula1`
+    Parameters:
 
 1. sport - possible values: "formula1", "motogp"
 
-DEPLOY:
+## DEPLOY
 
 1. login to docker with command:
    docker login -u XXXXXX

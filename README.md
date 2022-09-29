@@ -4,26 +4,26 @@
 
 ### Rundown
 
-1. `createGamesAndMarkets.js` - bot which calls CL for fetching games and putting them in a queue, and also the part which creates markets for fetched games.
-2. `resolveGamesAndMarkets.js` - bot which calls CL for resolving games and also part for resolving markets based on fetched data.
-3. `pullOdds.js` - bot which calls CL for fetching odds for games that are in an unprocessed state.
+-   `createGamesAndMarkets.js` - bot which calls CL for fetching games and putting them in a queue, and also the part which creates markets for fetched games.
+-   `resolveGamesAndMarkets.js` - bot which calls CL for resolving games and also part for resolving markets based on fetched data.
+-   `pullOdds.js` - bot which calls CL for fetching odds for games that are in an unprocessed state.
 
 ### Apex
 
-1. `createRace.js` - script which calls CL for fetching race metadata.
-    - Parameters:
-        - sport - possible values: "formula1", "motogp"
-    - Example: `createRace.js formula1`
-2. `createGamesAndMarkets.js` - script which calls CL for fetching games and creates markets for fetched games, and also can be used for updating odds.
-    - Parameters:
-        - sport - possible values: "formula1", "motogp"
-        - qualifying status - possible values: "pre", "post"
-        - update odds only (optional) - possible values: "updateOddsOnly"
-    - Example: `createGamesAndMarkets.js formula1 pre`
-3. `resolveGamesAndMarkets.js` - script which calls CL for resolving games and also part for resolving markets based on fetched data.
-    - Parameters:
-        - sport - possible values: "formula1", "motogp"
-    - Example: `resolveGamesAndMarkets.js formula1`
+-   `createRace.js` - script which calls CL for fetching race metadata.
+    -   Parameters:
+        1. sport - possible values: "formula1", "motogp"
+    -   Example: `createRace.js formula1`
+-   `createGamesAndMarkets.js` - script which calls CL for fetching games and creates markets for fetched games, and also can be used for updating odds.
+    -   Parameters:
+        1. sport - possible values: "formula1", "motogp"
+        2. qualifying status - possible values: "pre", "post"
+        3. update odds only (optional) - possible values: "updateOddsOnly"
+    -   Example: `createGamesAndMarkets.js formula1 pre`
+-   `resolveGamesAndMarkets.js` - script which calls CL for resolving games and also part for resolving markets based on fetched data.
+    -   Parameters:
+        1. sport - possible values: "formula1", "motogp"
+    -   Example: `resolveGamesAndMarkets.js formula1`
 
 NOTE: PLEASE CHECK ABI FILES TO BE UP TO DATE!
 
