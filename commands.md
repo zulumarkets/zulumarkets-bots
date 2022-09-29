@@ -1,28 +1,28 @@
 ## Run scripts locally
 
-### Rundown scripts:
+### Rundown scripts
 
--   **CREATE GAMES AND MARKETS**: `node source/createGames/createGamesAndMarkets.js`
--   **RESOLVE GAMES AND MARKETS**: `node source/resolveGames/resolveGamesAndMarkets.js`
--   **PULL ODDS**: `node source/pullOdds/pullOdds.js`
+-   CREATE GAMES AND MARKETS: `node source/createGames/createGamesAndMarkets.js`
+-   RESOLVE GAMES AND MARKETS: `node source/resolveGames/resolveGamesAndMarkets.js`
+-   PULL ODDS: `node source/pullOdds/pullOdds.js`
 
-APEX scripts:
+### Apex scripts
 
--   **CREATE RACE**: `node .\source\apex\createRace.js formula1`
-
-    -   Parameters:
-        1. sport - possible values: "formula1", "motogp"
-
--   **CREATE GAMES AND MARKETS**: `node .\source\apex\createGamesAndMarkets.js formula1 pre`
+-   CREATE RACE: `node .\source\apex\createRace.js formula1`
 
     -   Parameters:
-        1. sport - possible values: "formula1", "motogp"
-        2. qualifying status - possible values: "pre", "post"
-        3. update odds only (optional) - possible values: "updateOddsOnly"
+        -   sport - possible values: "formula1", "motogp"
 
--   **RESOLVE GAMES AND MARKETS**: `node .\source\apex\resolveGamesAndMarkets.js formula1`
+-   CREATE GAMES AND MARKETS: `node .\source\apex\createGamesAndMarkets.js formula1 pre`
+
     -   Parameters:
-        1. sport - possible values: "formula1", "motogp"
+        -   sport - possible values: "formula1", "motogp"
+        -   qualifying status - possible values: "pre", "post"
+        -   update odds only (optional) - possible values: "updateOddsOnly"
+
+-   RESOLVE GAMES AND MARKETS: `node .\source\apex\resolveGamesAndMarkets.js formula1`
+    -   Parameters:
+        -   sport - possible values: "formula1", "motogp"
 
 ## DEPLOY
 
