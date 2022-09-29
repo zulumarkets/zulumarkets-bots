@@ -97,7 +97,6 @@ services:
 
 volumes:
   redis-data:
-
 ```
 
 ## Create/Resolve/Pull odds
@@ -107,8 +106,8 @@ volumes:
 ```
 PRIVATE_KEY=GetItFromMetamask
 WALLET=your wallet address
-INFURA=GetItFromIfura
-INFURA_URL=https://optimism-mainnet.infura.io/v3/GetItFromIfura
+INFURA=GetItFromInfura
+INFURA_URL=https://optimism-mainnet.infura.io/v3/GetItFromInfura
 NETWORK=kovan
 NETWORK_ID=42
 REQUEST_KEY=from rundown api
@@ -208,7 +207,7 @@ CREATE_BATCH=10
 
 ```
 
-# APEX VARIABLES
+### APEX VARIABLES
 
 ```
 APEX_CONSUMER_CONTRACT=0x03500619C58F4377c047A8918AE09594adb23f11
@@ -217,6 +216,6 @@ APEX_WAIT_TIME=60 # in seconds
 APEX_NUMBER_OF_GAMES=10
 ```
 
-** NOTE: these properties are set for goerli network please check next variables for MAIN **
+** NOTE: these properties are set for goerli network, please check next variables for MAIN **
 
 APEX_CONSUMER_CONTRACT, APEX_CONSUMER_WRAPPER_CONTRACT, APEX_WAIT_TIME (set to 30s)
