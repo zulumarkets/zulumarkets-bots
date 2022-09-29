@@ -12,19 +12,17 @@
 
 1. `createRace.js` - script which calls CL for fetching race metadata.
     - Parameters:
-        1. sport - possible values: "formula1", "motogp"
+        - sport - possible values: "formula1", "motogp"
     - Example: `createRace.js formula1`
 2. `createGamesAndMarkets.js` - script which calls CL for fetching games and creates markets for fetched games, and also can be used for updating odds.
     - Parameters:
-        1. sport - possible values: "formula1", "motogp"
-        2. qualifying status - possible values: "pre", "post"
-        3. update odds only (optional) - possible values: "updateOddsOnly"
+        - sport - possible values: "formula1", "motogp"
+        - qualifying status - possible values: "pre", "post"
+        - update odds only (optional) - possible values: "updateOddsOnly"
     - Example: `createGamesAndMarkets.js formula1 pre`
 3. `resolveGamesAndMarkets.js` - script which calls CL for resolving games and also part for resolving markets based on fetched data.
     - Parameters:
-        1. sport - possible values: "formula1", "motogp"
-        2. qualifying status - possible values: "pre", "post"
-        3. update odds only (optional) - possible values: "updateOddsOnly"
+        - sport - possible values: "formula1", "motogp"
     - Example: `resolveGamesAndMarkets.js formula1`
 
 NOTE: PLEASE CHECK ABI FILES TO BE UP TO DATE!
@@ -204,7 +202,6 @@ MARKET_CREATION=create
 SPORT_IDS=4,10
 DATA_CHECKER_FREQUENCY=time
 CREATE_BATCH=10
-
 ```
 
 ### APEX VARIABLES
