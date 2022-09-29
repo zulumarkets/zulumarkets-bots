@@ -22,6 +22,13 @@ Parameters:
 2. qualifying status - possible values: "pre", "post"
 3. update odds only (optional) - possible values: "updateOddsOnly"
 
+-   **RESOLVE GAMES AND MARKETS**
+    node .\source\apex\resolveGamesAndMarkets.js formula1
+
+Parameters:
+
+1. sport - possible values: "formula1", "motogp"
+
 DEPLOY:
 
 1. login to docker with command:

@@ -1,14 +1,35 @@
 # overtimemarkets-bot
 
-Important files:
+## Important files:
+
+### Rundowon
 
 1. `createGamesAndMarkets.js` - bot which calls CL for fetching games and putting them in a queue, and also the part which creates markets for fetched games.
-2. `resolveGamesAndMarkets.js` - bot which calls CL for resolving markets and also part for resolving games based on fetched data.
+2. `resolveGamesAndMarkets.js` - bot which calls CL for resolving games and also part for resolving markets based on fetched data.
 3. `pullOdds.js` - bot which calls CL for fetching odds for games that are in an unprocessed state.
+
+### Apex
+
+1. `createRace.js` - script which calls CL for fetching race metadata.
+    - Parameters:
+        1. sport - possible values: "formula1", "motogp"
+    - Example: `createRace.js formula1`
+2. `createGamesAndMarkets.js` - script which calls CL for fetching games and creates markets for fetched games, and also can be used for updating odds.
+    - Parameters:
+        1. sport - possible values: "formula1", "motogp"
+        2. qualifying status - possible values: "pre", "post"
+        3. update odds only (optional) - possible values: "updateOddsOnly"
+    - Example: `createGamesAndMarkets.js formula1 pre`
+3. `resolveGamesAndMarkets.js` - script which calls CL for resolving games and also part for resolving markets based on fetched data.
+    - Parameters:
+        1. sport - possible values: "formula1", "motogp"
+        2. qualifying status - possible values: "pre", "post"
+        3. update odds only (optional) - possible values: "updateOddsOnly"
+    - Example: `resolveGamesAndMarkets.js formula1`
 
 NOTE: PLEASE CHECK ABI FILES TO BE UP TO DATE!
 
-Thales overtimemarkets bot will make create/resolve and pull odds for games.
+Thales overtimemarkets bot will make create/resolve and pull odds for Rundown games.
 
 ```
 Example setup using docker-compose:
@@ -81,7 +102,7 @@ volumes:
 
 # Create/ Resolve / Pull odds
 
-- Add .env file with following variables set:
+-   Add .env file with following variables set:
 
 ```
   ---------------------------
@@ -154,17 +175,17 @@ Check SPORT_IDS which we support
 
 After testing it on kovan please check the following
 
-- ODDS_PERCENTAGE_CHANGE_MLB
-- ODDS_PERCENTAGE_CHANGE_MLS
-- ODDS_PERCENTAGE_CHANGE_UFC
-- EXPECTED_GAME_UFC
-- EXPECTED_GAME_NFL
-- ODDS_PERCENTAGE_CHANGE_DEFAULT
-- EXPECTED_GAME_DURATIN
-- ODDS_FREQUENCY
-- RESOLVE_FREQUENCY
-- CREATION_FREQUENCY
-  etc.
+-   ODDS_PERCENTAGE_CHANGE_MLB
+-   ODDS_PERCENTAGE_CHANGE_MLS
+-   ODDS_PERCENTAGE_CHANGE_UFC
+-   EXPECTED_GAME_UFC
+-   EXPECTED_GAME_NFL
+-   ODDS_PERCENTAGE_CHANGE_DEFAULT
+-   EXPECTED_GAME_DURATIN
+-   ODDS_FREQUENCY
+-   RESOLVE_FREQUENCY
+-   CREATION_FREQUENCY
+    etc.
 
 # ADITIONAL DATA CHECKER BOT
 

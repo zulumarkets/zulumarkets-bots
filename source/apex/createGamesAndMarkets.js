@@ -148,6 +148,13 @@ async function doCreate() {
                 }
                 console.log(`* start time: ${dateConverter(gameCreated.startTime * 1000)} (UTC)`);
 
+                if (qualifyingStatus === "post" && !gameOdds.arePostQualifyingOddsFetched) {
+                    console.log(
+                        `The "post" odds for game ${gameId} not fetched! Stopping script... Check data and try again.`
+                    );
+                    process.exit(1);
+                }
+
                 const today = new Date().getTime();
                 if (gameCreated.startTime * 1000 < today) {
                     console.log(
