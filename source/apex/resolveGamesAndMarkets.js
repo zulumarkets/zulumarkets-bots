@@ -96,7 +96,7 @@ async function doResolve() {
             let skipResultsRequest = false;
             let gameFulfilledResolved = await consumer.gameFulfilledResolved(gameId);
             if (gameFulfilledResolved) {
-                console.log(`Game ${gameId} already resolvded! Skipping results request for this game...`);
+                console.log(`Game ${gameId} already resolved! Skipping results request for this game...`);
                 skipResultsRequest = true;
             }
 
