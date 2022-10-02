@@ -161,9 +161,9 @@ async function doResolve() {
             });
 
             console.log("Waiting for market data to populate...");
-            await delay(1000); // wait to be populated
+            await delay(5 * 1000); // wait to be populated
 
-            marketResolved = await consumer.marketResolved(gameIdsForMarketResolve[i]);
+            marketResolved = await consumer.marketResolved(marketAddress);
             marketCanceled = await consumer.marketCanceled(marketAddress);
             if (marketResolved) {
                 console.log(`Market with address ${marketAddress} resolved`);

@@ -69,11 +69,19 @@ async function doCreate() {
         console.log(`* start time: ${dateConverter(raceCreated.startTime * 1000)} (UTC)`);
 
         const today = new Date().getTime();
-        if (raceCreated.qualifyingStartTime * 1000 < today) {
+        if (raceCreated.qualifyingStartTime * 1000 < today && qualifyingStatus === "pre") {
             console.log(
-                `ERROR - WRONG DATA!!! The race qualifying start time: ${dateConverter(
+                `ERROR - WRONG DATA!!! Cannot call "pre" odds for race qualifying start time: ${dateConverter(
                     raceCreated.qualifyingStartTime * 1000
                 )} (UTC) is in the past! Check race data and try again.`
+            );
+            process.exit(1);
+        }
+        if (raceCreated.qualifyingStartTime * 1000 > today && qualifyingStatus === "post") {
+            console.log(
+                `ERROR - WRONG DATA!!! Qualifications haven't started yet! Cannot call "post" odds for race qualifying start time: ${dateConverter(
+                    raceCreated.qualifyingStartTime * 1000
+                )} (UTC) is in the future! Check race data and try again.`
             );
             process.exit(1);
         }
@@ -107,6 +115,15 @@ async function doCreate() {
                 );
                 process.exit(1);
             }
+
+            let gameOdds = await consumer.gameOdds(gameId);
+            if (gameOdds.arePostQualifyingOddsFetched && qualifyingStatus === "post" && !updateOddsOnly) {
+                console.log(
+                    `The "post" odds for game ${gameId} already fetched! Skipping matchup request for 'post' qualifying status... Call script with 'post' qualifying status and 'updateOddsOnly' flag to update odds.`
+                );
+                skipMatchupRequest = true;
+            }
+
             let oldHomeOdds = 0;
             let oldAwayOdds = 0;
             let oldArePostQualifyingOddsFetched = false;
@@ -134,7 +151,7 @@ async function doCreate() {
             console.log("-------------------------------------------------");
             if (gameFulfilledCreated) {
                 const gameCreated = await consumer.gameCreated(gameId);
-                const gameOdds = await consumer.gameOdds(gameId);
+                gameOdds = await consumer.gameOdds(gameId);
                 console.log(`GAME INFO: `);
                 console.log(`* matchup: ${gameCreated.homeTeam} vs ${gameCreated.awayTeam}`);
                 if ((qualifyingStatus === "pre" && updateOddsOnly) || qualifyingStatus === "post") {
@@ -197,7 +214,7 @@ async function doCreate() {
                 });
 
                 console.log("Waiting for market data to populate...");
-                await delay(1000); // wait to be populated
+                await delay(5 * 1000); // wait to be populated
 
                 marketAddress = await consumer.marketPerGameId(gameIdsForMarketCreate[i]);
                 console.log(`Market address: ${marketAddress}`);
