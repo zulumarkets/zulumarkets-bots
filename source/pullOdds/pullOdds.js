@@ -378,16 +378,29 @@ async function doPull() {
                         "1002145721543311370"
                       );
 
-                      let circuitBreakerExpected =
-                        await verifier.areOddsInThreshold(
-                          sportIds[j],
-                          oddsForGame,
+                      let normalizedOddsOld =
+                        await verifier.calculateAndNormalizeOdds(oddsForGame);
+
+                      let normalizedOddsNew =
+                        await verifier.calculateAndNormalizeOdds(
                           packOddsFromAPI(
                             isSportTwoPositionsSport,
                             homeOddPinnacle,
                             awayOddPinnacle,
                             drawOddPinnacle
-                          ),
+                          )
+                        );
+
+                      console.log("OLD normalized odds: ");
+                      console.log(normalizedOddsOld);
+                      console.log("NEW normalized odds: ");
+                      console.log(normalizedOddsNew);
+
+                      let circuitBreakerExpected =
+                        await verifier.areOddsInThreshold(
+                          sportIds[j],
+                          normalizedOddsOld,
+                          normalizedOddsNew,
                           isSportTwoPositionsSport
                         );
                       console.log(
@@ -1003,18 +1016,19 @@ function packOddsFromAPI(
   awayOddPinnacle,
   drawOddPinnacle
 ) {
-  let odds;
+  var odds = [];
 
-  odds[0] = homeOddPinnacle != 0.01 ? homeOddPinnacle / 100 : 0;
-  odds[1] = awayOddPinnacle != 0.01 ? awayOddPinnacle / 100 : 0;
+  odds[0] = homeOddPinnacle != 0.01 ? homeOddPinnacle : 0;
+  odds[1] = awayOddPinnacle != 0.01 ? awayOddPinnacle : 0;
 
   if (isSportTwoPositionsSport) {
     odds[2] = 0;
   } else {
-    odds[2] = drawOddPinnacle != 0.01 ? drawOddPinnacle / 100 : 0;
+    odds[2] = drawOddPinnacle != 0.01 ? drawOddPinnacle : 0;
   }
 
-  console.log("Packed odds for checking: " + odds);
+  console.log("Packed odds for checking:");
+  console.log(odds);
   return odds;
 }
 
