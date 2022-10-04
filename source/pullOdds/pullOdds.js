@@ -397,7 +397,7 @@ async function doPull() {
                       console.log(normalizedOddsNew);
 
                       let circuitBreakerExpected =
-                        await verifier.areOddsInThreshold(
+                        await verifier.areOddsArrayInThreshold(
                           sportIds[j],
                           normalizedOddsOld,
                           normalizedOddsNew,

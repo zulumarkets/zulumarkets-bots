@@ -25,11 +25,11 @@ const rundownVerifier = {
         {
           indexed: false,
           internalType: "uint256",
-          name: "_oddThresholdForSport",
+          name: "_oddsThresholdForSport",
           type: "uint256",
         },
       ],
-      name: "NewCustomOddThresholdForSport",
+      name: "NewCustomOddsThresholdForSport",
       type: "event",
     },
     {
@@ -38,11 +38,11 @@ const rundownVerifier = {
         {
           indexed: false,
           internalType: "uint256",
-          name: "_defaultOddThreshold",
+          name: "_defaultOddsThreshold",
           type: "uint256",
         },
       ],
-      name: "NewDefaultOddThreshold",
+      name: "NewDefaultOddsThreshold",
       type: "event",
     },
     {
@@ -195,17 +195,22 @@ const rundownVerifier = {
           type: "uint256",
         },
         {
-          internalType: "uint256",
-          name: "_currentOdd",
-          type: "uint256",
+          internalType: "uint256[]",
+          name: "_currentOddsArray",
+          type: "uint256[]",
         },
         {
-          internalType: "uint256",
-          name: "_newOdd",
-          type: "uint256",
+          internalType: "uint256[]",
+          name: "_newOddsArray",
+          type: "uint256[]",
+        },
+        {
+          internalType: "bool",
+          name: "_isTwoPositionalSport",
+          type: "bool",
         },
       ],
-      name: "areOddInThreshold",
+      name: "areOddsArrayInThreshold",
       outputs: [
         {
           internalType: "bool",
@@ -224,19 +229,14 @@ const rundownVerifier = {
           type: "uint256",
         },
         {
-          internalType: "uint256[]",
+          internalType: "uint256",
           name: "_currentOdds",
-          type: "uint256[]",
+          type: "uint256",
         },
         {
-          internalType: "uint256[]",
+          internalType: "uint256",
           name: "_newOdds",
-          type: "uint256[]",
-        },
-        {
-          internalType: "bool",
-          name: "_isTwoPositionalSport",
-          type: "bool",
+          type: "uint256",
         },
       ],
       name: "areOddsInThreshold",
@@ -342,7 +342,7 @@ const rundownVerifier = {
     },
     {
       inputs: [],
-      name: "defaultOddThreshold",
+      name: "defaultOddsThreshold",
       outputs: [
         {
           internalType: "uint256",
@@ -377,7 +377,7 @@ const rundownVerifier = {
         },
         {
           internalType: "uint256",
-          name: "_defaultOddThreshold",
+          name: "_defaultOddsThreshold",
           type: "uint256",
         },
       ],
@@ -548,7 +548,7 @@ const rundownVerifier = {
           type: "uint256",
         },
       ],
-      name: "oddThresholdForSport",
+      name: "oddsThresholdForSport",
       outputs: [
         {
           internalType: "uint256",
@@ -607,11 +607,11 @@ const rundownVerifier = {
         },
         {
           internalType: "uint256",
-          name: "_oddThresholdForSport",
+          name: "_oddsThresholdForSport",
           type: "uint256",
         },
       ],
-      name: "setCustomOddThresholdForSport",
+      name: "setCustomOddsThresholdForSport",
       outputs: [],
       stateMutability: "nonpayable",
       type: "function",
@@ -620,11 +620,11 @@ const rundownVerifier = {
       inputs: [
         {
           internalType: "uint256",
-          name: "_defaultOddThreshold",
+          name: "_defaultOddsThreshold",
           type: "uint256",
         },
       ],
-      name: "setDefaultOddThreshold",
+      name: "setDefaultOddsThreshold",
       outputs: [],
       stateMutability: "nonpayable",
       type: "function",
