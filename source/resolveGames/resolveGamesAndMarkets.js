@@ -225,11 +225,22 @@ async function doResolve() {
             let gameIdContract = bytes32({ input: gamesListResponse[n].id });
             console.log("Game id (on contract): -> " + gameIdContract);
             console.log("Game id API: " + gamesListResponse[n].id);
-            // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
             let isGameResultAlreadyFulfilledInner =
               await consumer.gameFulfilledResolved(gameIdContract);
             console.log("Status: " + gamesListResponse[n].status);
             console.log("UpdatedAt: " + gamesListResponse[n].updatedAt);
+            console.log(
+              "Result already fulfilled: " + isGameResultAlreadyFulfilledInner
+            );
+
+            let marketId = await consumer.marketPerGameId(gameIdContract);
+            console.log("Market ID: " + marketId);
+
+            let isMarketCreated = await consumer.marketCreated(marketId);
+            console.log("is market created: " + isMarketCreated);
+
+            // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
+            // and result is not set and market for that game exists
             if (
               (isGameInRightStatus(
                 cancelStatuses,
@@ -243,7 +254,8 @@ async function doResolve() {
                 timeInMiliseconds,
                 gamesListResponse[n].updatedAt
               ) &&
-              !isGameResultAlreadyFulfilledInner
+              !isGameResultAlreadyFulfilledInner &&
+              isMarketCreated
             ) {
               gameIds.push(gamesListResponse[n].id);
             }
@@ -575,8 +587,9 @@ function scoreUpdatedAtCheck(currentTime, updatedAt) {
         parseInt(currentTime))
   );
   return (
+    parseInt(Date.parse(updatedAt)) > 0 &&
     parseInt(Date.parse(updatedAt)) + parseInt(30 * 60 * 1000) <
-    parseInt(currentTime)
+      parseInt(currentTime)
   );
 }
 
