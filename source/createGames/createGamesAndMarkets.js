@@ -17,6 +17,7 @@ const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
 let ncaaSupportedTeams = require("./ncaaSupportedTeams.json");
+let fifaWCSupportedTeams = require("./fifaWCSupportedTeams.json");
 
 async function doCreate() {
   const queues = new ethers.Contract(
@@ -68,14 +69,12 @@ async function doCreate() {
   let sportIds = process.env.SPORT_IDS.split(",");
 
   let americanSports = [1, 2, 3, 4, 6, 10];
-  let invalidNames = [
-    "TBD",
-    "TBD TBD",
-    "TBA",
-    "TBA TBA",
-    "Opponent TBA",
-    "Opponent TBA TBA",
-  ];
+  let invalidNames = process.env.INVALID_NAMES.split(",");
+
+  console.log("Number of invalid names" + invalidNames.length);
+  console.log("---------------");
+  console.log(invalidNames);
+  console.log("---------------");
 
   const primaryBookmaker = process.env.PRIMARY_ODDS_BOOKMAKER;
   const useBackupBookmaker = process.env.USE_BACKUP_ODDS_BOOKMAKER === "true";
@@ -182,6 +181,17 @@ async function doCreate() {
                 o.teams_normalized != undefined &&
                 !isNameInalid(invalidNames, o.teams_normalized[0].name) &&
                 !isNameInalid(invalidNames, o.teams_normalized[1].name)
+              ) {
+                filteredResponse.push(o);
+              }
+            }
+          });
+        } else if (sportIds[j] == 18) {
+          response.data.events.forEach((o) => {
+            if (o.teams_normalized != undefined) {
+              if (
+                fifaWCSupportedTeams.includes(o.teams_normalized[0].name) &&
+                fifaWCSupportedTeams.includes(o.teams_normalized[1].name)
               ) {
                 filteredResponse.push(o);
               }
@@ -297,7 +307,7 @@ async function doCreate() {
 
         if (sendRequestForCreate) {
           let gamesInBatch = [];
-          if (sportIds[j] == 1 || sportIds[j] == 7) {
+          if (sportIds[j] == 1 || sportIds[j] == 7 || sportIds[j] == 18) {
             filteredResponse.forEach((o) => {
               gamesInBatch.push(o.event_id);
             });
