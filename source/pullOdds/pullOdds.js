@@ -16,10 +16,17 @@ const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
+const verifierConsumer = require("../../contracts/RundownVerifier.js");
 
 const oddslib = require("oddslib");
 
 async function doPull() {
+  const verifier = new ethers.Contract(
+    process.env.CONSUMER_VERIFIER_CONTRACT,
+    verifierConsumer.rundownVerifier.abi,
+    wallet
+  );
+
   const queues = new ethers.Contract(
     process.env.GAME_QUEUE_CONTRACT,
     gamesQueue.gamesQueueContract.abi,
@@ -201,9 +208,9 @@ async function doPull() {
 
             // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
             for (let n = 0; n < gamesListResponse.length; n++) {
-              if (sendRequestForOdds) {
+              /*if (sendRequestForOdds) {
                 break;
-              }
+              }*/
               console.log("Game status -> " + gamesListResponse[n].status);
               console.log(
                 "Obtaining game id (as string): -> " + gamesListResponse[n].id
@@ -215,9 +222,9 @@ async function doPull() {
                   gamesListResponse[n].awayTeam
               );
               for (let m = 0; m < gamesOnContract.length; m++) {
-                if (sendRequestForOdds) {
+                /*if (sendRequestForOdds) {
                   break;
-                }
+                }*/
                 // when game is found and status and status is STATUS_SCHEDULED
                 if (
                   gamesListResponse[n].id ==
@@ -367,8 +374,70 @@ async function doPull() {
                         percentageChangeHome,
                         percentageChangeAway,
                         percentageChangeDraw,
-                        percentageChangePerSport
+                        percentageChangePerSport,
+                        "1002145721543311370"
                       );
+
+                      let normalizedOddsOld =
+                        await verifier.calculateAndNormalizeOdds(oddsForGame);
+
+                      let normalizedOddsNew =
+                        await verifier.calculateAndNormalizeOdds(
+                          packOddsFromAPI(
+                            isSportTwoPositionsSport,
+                            homeOddPinnacle,
+                            awayOddPinnacle,
+                            drawOddPinnacle
+                          )
+                        );
+
+                      console.log("OLD normalized odds: ");
+                      console.log(normalizedOddsOld);
+                      console.log("NEW normalized odds: ");
+                      console.log(normalizedOddsNew);
+
+                      let circuitBreakerExpected =
+                        await verifier.areOddsArrayInThreshold(
+                          sportIds[j],
+                          normalizedOddsOld,
+                          normalizedOddsNew,
+                          isSportTwoPositionsSport
+                        );
+                      console.log(
+                        "Circuit Breaker: " + !circuitBreakerExpected
+                      );
+
+                      // odds are not in threshold
+                      // and odds from API are valid
+                      if (
+                        !circuitBreakerExpected &&
+                        homeOddPinnacle != 0.01 &&
+                        awayOddPinnacle != 0.01
+                      ) {
+                        console.log("Circuit Breaker for odd!!!!");
+                        console.log(
+                          "Game id (contract): " + gamesOnContract[m]
+                        );
+                        console.log(
+                          "Game id (API): " + gamesListResponse[n].id
+                        );
+                        await sendMessageToDiscordOddsChanged(
+                          gamesListResponse[n].homeTeam,
+                          gamesListResponse[n].awayTeam,
+                          oddsForGame[0],
+                          homeOddPinnacle,
+                          oddsForGame[1],
+                          awayOddPinnacle,
+                          oddsForGame[2],
+                          drawOddPinnacle,
+                          gameStart,
+                          percentageChangeHome,
+                          percentageChangeAway,
+                          percentageChangeDraw,
+                          percentageChangePerSport,
+                          "1025081916141096961"
+                        );
+                      }
                     } else if (
                       // odds appear and game was paused by invalid odds or cancel status send request
                       homeOddPinnacle != 0.01 &&
@@ -396,7 +465,8 @@ async function doPull() {
                         100,
                         100,
                         isSportTwoPositionsSport ? 0 : 100,
-                        percentageChangePerSport
+                        percentageChangePerSport,
+                        "1002145721543311370"
                       );
                     }
                   } else {
@@ -559,7 +629,8 @@ async function sendMessageToDiscordOddsChanged(
   percentageChangeHome,
   percentageChangeAway,
   percentageChangeDraw,
-  percentageChangePerSport
+  percentageChangePerSport,
+  discordID
 ) {
   homeOddPinnacle = homeOddPinnacle == 0.01 ? 0 : homeOddPinnacle / 100;
   awayOddPinnacle = awayOddPinnacle == 0.01 ? 0 : awayOddPinnacle / 100;
@@ -686,7 +757,7 @@ async function sendMessageToDiscordOddsChanged(
       }
     )
     .setColor("#0037ff");
-  let overtimeOdds = await overtimeBot.channels.fetch("1002145721543311370");
+  let overtimeOdds = await overtimeBot.channels.fetch(discordID);
   overtimeOdds.send(message);
 }
 
@@ -937,6 +1008,28 @@ function getOddsFromBackupBookmaker(
     }
     return oddBackup[0].moneyline.moneyline_draw * 100;
   }
+}
+
+function packOddsFromAPI(
+  isSportTwoPositionsSport,
+  homeOddPinnacle,
+  awayOddPinnacle,
+  drawOddPinnacle
+) {
+  var odds = [];
+
+  odds[0] = homeOddPinnacle != 0.01 ? homeOddPinnacle : 0;
+  odds[1] = awayOddPinnacle != 0.01 ? awayOddPinnacle : 0;
+
+  if (isSportTwoPositionsSport) {
+    odds[2] = 0;
+  } else {
+    odds[2] = drawOddPinnacle != 0.01 ? drawOddPinnacle : 0;
+  }
+
+  console.log("Packed odds for checking:");
+  console.log(odds);
+  return odds;
 }
 
 function getPercentageChange(oldNumber, newNumber, percentage) {

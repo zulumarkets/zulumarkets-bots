@@ -288,6 +288,11 @@ const gamesConsumerContract = {
               name: "statusId",
               type: "uint8",
             },
+            {
+              internalType: "uint40",
+              name: "lastUpdated",
+              type: "uint40",
+            },
           ],
           indexed: false,
           internalType: "struct TherundownConsumer.GameResolve",
@@ -389,6 +394,12 @@ const gamesConsumerContract = {
           indexed: false,
           internalType: "address",
           name: "_sportsManager",
+          type: "address",
+        },
+        {
+          indexed: false,
+          internalType: "address",
+          name: "_verifier",
           type: "address",
         },
       ],
@@ -679,20 +690,35 @@ const gamesConsumerContract = {
     {
       inputs: [
         {
-          internalType: "int256",
-          name: "_americanOdd",
-          type: "int256",
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
         },
       ],
-      name: "calculateNormalizedOddFromAmerican",
+      name: "backupOdds",
       outputs: [
         {
-          internalType: "uint256",
-          name: "odd",
-          type: "uint256",
+          internalType: "bytes32",
+          name: "gameId",
+          type: "bytes32",
+        },
+        {
+          internalType: "int24",
+          name: "homeOdds",
+          type: "int24",
+        },
+        {
+          internalType: "int24",
+          name: "awayOdds",
+          type: "int24",
+        },
+        {
+          internalType: "int24",
+          name: "drawOdds",
+          type: "int24",
         },
       ],
-      stateMutability: "pure",
+      stateMutability: "view",
       type: "function",
     },
     {
@@ -739,6 +765,11 @@ const gamesConsumerContract = {
           internalType: "address",
           name: "_market",
           type: "address",
+        },
+        {
+          internalType: "bool",
+          name: "_useBackupOdds",
+          type: "bool",
         },
       ],
       name: "cancelMarketManually",
@@ -1035,6 +1066,11 @@ const gamesConsumerContract = {
           name: "statusId",
           type: "uint8",
         },
+        {
+          internalType: "uint40",
+          name: "lastUpdated",
+          type: "uint40",
+        },
       ],
       stateMutability: "view",
       type: "function",
@@ -1152,67 +1188,6 @@ const gamesConsumerContract = {
       inputs: [
         {
           internalType: "bytes32",
-          name: "_requestId",
-          type: "bytes32",
-        },
-        {
-          internalType: "uint256",
-          name: "_idx",
-          type: "uint256",
-        },
-      ],
-      name: "getGameCreatedByRequestId",
-      outputs: [
-        {
-          components: [
-            {
-              internalType: "bytes32",
-              name: "gameId",
-              type: "bytes32",
-            },
-            {
-              internalType: "uint256",
-              name: "startTime",
-              type: "uint256",
-            },
-            {
-              internalType: "int24",
-              name: "homeOdds",
-              type: "int24",
-            },
-            {
-              internalType: "int24",
-              name: "awayOdds",
-              type: "int24",
-            },
-            {
-              internalType: "int24",
-              name: "drawOdds",
-              type: "int24",
-            },
-            {
-              internalType: "string",
-              name: "homeTeam",
-              type: "string",
-            },
-            {
-              internalType: "string",
-              name: "awayTeam",
-              type: "string",
-            },
-          ],
-          internalType: "struct TherundownConsumer.GameCreate",
-          name: "game",
-          type: "tuple",
-        },
-      ],
-      stateMutability: "view",
-      type: "function",
-    },
-    {
-      inputs: [
-        {
-          internalType: "bytes32",
           name: "_gameId",
           type: "bytes32",
         },
@@ -1240,6 +1215,11 @@ const gamesConsumerContract = {
               internalType: "uint8",
               name: "statusId",
               type: "uint8",
+            },
+            {
+              internalType: "uint40",
+              name: "lastUpdated",
+              type: "uint40",
             },
           ],
           internalType: "struct TherundownConsumer.GameResolve",
@@ -1431,30 +1411,6 @@ const gamesConsumerContract = {
         },
       ],
       name: "isPausedByCanceledStatus",
-      outputs: [
-        {
-          internalType: "bool",
-          name: "",
-          type: "bool",
-        },
-      ],
-      stateMutability: "view",
-      type: "function",
-    },
-    {
-      inputs: [
-        {
-          internalType: "string",
-          name: "_teamA",
-          type: "string",
-        },
-        {
-          internalType: "string",
-          name: "_teamB",
-          type: "string",
-        },
-      ],
-      name: "isSameTeamOrTBD",
       outputs: [
         {
           internalType: "bool",
@@ -1888,6 +1844,11 @@ const gamesConsumerContract = {
           name: "_sportsManager",
           type: "address",
         },
+        {
+          internalType: "address",
+          name: "_verifier",
+          type: "address",
+        },
       ],
       name: "setSportContracts",
       outputs: [],
@@ -2063,6 +2024,19 @@ const gamesConsumerContract = {
           internalType: "bool",
           name: "",
           type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "verifier",
+      outputs: [
+        {
+          internalType: "contract ITherundownConsumerVerifier",
+          name: "",
+          type: "address",
         },
       ],
       stateMutability: "view",
