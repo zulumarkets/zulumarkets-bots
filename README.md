@@ -14,16 +14,18 @@
     -   Parameters:
         -   sport - possible values: "formula1", "motogp"
     -   Example: `createRace.js formula1`
--   `createGamesAndMarkets.js` - script which calls CL for fetching games and creates markets for fetched games, and also can be used for updating odds.
+-   `createGamesAndMarketsUpdateOdds.js` - script which calls CL for fetching games and creates markets for fetched games, and also can be used for updating odds.
     -   Parameters:
         -   sport - possible values: "formula1", "motogp"
+        -   bet type - possible values: "outright_head_to_head", "top3", "top5", "top10" (top10 only for formula1)
         -   qualifying status - possible values: "pre", "post"
         -   update odds only (optional) - possible values: "updateOddsOnly"
-    -   Example: `createGamesAndMarkets.js formula1 pre`
+    -   Example: `createGamesAndMarketsUpdateOdds.js formula1 top3 pre`
 -   `resolveGamesAndMarkets.js` - script which calls CL for resolving games and also part for resolving markets based on fetched data.
     -   Parameters:
         -   sport - possible values: "formula1", "motogp"
-    -   Example: `resolveGamesAndMarkets.js formula1`
+        -   bet type - possible values: "outright_head_to_head", "top3", "top5", "top10" (top10 only for formula1)
+    -   Example: `resolveGamesAndMarkets.js formula1 top3`
 
 NOTE: PLEASE CHECK ABI FILES TO BE UP TO DATE!
 
@@ -210,7 +212,6 @@ CREATE_BATCH=10
 APEX_CONSUMER_CONTRACT=0x03500619C58F4377c047A8918AE09594adb23f11
 APEX_CONSUMER_WRAPPER_CONTRACT=0x6b81a14cB40b038Edb183f0Ce53FddB5d2fEC726
 APEX_WAIT_TIME=60 # in seconds
-APEX_NUMBER_OF_GAMES=10
 ```
 
 ** NOTE: these properties are set for goerli network, please check next variables for MAIN **

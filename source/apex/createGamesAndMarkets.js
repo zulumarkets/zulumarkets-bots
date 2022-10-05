@@ -9,6 +9,7 @@ const apexConsumerWrapper = require("../../contracts/ApexConsumerWrapper.js");
 const apexConsumer = require("../../contracts/ApexConsumer.js");
 const allowances = require("../allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
+const apexConfig = require("../apexConfig.js");
 
 const ZERO_ADDRESS = "0x" + "0".repeat(40);
 
@@ -43,16 +44,19 @@ async function doCreate() {
         );
     }
 
-    const numberOfGames = process.env.APEX_NUMBER_OF_GAMES;
     const waitTime = parseInt(process.env.APEX_WAIT_TIME);
     const sport = process.argv[2];
-    const qualifyingStatus = process.argv[3];
-    const updateOddsOnly = process.argv[4] === "updateOddsOnly";
+    const betType = process.argv[3];
+    const qualifyingStatus = process.argv[4];
+    const updateOddsOnly = process.argv[5] === "updateOddsOnly";
+    const numberOfGames = apexConfig.numberOfGamesPerSportAndBetType[`${sport}_${betType}`];
 
     console.log("*************************************************");
     console.log("Creating games...");
     console.log(`SPORT: ${sport}`);
+    console.log(`BET TYPE: ${betType}`);
     console.log(`QUALIFYING STATUS: ${qualifyingStatus}`);
+    console.log(`NUMBER OF GAMES: ${numberOfGames}`);
 
     const latestRaceId = await consumer.latestRaceIdPerSport(sport);
     console.log(`The latest event ID for sport ${sport} is: ${latestRaceId}`);
@@ -98,7 +102,8 @@ async function doCreate() {
 
         for (let i = 1; i <= numberOfGames; i++) {
             console.log(`==================== GAME #${i} ====================`);
-            const gameIdString = `${raceCreated.raceId}_h2h_${i}`;
+            const gameIdInfix = betType === "outright_head_to_head" ? "h2h" : betType;
+            const gameIdString = `${raceCreated.raceId}_${gameIdInfix}_${i}`;
             const gameId = bytes32({ input: gameIdString });
 
             let skipMatchupRequest = false;
@@ -136,7 +141,7 @@ async function doCreate() {
 
             if (!skipMatchupRequest) {
                 console.log(`Sending matchup request for game #${i}...`);
-                const tx = await wrapper.requestMatchup(raceCreated.raceId, i.toString(), qualifyingStatus);
+                const tx = await wrapper.requestMatchup(raceCreated.raceId, betType, i.toString(), qualifyingStatus);
                 await tx.wait().then((e) => {
                     console.log(`Requested matchup data for game #${i}`);
                 });
@@ -153,7 +158,11 @@ async function doCreate() {
                 const gameCreated = await consumer.gameCreated(gameId);
                 gameOdds = await consumer.gameOdds(gameId);
                 console.log(`GAME INFO: `);
-                console.log(`* matchup: ${gameCreated.homeTeam} vs ${gameCreated.awayTeam}`);
+                if (betType === "outright_head_to_head") {
+                    console.log(`* matchup: ${gameCreated.homeTeam} vs ${gameCreated.awayTeam}`);
+                } else {
+                    console.log(`* matchup: ${gameCreated.homeTeam} in ${betType.toUpperCase()}`);
+                }
                 if ((qualifyingStatus === "pre" && updateOddsOnly) || qualifyingStatus === "post") {
                     console.log(`* old odds: ${oldHomeOdds} vs ${oldAwayOdds}`);
                     console.log(`* new odds: ${gameOdds.homeOdds} vs ${gameOdds.awayOdds}`);
@@ -164,6 +173,7 @@ async function doCreate() {
                     console.log(`* odds type: ${gameOdds.arePostQualifyingOddsFetched ? "post" : "pre"}`);
                 }
                 console.log(`* start time: ${dateConverter(gameCreated.startTime * 1000)} (UTC)`);
+                console.log(`* bet type: ${gameCreated.betType}`);
 
                 if (qualifyingStatus === "post" && !gameOdds.arePostQualifyingOddsFetched) {
                     console.log(
@@ -228,13 +238,28 @@ async function doCreate() {
 async function createGamesAndMarkets() {
     await allowances.checkAllowanceAndAllow(process.env.LINK_CONTRACT, process.env.APEX_CONSUMER_WRAPPER_CONTRACT);
     try {
-        if (process.argv[2] !== "formula1" && process.argv[2] !== "motogp") {
-            console.log("ERROR!!! Please pass right sport ('formula1' or 'motogp') as script first parameter!");
-        } else if (process.argv[3] !== "pre" && process.argv[3] !== "post") {
-            console.log("ERROR!!! Please pass right qualifying status ('pre' or 'post') as script second parameter!");
-        } else {
-            await doCreate();
+        const sport = process.argv[2];
+        const betType = process.argv[3];
+        const qualifyingStatus = process.argv[4];
+
+        if (!apexConfig.supportedSports.includes(sport)) {
+            console.log(`ERROR!!! Sport not supported! Supported sports: ${apexConfig.supportedSports}`);
+            process.exit(1);
         }
+        if (!apexConfig.supportedBetTypesPerSport[sport].includes(betType)) {
+            console.log(
+                `ERROR!!! Bet type not supported for ${sport}! Supported bet types for ${sport}: ${apexConfig.supportedBetTypesPerSport[sport]}`
+            );
+            process.exit(1);
+        }
+        if (!apexConfig.supportedQualifyingStatuses.includes(qualifyingStatus)) {
+            console.log(
+                `ERROR!!! Qualifying status not supported! Supported qualifying statuses: ${apexConfig.supportedQualifyingStatuses}`
+            );
+            process.exit(1);
+        }
+
+        await doCreate();
         process.exit(0);
     } catch (e) {
         console.log(e);

@@ -47,9 +47,33 @@ const apexConsumerWrapperContract = {
                     name: "_requestResultsJobId",
                     type: "string",
                 },
+                {
+                    internalType: "string[]",
+                    name: "_supportedBetTypes",
+                    type: "string[]",
+                },
             ],
             stateMutability: "nonpayable",
             type: "constructor",
+        },
+        {
+            anonymous: false,
+            inputs: [
+                {
+                    indexed: false,
+                    internalType: "string",
+                    name: "_betType",
+                    type: "string",
+                },
+                {
+                    indexed: false,
+                    internalType: "bool",
+                    name: "_isSupported",
+                    type: "bool",
+                },
+            ],
+            name: "BetTypesChanged",
+            type: "event",
         },
         {
             anonymous: false,
@@ -226,7 +250,7 @@ const apexConsumerWrapperContract = {
         },
         {
             inputs: [],
-            name: "BET_TYPE_PREFIX",
+            name: "H2H_BET_TYPE",
             outputs: [
                 {
                     internalType: "string",
@@ -239,7 +263,45 @@ const apexConsumerWrapperContract = {
         },
         {
             inputs: [],
-            name: "GAME_ID_INFIX",
+            name: "H2H_GAME_ID_INFIX",
+            outputs: [
+                {
+                    internalType: "string",
+                    name: "",
+                    type: "string",
+                },
+            ],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [
+                {
+                    internalType: "string",
+                    name: "",
+                    type: "string",
+                },
+            ],
+            name: "betTypeIdPerBetType",
+            outputs: [
+                {
+                    internalType: "uint256",
+                    name: "",
+                    type: "uint256",
+                },
+            ],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [
+                {
+                    internalType: "bytes32",
+                    name: "",
+                    type: "bytes32",
+                },
+            ],
+            name: "betTypePerRequestId",
             outputs: [
                 {
                     internalType: "string",
@@ -534,6 +596,11 @@ const apexConsumerWrapperContract = {
                 },
                 {
                     internalType: "string",
+                    name: "_betType",
+                    type: "string",
+                },
+                {
+                    internalType: "string",
                     name: "_gameNumber",
                     type: "string",
                 },
@@ -592,6 +659,11 @@ const apexConsumerWrapperContract = {
                 {
                     internalType: "string",
                     name: "_eventId",
+                    type: "string",
+                },
+                {
+                    internalType: "string",
+                    name: "_betType",
                     type: "string",
                 },
                 {
@@ -707,6 +779,24 @@ const apexConsumerWrapperContract = {
             inputs: [
                 {
                     internalType: "string",
+                    name: "_betType",
+                    type: "string",
+                },
+                {
+                    internalType: "bool",
+                    name: "_isSupported",
+                    type: "bool",
+                },
+            ],
+            name: "setSupportedBetType",
+            outputs: [],
+            stateMutability: "nonpayable",
+            type: "function",
+        },
+        {
+            inputs: [
+                {
+                    internalType: "string",
                     name: "",
                     type: "string",
                 },
@@ -736,6 +826,25 @@ const apexConsumerWrapperContract = {
                     internalType: "string",
                     name: "",
                     type: "string",
+                },
+            ],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [
+                {
+                    internalType: "string",
+                    name: "",
+                    type: "string",
+                },
+            ],
+            name: "supportedBetType",
+            outputs: [
+                {
+                    internalType: "bool",
+                    name: "",
+                    type: "bool",
                 },
             ],
             stateMutability: "view",

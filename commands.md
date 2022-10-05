@@ -13,16 +13,18 @@
     -   Parameters:
         -   sport - possible values: "formula1", "motogp"
 
--   CREATE GAMES AND MARKETS: `node .\source\apex\createGamesAndMarkets.js formula1 pre`
+-   CREATE GAMES AND MARKETS: `node .\source\apex\createGamesAndMarketsUpdateOdds.js formula1 top3 pre`
 
     -   Parameters:
         -   sport - possible values: "formula1", "motogp"
+        -   bet type - possible values: "outright_head_to_head", "top3", "top5", "top10" (top10 only for formula1)
         -   qualifying status - possible values: "pre", "post"
         -   update odds only (optional) - possible values: "updateOddsOnly"
 
--   RESOLVE GAMES AND MARKETS: `node .\source\apex\resolveGamesAndMarkets.js formula1`
+-   RESOLVE GAMES AND MARKETS: `node .\source\apex\resolveGamesAndMarkets.js top3 formula1`
     -   Parameters:
         -   sport - possible values: "formula1", "motogp"
+        -   bet type - possible values: "outright_head_to_head", "top3", "top5", "top10" (top10 only for formula1)
 
 ## DEPLOY
 

@@ -95,6 +95,11 @@ const apexConsumerContract = {
                             name: "awayTeam",
                             type: "string",
                         },
+                        {
+                            internalType: "uint256",
+                            name: "betType",
+                            type: "uint256",
+                        },
                     ],
                     indexed: false,
                     internalType: "struct ApexConsumer.GameCreate",
@@ -179,6 +184,11 @@ const apexConsumerContract = {
                             internalType: "string",
                             name: "awayTeam",
                             type: "string",
+                        },
+                        {
+                            internalType: "uint256",
+                            name: "betType",
+                            type: "uint256",
                         },
                     ],
                     indexed: false,
@@ -618,6 +628,58 @@ const apexConsumerContract = {
         },
         {
             inputs: [],
+            name: "BET_TYPE_H2H",
+            outputs: [
+                {
+                    internalType: "uint256",
+                    name: "",
+                    type: "uint256",
+                },
+            ],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [],
+            name: "BET_TYPE_TOP10",
+            outputs: [
+                {
+                    internalType: "uint256",
+                    name: "",
+                    type: "uint256",
+                },
+            ],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [],
+            name: "BET_TYPE_TOP3",
+            outputs: [
+                {
+                    internalType: "uint256",
+                    name: "",
+                    type: "uint256",
+                },
+            ],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [],
+            name: "BET_TYPE_TOP5",
+            outputs: [
+                {
+                    internalType: "uint256",
+                    name: "",
+                    type: "uint256",
+                },
+            ],
+            stateMutability: "view",
+            type: "function",
+        },
+        {
+            inputs: [],
             name: "CANCELLED",
             outputs: [
                 {
@@ -792,6 +854,11 @@ const apexConsumerContract = {
                     name: "_arePostQualifyingOdds",
                     type: "bool",
                 },
+                {
+                    internalType: "uint256",
+                    name: "_betType",
+                    type: "uint256",
+                },
             ],
             name: "fulfillMatchup",
             outputs: [],
@@ -923,6 +990,11 @@ const apexConsumerContract = {
                     internalType: "string",
                     name: "awayTeam",
                     type: "string",
+                },
+                {
+                    internalType: "uint256",
+                    name: "betType",
+                    type: "uint256",
                 },
             ],
             stateMutability: "view",
@@ -1138,6 +1210,11 @@ const apexConsumerContract = {
                             internalType: "string",
                             name: "awayTeam",
                             type: "string",
+                        },
+                        {
+                            internalType: "uint256",
+                            name: "betType",
+                            type: "uint256",
                         },
                     ],
                     internalType: "struct ApexConsumer.GameCreate",
