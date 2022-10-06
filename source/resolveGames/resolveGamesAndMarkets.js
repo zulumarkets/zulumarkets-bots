@@ -53,6 +53,10 @@ async function doResolve() {
     16: process.env.EXPECTED_GAME_FOOTBAL,
   };
 
+  const WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT = {
+    7: process.env.WAIT_FOR_RESULTS_TO_BE_UPDATED_UFC,
+  };
+
   const erc20Instance = new ethers.Contract(
     process.env.LINK_CONTRACT,
     linkToken.linkTokenContract.abi,
@@ -102,8 +106,13 @@ async function doResolve() {
   if (unproccessedGames > 0) {
     // do it for all sports
     for (let j = 0; j < sportIds.length; j++) {
+      let minutesToWait =
+        WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT[sportIds[j]] !== undefined
+          ? WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT[sportIds[j]]
+          : process.env.WAIT_FOR_RESULTS_TO_BE_UPDATED_DEFAULT;
       for (let i = daysInBack; i <= 0; i++) {
         console.log("Processing: TODAY " + i);
+        console.log("WAIT FOR RESULT (in minutes): " + minutesToWait);
 
         let unixDate = getSecondsToDate(i);
 
@@ -216,7 +225,7 @@ async function doResolve() {
             gamesListResponse.push({
               id: event.event_id,
               status: checkIfUndefined(event.score),
-              updatedAt: event.score.updated_at,
+              updatedAt: checkIfUndefinedDate(event.score),
             });
           });
 
@@ -252,7 +261,8 @@ async function doResolve() {
                 )) &&
               scoreUpdatedAtCheck(
                 timeInMiliseconds,
-                gamesListResponse[n].updatedAt
+                gamesListResponse[n].updatedAt,
+                minutesToWait
               ) &&
               !isGameResultAlreadyFulfilledInner &&
               isMarketCreated
@@ -578,17 +588,17 @@ function isGameInRightStatus(statuses, status) {
   return false;
 }
 
-function scoreUpdatedAtCheck(currentTime, updatedAt) {
+function scoreUpdatedAtCheck(currentTime, updatedAt, minutesToWait) {
   console.log(Date.parse(updatedAt));
   console.log(currentTime);
   console.log(
     "Ready for processing " +
-      (parseInt(Date.parse(updatedAt)) + parseInt(30 * 60 * 1000) <
+      (parseInt(Date.parse(updatedAt)) + parseInt(minutesToWait * 60 * 1000) <
         parseInt(currentTime))
   );
   return (
     parseInt(Date.parse(updatedAt)) > 0 &&
-    parseInt(Date.parse(updatedAt)) + parseInt(30 * 60 * 1000) <
+    parseInt(Date.parse(updatedAt)) + parseInt(minutesToWait * 60 * 1000) <
       parseInt(currentTime)
   );
 }
@@ -598,6 +608,13 @@ function checkIfUndefined(eventScore) {
     return eventScore.event_status;
   }
   return "STATUS_UNKNOWN";
+}
+
+function checkIfUndefinedDate(eventUpdatedAt) {
+  if (eventUpdatedAt && eventUpdatedAt.updated_at) {
+    return eventUpdatedAt.updated_at;
+  }
+  return "0001-01-01T00:00:00Z";
 }
 
 function getSecondsToDate(dateFrom) {
