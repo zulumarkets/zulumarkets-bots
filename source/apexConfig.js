@@ -14,7 +14,7 @@ const numberOfGamesPerSportAndBetType = {
     motogp_outright_head_to_head: 10,
     formula1_top3: 2,
     motogp_top3: 2,
-    formula1_top5: 3,
+    formula1_top5: 1,
     motogp_top5: 3,
     formula1_top10: 3,
 };
