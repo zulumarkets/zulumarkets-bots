@@ -20,7 +20,7 @@ const verifierConsumer = require("../../contracts/RundownVerifier.js");
 
 const oddslib = require("oddslib");
 
-async function doPull() {
+async function doPull(numberOfExecution) {
   const verifier = new ethers.Contract(
     process.env.CONSUMER_VERIFIER_CONTRACT,
     verifierConsumer.rundownVerifier.abi,
@@ -75,6 +75,10 @@ async function doPull() {
 
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
+  let riskySports = process.env.RISKY_SPORT_IDS.split(",");
+
+  console.log("sportIds -> " + sportIds.length);
+  console.log("riskySports" + riskySports.length);
 
   let cancelStatuses = process.env.CANCEL_STATUSES.split(",");
 
@@ -113,6 +117,22 @@ async function doPull() {
           ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]] !== undefined
             ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]]
             : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
+
+        // each second execution for non risky sports
+        if (
+          !isTheSportRisky(riskySports, sportIds[j]) &&
+          numberOfExecution % 2 == 0
+        ) {
+          console.log(
+            "Sport " +
+              sportIds[j] +
+              " is not risky and number of execution was: " +
+              numberOfExecution +
+              ", skiping!"
+          );
+          continue;
+        }
+
         // from today!!! maybe some games still running
         for (let i = 0; i <= daysInFront; i++) {
           console.log("------------------------");
@@ -603,13 +623,21 @@ async function doIndefinitely() {
     process.env.LINK_CONTRACT,
     process.env.WRAPPER_CONTRACT
   );
+  var numberOfExecution = 0;
   while (true) {
     try {
-      await doPull();
+      console.log("---------START ODDS EXECUTION---------");
+      console.log("Execution time: " + new Date());
+      console.log("Execution number: " + numberOfExecution);
+      await doPull(numberOfExecution);
+      numberOfExecution++;
+      console.log("---------END ODDS EXECUTION---------");
       await delay(process.env.ODDS_FREQUENCY);
     } catch (e) {
       console.log(e);
-      sendErrorMessageToDiscord("Please check odds-bot, error on execution");
+      sendErrorMessageToDiscord(
+        "Please check odds-bot, error on execution: " + numberOfExecution
+      );
       // wait next process
       await delay(process.env.ODDS_FREQUENCY);
     }
@@ -1100,6 +1128,15 @@ function isGameInRightStatus(statuses, status) {
   console.log("Game is in status: " + status);
   for (let j = 0; j < statuses.length; j++) {
     if (statuses[j] == status) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isTheSportRisky(listOfRiskySports, sportId) {
+  for (let j = 0; j < listOfRiskySports.length; j++) {
+    if (listOfRiskySports[j] == sportId) {
       return true;
     }
   }
