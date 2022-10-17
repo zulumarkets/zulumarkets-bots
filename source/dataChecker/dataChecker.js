@@ -146,10 +146,14 @@ async function doCheck() {
           let marketAddress = await consumer.marketPerGameId(gameIdContract);
           console.log("Market:  " + marketAddress);
           let isMarketCreated = await consumer.marketCreated(marketAddress);
-          console.log("Having sport on a date:  " + isMarketCreated);
+          console.log("Is market created:  " + isMarketCreated);
+
+          let isMarketCanceled = await consumer.marketCanceled(marketAddress);
+          console.log("Is market canceled:  " + isMarketCanceled);
 
           // get by ID and only STATUS_SCHEDULED events
           if (
+            !isMarketCanceled &&
             isMarketCreated &&
             gamesListResponse[n].status == "STATUS_SCHEDULED"
           ) {
