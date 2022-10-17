@@ -162,7 +162,8 @@ async function doCreate() {
           responseSchedule.data.schedules.forEach((schedule) => {
             scheduleListResponse.push({
               id: schedule.event_id,
-              leagueName: schedule.league_name,
+              leagueName: checkIfUndefinedLeague(schedule),
+              broadcast: checkIfUndefinedBroadcast(schedule),
             });
           });
 
@@ -177,6 +178,7 @@ async function doCreate() {
                 scheduleListResponse[n].id == o.event_id &&
                 scheduleListResponse[n].leagueName ==
                   "Ultimate Fighting Championship" &&
+                scheduleListResponse[n].broadcast == "PPV" &&
                 o.score.event_status == "STATUS_SCHEDULED" &&
                 o.teams_normalized != undefined &&
                 !isNameInalid(invalidNames, o.teams_normalized[0].name) &&
@@ -738,6 +740,20 @@ function dateConverter(UNIXTimestamp) {
   var date = new Date(UNIXTimestamp);
   var month = date.getUTCMonth() + 1; // starts from zero (0) -> January
   return date.getUTCFullYear() + "-" + month + "-" + date.getUTCDate();
+}
+
+function checkIfUndefinedBroadcast(eventBroadcast) {
+  if (eventBroadcast && eventBroadcast.broadcast) {
+    return eventBroadcast.broadcast;
+  }
+  return "unknown";
+}
+
+function checkIfUndefinedLeague(eventLeague) {
+  if (eventLeague && eventLeague.league_name) {
+    return eventLeague.league_name;
+  }
+  return "unknown";
 }
 
 function delay(time) {
