@@ -51,6 +51,7 @@ async function doResolve() {
     14: process.env.EXPECTED_GAME_FOOTBAL,
     15: process.env.EXPECTED_GAME_FOOTBAL,
     16: process.env.EXPECTED_GAME_FOOTBAL,
+    18: process.env.EXPECTED_GAME_FOOTBAL,
   };
 
   const WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT = {
