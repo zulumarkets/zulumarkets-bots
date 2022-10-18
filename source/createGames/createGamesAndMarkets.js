@@ -460,14 +460,23 @@ async function doIndefinitely() {
     process.env.LINK_CONTRACT,
     process.env.WRAPPER_CONTRACT
   );
+  var numberOfExecution = 0;
   while (true) {
     try {
+      console.log("---------START CREATION EXECUTION---------");
+      console.log("Execution time: " + new Date());
+      console.log("Execution number: " + numberOfExecution);
       await doCreate();
+      numberOfExecution++;
+      console.log("---------END CREATION EXECUTION---------");
       await delay(process.env.CREATION_FREQUENCY);
     } catch (e) {
       console.log(e);
       sendErrorMessageToDiscord(
-        "Please check creation-bot, error on execution"
+        "Please check creation-bot, error on execution: " +
+          numberOfExecution +
+          ", date: " +
+          new Date()
       );
       // wait next process
       await delay(process.env.CREATION_FREQUENCY);

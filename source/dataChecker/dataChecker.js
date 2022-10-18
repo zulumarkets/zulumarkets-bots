@@ -368,14 +368,25 @@ async function doIndefinitely() {
     process.env.LINK_CONTRACT,
     process.env.WRAPPER_CONTRACT
   );
+  var numberOfExecution = 0;
   while (true) {
     try {
+      console.log("---------START CHECK EXECUTION---------");
+      console.log("Execution time: " + new Date());
+      console.log("Execution number: " + numberOfExecution);
       await doCheck();
+      numberOfExecution++;
+      console.log("---------END CHECK EXECUTION---------");
       await delay(process.env.DATA_CHECKER_FREQUENCY);
     } catch (e) {
       console.log(e);
       sendErrorMessageToDiscord(
-        "Please check data-checker-bot, error on execution"
+        "Please check data-checker-bot, error on execution: " +
+          numberOfExecution +
+          ", date: " +
+          new Date() +
+          ", sports: " +
+          process.env.SPORT_IDS
       );
       // wait next process
       await delay(process.env.DATA_CHECKER_FREQUENCY);

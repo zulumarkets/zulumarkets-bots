@@ -435,14 +435,23 @@ async function doIndefinitely() {
     process.env.LINK_CONTRACT,
     process.env.WRAPPER_CONTRACT
   );
+  var numberOfExecution = 0;
   while (true) {
     try {
+      console.log("---------START RESOLVE EXECUTION---------");
+      console.log("Execution time: " + new Date());
+      console.log("Execution number: " + numberOfExecution);
       await doResolve();
+      numberOfExecution++;
+      console.log("---------END RESOLVE EXECUTION---------");
       await delay(process.env.RESOLVE_FREQUENCY);
     } catch (e) {
       console.log(e);
       sendErrorMessageToDiscord(
-        "Please check resolve-bot, error on execution, possible error: API is down, if not please debbug it!"
+        "Please check resolve-bot, error on execution: " +
+          numberOfExecution +
+          ", date: " +
+          new Date()
       );
       // wait next process
       await delay(process.env.RESOLVE_FREQUENCY);

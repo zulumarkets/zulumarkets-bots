@@ -636,7 +636,10 @@ async function doIndefinitely() {
     } catch (e) {
       console.log(e);
       sendErrorMessageToDiscord(
-        "Please check odds-bot, error on execution: " + numberOfExecution
+        "Please check odds-bot, error on execution: " +
+          numberOfExecution +
+          ", date: " +
+          new Date()
       );
       // wait next process
       await delay(process.env.ODDS_FREQUENCY);
