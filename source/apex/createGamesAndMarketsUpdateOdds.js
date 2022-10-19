@@ -129,6 +129,22 @@ async function doCreate() {
                 skipMatchupRequest = true;
             }
 
+            let marketAddress = await consumer.marketPerGameId(gameId);
+            let marketResolved = await consumer.marketResolved(marketAddress);
+            if (marketResolved) {
+                console.log(
+                    `Market for game ${gameId} and address ${marketAddress} resolved! Skipping matchup request for this game...`
+                );
+                skipMatchupRequest = true;
+            }
+            let marketCanceled = await consumer.marketCanceled(marketAddress);
+            if (marketCanceled) {
+                console.log(
+                    `Market for game ${gameId} and address ${marketAddress} cancelled! Skipping matchup request for this game...`
+                );
+                skipMatchupRequest = true;
+            }
+
             let oldHomeOdds = 0;
             let oldAwayOdds = 0;
             let oldArePostQualifyingOddsFetched = false;
@@ -209,7 +225,7 @@ async function doCreate() {
             for (let i = 0; i < gameIdsForMarketCreate.length; i++) {
                 console.log(`==================== GAME #${i + 1} ====================`);
 
-                let marketAddress = await consumer.marketPerGameId(gameIdsForMarketCreate[i]);
+                marketAddress = await consumer.marketPerGameId(gameIdsForMarketCreate[i]);
                 if (marketAddress !== ZERO_ADDRESS) {
                     console.log(
                         `Market for game ${gameIdsForMarketCreate[i]} already created: ${marketAddress}! Skipping market create for this game...`
