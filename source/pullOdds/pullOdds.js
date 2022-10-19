@@ -432,7 +432,9 @@ async function doPull(numberOfExecution) {
                       if (
                         !circuitBreakerExpected &&
                         homeOddPinnacle != 0.01 &&
-                        awayOddPinnacle != 0.01
+                        awayOddPinnacle != 0.01 &&
+                        homeOddPinnacle != 0 &&
+                        awayOddPinnacle != 0
                       ) {
                         console.log("Circuit Breaker for odd!!!!");
                         console.log(
