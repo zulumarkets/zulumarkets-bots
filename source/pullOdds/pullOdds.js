@@ -412,9 +412,21 @@ async function doPull(numberOfExecution) {
                         );
 
                       console.log("OLD normalized odds: ");
-                      console.log(normalizedOddsOld);
+                      console.log(
+                        normalizedOddsOld[0] +
+                          ", " +
+                          normalizedOddsOld[1] +
+                          ", " +
+                          normalizedOddsOld[2]
+                      );
                       console.log("NEW normalized odds: ");
-                      console.log(normalizedOddsNew);
+                      console.log(
+                        normalizedOddsNew[0] +
+                          ", " +
+                          normalizedOddsNew[1] +
+                          ", " +
+                          normalizedOddsNew[2]
+                      );
 
                       let circuitBreakerExpected =
                         await verifier.areOddsArrayInThreshold(
