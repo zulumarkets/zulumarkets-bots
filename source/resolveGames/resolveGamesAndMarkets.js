@@ -288,7 +288,10 @@ async function doResolve() {
                   sportIds[j],
                   unixDate,
                   [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                  gameIds
+                  gameIds,
+                  {
+                    gasLimit: process.env.GAS_LIMIT,
+                  }
                 );
 
                 await tx.wait().then((e) => {
@@ -317,7 +320,10 @@ async function doResolve() {
                       sportIds[j],
                       unixDate,
                       [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                      gamesInBatch
+                      gamesInBatch,
+                      {
+                        gasLimit: process.env.GAS_LIMIT,
+                      }
                     );
 
                     await tx.wait().then((e) => {
@@ -389,7 +395,9 @@ async function doResolve() {
       ) {
         try {
           // send all ids
-          let tx = await consumer.resolveAllMarketsForGames(gameIds);
+          let tx = await consumer.resolveAllMarketsForGames(gameIds, {
+            gasLimit: process.env.GAS_LIMIT,
+          });
 
           await tx.wait().then((e) => {
             console.log(

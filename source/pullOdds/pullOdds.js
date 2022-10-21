@@ -600,7 +600,10 @@ async function doPull(numberOfExecution) {
                   jobId,
                   sportIds[j],
                   unixDate,
-                  gameIds //ids
+                  gameIds, //ids,
+                  {
+                    gasLimit: process.env.GAS_LIMIT,
+                  }
                 );
 
                 await tx.wait().then((e) => {
