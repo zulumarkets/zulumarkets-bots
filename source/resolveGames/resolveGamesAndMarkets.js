@@ -249,6 +249,12 @@ async function doResolve() {
             let isMarketCreated = await consumer.marketCreated(marketId);
             console.log("is market created: " + isMarketCreated);
 
+            let isMarketResolved = await consumer.marketResolved(marketId);
+            console.log("is market resolved already: " + isMarketResolved);
+
+            let isMarketCanceled = await consumer.marketCanceled(marketId);
+            console.log("is market canceled already: " + isMarketCanceled);
+
             // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
             // and result is not set and market for that game exists
             if (
@@ -266,7 +272,9 @@ async function doResolve() {
                 minutesToWait
               ) &&
               !isGameResultAlreadyFulfilledInner &&
-              isMarketCreated
+              isMarketCreated &&
+              !isMarketResolved &&
+              !isMarketCanceled
             ) {
               gameIds.push(gamesListResponse[n].id);
             }
