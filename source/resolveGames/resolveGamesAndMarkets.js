@@ -249,6 +249,12 @@ async function doResolve() {
             let isMarketCreated = await consumer.marketCreated(marketId);
             console.log("is market created: " + isMarketCreated);
 
+            let isMarketResolved = await consumer.marketResolved(marketId);
+            console.log("is market resolved already: " + isMarketResolved);
+
+            let isMarketCanceled = await consumer.marketCanceled(marketId);
+            console.log("is market canceled already: " + isMarketCanceled);
+
             // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
             // and result is not set and market for that game exists
             if (
@@ -266,7 +272,9 @@ async function doResolve() {
                 minutesToWait
               ) &&
               !isGameResultAlreadyFulfilledInner &&
-              isMarketCreated
+              isMarketCreated &&
+              !isMarketResolved &&
+              !isMarketCanceled
             ) {
               gameIds.push(gamesListResponse[n].id);
             }
@@ -288,7 +296,10 @@ async function doResolve() {
                   sportIds[j],
                   unixDate,
                   [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                  gameIds
+                  gameIds,
+                  {
+                    gasLimit: process.env.GAS_LIMIT,
+                  }
                 );
 
                 await tx.wait().then((e) => {
@@ -317,7 +328,10 @@ async function doResolve() {
                       sportIds[j],
                       unixDate,
                       [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                      gamesInBatch
+                      gamesInBatch,
+                      {
+                        gasLimit: process.env.GAS_LIMIT,
+                      }
                     );
 
                     await tx.wait().then((e) => {
@@ -389,7 +403,9 @@ async function doResolve() {
       ) {
         try {
           // send all ids
-          let tx = await consumer.resolveAllMarketsForGames(gameIds);
+          let tx = await consumer.resolveAllMarketsForGames(gameIds, {
+            gasLimit: process.env.GAS_LIMIT,
+          });
 
           await tx.wait().then((e) => {
             console.log(
