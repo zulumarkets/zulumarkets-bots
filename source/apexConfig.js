@@ -10,7 +10,7 @@ const supportedBetTypesPerSport = {
 };
 
 const numberOfGamesPerSportAndBetType = {
-    formula1_outright_head_to_head: 10,
+    formula1_outright_head_to_head: 8,
     motogp_outright_head_to_head: 10,
     formula1_top3: 2,
     motogp_top3: 2,

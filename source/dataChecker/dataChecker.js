@@ -258,7 +258,10 @@ async function doCheck() {
               sportIds[j],
               unixDate,
               [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-              gamesToBeProcessed
+              gamesToBeProcessed,
+              {
+                gasLimit: process.env.GAS_LIMIT,
+              }
             );
 
             await tx_request.wait().then((e) => {
@@ -322,7 +325,9 @@ async function doCheck() {
           try {
             console.log(gameIds);
             // send all ids
-            let tx = await consumer.createAllMarketsForGames(gameIds);
+            let tx = await consumer.createAllMarketsForGames(gameIds, {
+              gasLimit: process.env.GAS_LIMIT,
+            });
 
             await tx.wait().then((e) => {
               console.log(

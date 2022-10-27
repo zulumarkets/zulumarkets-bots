@@ -412,9 +412,21 @@ async function doPull(numberOfExecution) {
                         );
 
                       console.log("OLD normalized odds: ");
-                      console.log(normalizedOddsOld);
+                      console.log(
+                        normalizedOddsOld[0] +
+                          ", " +
+                          normalizedOddsOld[1] +
+                          ", " +
+                          normalizedOddsOld[2]
+                      );
                       console.log("NEW normalized odds: ");
-                      console.log(normalizedOddsNew);
+                      console.log(
+                        normalizedOddsNew[0] +
+                          ", " +
+                          normalizedOddsNew[1] +
+                          ", " +
+                          normalizedOddsNew[2]
+                      );
 
                       let circuitBreakerExpected =
                         await verifier.areOddsArrayInThreshold(
@@ -432,7 +444,9 @@ async function doPull(numberOfExecution) {
                       if (
                         !circuitBreakerExpected &&
                         homeOddPinnacle != 0.01 &&
-                        awayOddPinnacle != 0.01
+                        awayOddPinnacle != 0.01 &&
+                        homeOddPinnacle != 0 &&
+                        awayOddPinnacle != 0
                       ) {
                         console.log("Circuit Breaker for odd!!!!");
                         console.log(
@@ -586,7 +600,10 @@ async function doPull(numberOfExecution) {
                   jobId,
                   sportIds[j],
                   unixDate,
-                  gameIds //ids
+                  gameIds, //ids,
+                  {
+                    gasLimit: process.env.GAS_LIMIT,
+                  }
                 );
 
                 await tx.wait().then((e) => {
