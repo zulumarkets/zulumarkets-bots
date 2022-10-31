@@ -9,6 +9,10 @@ const parlayData = require("../../contracts/ParlayData.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 
 let parlaysToBeExercised = [];
+let newResolved = [];
+let firstRun = false;
+let historyUnprocessed = true;
+
 const dataParlay = new ethers.Contract(
   process.env.PARLAY_DATA_CONTRACT,
   parlayData.parlayDataContract.abi,
@@ -21,6 +25,7 @@ const consumer = new ethers.Contract(
 );
 
 async function collectExercisableParlays(
+  number,
   sportMarketAddress,
   sportMarketId,
   sportMarketOutcome
@@ -32,7 +37,9 @@ async function collectExercisableParlays(
     ? 2
     : 3;
   console.log(
-    "\n market: ",
+    "\n",
+    number,
+    " market: ",
     sportMarketAddress,
     " | optionsCount: ",
     sportMarketOptionsCount,
@@ -218,11 +225,11 @@ async function exerciseHistory(blocksInHistory) {
         sportMarketAddress = events[i].args._marketAddress;
         sportMarketId = events[i].args._id;
         sportMarketOutcome = parseInt(events[i].args._outcome);
-        await collectExercisableParlays(
-          sportMarketAddress,
-          sportMarketId,
-          sportMarketOutcome
-        );
+        newResolved.push({
+          address: sportMarketAddress,
+          id: sportMarketId,
+          outcome: sportMarketOutcome,
+        });
       }
       if (parlaysToBeExercised.length > 0) {
         console.log("Parlays to be exercised: ", parlaysToBeExercised);
@@ -239,18 +246,47 @@ async function doIndefinitely() {
   var numberOfExecution = 0;
   while (true) {
     try {
-      console.log("---------START EXERCISE EXECUTION---------");
+      console.log("\x1b[35m---------START EXERCISE EXECUTION---------\x1b[0m");
       console.log("Time: " + new Date());
+      if (newResolved.length > 0) {
+        let checkResolved = newResolved;
+        newResolved = [];
+        console.log(
+          "\x1b[32m:::::::::::::: Collecting parlays for exercise ::::::::::::::\x1b[0m"
+        );
+        console.log(
+          "\x1b[32m:::::::::::::: Markets:                  ",
+          checkResolved.length,
+          " \x1b[32m::::::::::::::\x1b[0m"
+        );
+        for (let i = 0; i < checkResolved.length; i++) {
+          await collectExercisableParlays(
+            i,
+            checkResolved[i].address,
+            checkResolved[i].id,
+            checkResolved[i].outcome
+          );
+        }
+      }
       if (parlaysToBeExercised.length > 0) {
-        console.log("Execution number: " + numberOfExecution);
+        console.log(
+          "\x1b[33m:::::::::::::: Exercise parlays ::::::::::::::\x1b[0m"
+        );
         console.log("Number of parlays: " + parlaysToBeExercised.length);
-        await doExercise();
+        let exerciseParlays = parlaysToBeExercised;
+        parlaysToBeExercised = [];
+        await doExercise(exerciseParlays);
         numberOfExecution++;
       } else {
         console.log("[       Nothing to exercise       ]");
       }
-      console.log("---------END EXERCISE EXECUTION---------");
-      await delay(process.env.EXERCISE_FREQUENCY);
+      console.log("\x1b[34m---------END EXERCISE EXECUTION---------\x1b[0m");
+      if (firstRun) {
+        firstRun = false;
+        await delay(5000);
+      } else {
+        await delay(process.env.EXERCISE_FREQUENCY);
+      }
     } catch (e) {
       console.log(e);
       // wait next process
@@ -259,25 +295,33 @@ async function doIndefinitely() {
   }
 }
 
-if (parseInt(process.env.BLOCKS_BACK_IN_HISTORY) > 0) {
+//MAIN __________________________________________________________________________________
+
+if (parseInt(process.env.BLOCKS_BACK_IN_HISTORY) > 0 && historyUnprocessed) {
+  firstRun = true;
+  historyUnprocessed = false;
   console.log("EXERCISING HISTORY......");
   exerciseHistory(process.env.BLOCKS_BACK_IN_HISTORY);
 }
 consumer.on("ResolveSportsMarket", (_marketAddress, _id, _outcome) => {
   console.log(
-    "======> New Market resolved =========> ",
+    "\x1b[37m=========> New Market resolved =========> \x1b[0m\n",
     _marketAddress,
-    _id,
-    _outcome
+    "\nid: ",
+    parseInt(_id),
+    "\noutcome: ",
+    parseInt(_outcome)
   );
-  try {
-    collectExercisableParlays(_marketAddress, _id, _outcome);
-  } catch (e) {
-    console.log(e);
-  }
+  newResolved.push({
+    address: _marketAddress,
+    id: parseInt(_id),
+    outcome: parseInt(_outcome),
+  });
 });
 console.log("Resolve listener started");
 doIndefinitely();
+
+//end MAIN __________________________________________________________________________________
 
 function delay(time) {
   return new Promise(function (resolve) {
