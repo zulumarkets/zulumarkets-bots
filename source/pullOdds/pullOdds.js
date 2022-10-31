@@ -20,37 +20,37 @@ const verifierConsumer = require("../../contracts/RundownVerifier.js");
 
 const oddslib = require("oddslib");
 
+const verifier = new ethers.Contract(
+  process.env.CONSUMER_VERIFIER_CONTRACT,
+  verifierConsumer.rundownVerifier.abi,
+  wallet
+);
+
+const queues = new ethers.Contract(
+  process.env.GAME_QUEUE_CONTRACT,
+  gamesQueue.gamesQueueContract.abi,
+  wallet
+);
+
+const wrapper = new ethers.Contract(
+  process.env.WRAPPER_CONTRACT,
+  gamesWrapper.gamesWraperContract.abi,
+  wallet
+);
+
+const consumer = new ethers.Contract(
+  process.env.CONSUMER_CONTRACT,
+  gamesConsumer.gamesConsumerContract.abi,
+  wallet
+);
+
+const erc20Instance = new ethers.Contract(
+  process.env.LINK_CONTRACT,
+  linkToken.linkTokenContract.abi,
+  wallet
+);
+
 async function doPull(numberOfExecution) {
-  const verifier = new ethers.Contract(
-    process.env.CONSUMER_VERIFIER_CONTRACT,
-    verifierConsumer.rundownVerifier.abi,
-    wallet
-  );
-
-  const queues = new ethers.Contract(
-    process.env.GAME_QUEUE_CONTRACT,
-    gamesQueue.gamesQueueContract.abi,
-    wallet
-  );
-
-  const wrapper = new ethers.Contract(
-    process.env.WRAPPER_CONTRACT,
-    gamesWrapper.gamesWraperContract.abi,
-    wallet
-  );
-
-  const consumer = new ethers.Contract(
-    process.env.CONSUMER_CONTRACT,
-    gamesConsumer.gamesConsumerContract.abi,
-    wallet
-  );
-
-  const erc20Instance = new ethers.Contract(
-    process.env.LINK_CONTRACT,
-    linkToken.linkTokenContract.abi,
-    wallet
-  );
-
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
   console.log("Amount token in wallet: " + parseInt(amountOfToken));
   console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));

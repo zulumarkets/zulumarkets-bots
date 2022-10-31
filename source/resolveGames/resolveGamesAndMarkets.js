@@ -18,25 +18,31 @@ const allowances = require("../../source/allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
 let ncaaSupportedTeams = require("../createGames/ncaaSupportedTeams.json");
 
+const queues = new ethers.Contract(
+  process.env.GAME_QUEUE_CONTRACT,
+  gamesQueue.gamesQueueContract.abi,
+  wallet
+);
+
+const wrapper = new ethers.Contract(
+  process.env.WRAPPER_CONTRACT,
+  gamesWrapper.gamesWraperContract.abi,
+  wallet
+);
+
+const consumer = new ethers.Contract(
+  process.env.CONSUMER_CONTRACT,
+  gamesConsumer.gamesConsumerContract.abi,
+  wallet
+);
+
+const erc20Instance = new ethers.Contract(
+  process.env.LINK_CONTRACT,
+  linkToken.linkTokenContract.abi,
+  wallet
+);
+
 async function doResolve() {
-  const queues = new ethers.Contract(
-    process.env.GAME_QUEUE_CONTRACT,
-    gamesQueue.gamesQueueContract.abi,
-    wallet
-  );
-
-  const wrapper = new ethers.Contract(
-    process.env.WRAPPER_CONTRACT,
-    gamesWrapper.gamesWraperContract.abi,
-    wallet
-  );
-
-  const consumer = new ethers.Contract(
-    process.env.CONSUMER_CONTRACT,
-    gamesConsumer.gamesConsumerContract.abi,
-    wallet
-  );
-
   const EXPECTED_GAME_DURATIN = {
     1: process.env.EXPECTED_GAME_NFL,
     2: process.env.EXPECTED_GAME_NFL,
@@ -57,12 +63,6 @@ async function doResolve() {
   const WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT = {
     7: process.env.WAIT_FOR_RESULTS_TO_BE_UPDATED_UFC,
   };
-
-  const erc20Instance = new ethers.Contract(
-    process.env.LINK_CONTRACT,
-    linkToken.linkTokenContract.abi,
-    wallet
-  );
 
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
   console.log("Amount token in wallet: " + parseInt(amountOfToken));
