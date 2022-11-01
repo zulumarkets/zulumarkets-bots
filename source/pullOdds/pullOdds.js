@@ -525,6 +525,11 @@ async function doPull(numberOfExecution) {
                     "Is game paused by status: " + isPausedByCanceledStatus
                   );
 
+                  let isMarketCanceledAlready = await consumer.marketCanceled(
+                    marketAddress
+                  );
+                  console.log("Canceled already: " + isMarketCanceledAlready);
+
                   console.log(
                     "MARKET:  " +
                       marketAddress +
@@ -534,7 +539,7 @@ async function doPull(numberOfExecution) {
 
                   // checking if it is already paused by cancel/resolved status
                   // if not pause it
-                  if (!isPausedByCanceledStatus) {
+                  if (!isPausedByCanceledStatus && !isMarketCanceledAlready) {
                     let gameStart = await queues.gameStartPerGameId(
                       gamesOnContract[m]
                     );
