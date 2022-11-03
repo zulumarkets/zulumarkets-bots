@@ -380,6 +380,7 @@ async function doIndefinitely() {
       console.log("\x1b[35m---------START EXERCISE EXECUTION---------\x1b[0m");
       let timeNow = new Date();
       console.log("Time: " + timeNow);
+      console.log("Exercise Time: "+ exerciseDate);
       if (newResolved.length > 0) {
         let checkResolved = newResolved;
         newResolved = [];
@@ -400,7 +401,6 @@ async function doIndefinitely() {
           );
         }
       }
-      console.log("Next exercise after: ", exerciseDate);
       if (parlaysToBeExercised.length > 0 && timeNow >= exerciseDate) {
         console.log(
           "\x1b[33m:::::::::::::: Exercise parlays ::::::::::::::\x1b[0m"
