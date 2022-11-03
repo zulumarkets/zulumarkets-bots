@@ -312,6 +312,45 @@ const parlayDataContract = {
       "inputs": [
         {
           "internalType": "address",
+          "name": "_parlayMarket",
+          "type": "address"
+        }
+      ],
+      "name": "getParlayOutcomeDetails",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "initialized",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "resolved",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "parlayPaused",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "alreadyLost",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "fundsIssued",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "_userAccount",
           "type": "address"
         }

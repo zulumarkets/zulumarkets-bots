@@ -69,8 +69,9 @@ async function collectExercisableParlays(
         j
       );
       console.log("--> ", j, " checking parlay ", parlayMarket);
-      parlayMarketDetails = await dataParlay.parlayDetails(parlayMarket);
-      if (parlayMarketDetails.alreadyLost) {
+      parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(parlayMarket);
+      console.log("initialized: ", parlayMarketDetails.initialized, "| resolved: ", parlayMarketDetails.resolved, "| alreadyLost: ", parlayMarketDetails.alreadyLost);
+      if (parlayMarketDetails.initialized && parlayMarketDetails.alreadyLost) {
         // exercise parlay
         if (!parlaysToBeExercised.includes(parlayMarket)) {
           console.log("parlay: ", parlayMarket, " already lost!");
@@ -116,8 +117,9 @@ async function collectExercisableParlays(
             j
           );
           console.log("--> ", j, " checking parlay ", parlayMarket);
-          parlayMarketDetails = await dataParlay.parlayDetails(parlayMarket);
-          if (
+          parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(parlayMarket);
+          console.log("initialized: ", parlayMarketDetails.initialized, "| resolved: ", parlayMarketDetails.resolved, "| alreadyLost: ", parlayMarketDetails.alreadyLost);
+          if ( parlayMarketDetails.initialized &&
             !parlayMarketDetails.resolved &&
             !parlayMarketDetails.alreadyLost
           ) {
@@ -149,8 +151,9 @@ async function collectExercisableParlays(
             j
           );
           console.log("--> ", j, " checking parlay ", parlayMarket);
-          parlayMarketDetails = await dataParlay.parlayDetails(parlayMarket);
-          if (
+          parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(parlayMarket);
+          console.log("initialized: ", parlayMarketDetails.initialized, "| resolved: ", parlayMarketDetails.resolved, "| alreadyLost: ", parlayMarketDetails.alreadyLost);
+          if ( parlayMarketDetails.initialized &&
             !parlayMarketDetails.resolved &&
             !parlayMarketDetails.alreadyLost
           ) {
@@ -189,8 +192,9 @@ async function collectExercisableParlays(
             j
           );
           console.log("--> ", j, " checking parlay ", parlayMarket);
-          parlayMarketDetails = await dataParlay.parlayDetails(parlayMarket);
-          if (
+          parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(parlayMarket);
+          console.log("initialized: ", parlayMarketDetails.initialized, "| resolved: ", parlayMarketDetails.resolved, "| alreadyLost: ", parlayMarketDetails.alreadyLost);
+          if ( parlayMarketDetails.initialized &&
             !parlayMarketDetails.resolved &&
             !parlayMarketDetails.alreadyLost
           ) {
@@ -238,8 +242,19 @@ async function exerciseHistory(blocksInHistory) {
   }
 }
 
-async function doExercise() {
+async function doExercise(exerciseParlays) {
   // exercise parlays
+  if (exerciseParlays.length > 0) {
+    let tx = await dataParlay.exerciseParlays(exerciseParlays, {
+      gasLimit: process.env.GAS_LIMIT,
+    });
+
+    await tx.wait().then((e) => {
+      console.log("Parlays exercised");
+      console.log(exerciseParlays);
+    });
+    await delay(5000);
+  }
 }
 
 async function doIndefinitely() {
