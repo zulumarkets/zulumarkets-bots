@@ -31,6 +31,7 @@ CMD [ "node", "source/createGames/createGamesAndMarkets.js" ]
 # CMD [ "node", "source/resolveGames/resolveGamesAndMarkets.js" ]
 # CMD [ "node", "source/pullOdds/pullOdds.js" ]
 # CMD [ "node", "source/dataChecker/dataChecker.js" ]
+# CMD [ "node", "/source/parlay/exerciseParlays.js" ]
 
 
 
@@ -38,3 +39,4 @@ CMD [ "node", "source/createGames/createGamesAndMarkets.js" ]
 #overtimeresolver
 #overtimeodds
 #overtimedatachecker
+#overtimeparlayexerciser
