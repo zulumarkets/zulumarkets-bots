@@ -9,13 +9,11 @@ var usingBlast =
     : false;
 
 if (usingBlast) {
-  console.log("BLAST!");
   etherprovider = new ethers.providers.JsonRpcProvider(process.env.BLAST_URL, {
     chainId: Number(process.env.NETWORK_ID),
     name: process.env.NETWORK,
   });
 } else {
-  console.log("INFURA!");
   if (process.env.NETWORK_ID == 420) {
     etherprovider = new ethers.providers.JsonRpcProvider(
       "https://goerli.optimism.io",
