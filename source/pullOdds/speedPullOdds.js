@@ -90,7 +90,7 @@ async function doPull(numberOfExecution) {
       console.log("CHANGE: " + percentageChangePerSport);
       console.log("Processing: TODAY +  " + i);
 
-      let unixDate = await getSecondsToDate(i);
+      let unixDate = getSecondsToDate(i);
       let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
       console.log("Unix date in miliseconds: " + unixDateMiliseconds);
 
