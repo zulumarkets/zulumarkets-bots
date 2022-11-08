@@ -228,9 +228,9 @@ async function doPull(numberOfExecution) {
 
             // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
             for (let n = 0; n < gamesListResponse.length; n++) {
-              /*if (sendRequestForOdds) {
+              if (sendRequestForOdds) {
                 break;
-              }*/
+              }
               console.log("Game status -> " + gamesListResponse[n].status);
               console.log(
                 "Obtaining game id (as string): -> " + gamesListResponse[n].id
@@ -242,9 +242,9 @@ async function doPull(numberOfExecution) {
                   gamesListResponse[n].awayTeam
               );
               for (let m = 0; m < gamesOnContract.length; m++) {
-                /*if (sendRequestForOdds) {
+                if (sendRequestForOdds) {
                   break;
-                }*/
+                }
                 // when game is found and status and status is STATUS_SCHEDULED
                 if (
                   gamesListResponse[n].id ==
@@ -397,81 +397,6 @@ async function doPull(numberOfExecution) {
                         percentageChangePerSport,
                         "1002145721543311370"
                       );
-
-                      let normalizedOddsOld =
-                        await verifier.calculateAndNormalizeOdds(oddsForGame);
-
-                      let normalizedOddsNew =
-                        await verifier.calculateAndNormalizeOdds(
-                          packOddsFromAPI(
-                            isSportTwoPositionsSport,
-                            homeOddPinnacle,
-                            awayOddPinnacle,
-                            drawOddPinnacle
-                          )
-                        );
-
-                      console.log("OLD normalized odds: ");
-                      console.log(
-                        normalizedOddsOld[0] +
-                          ", " +
-                          normalizedOddsOld[1] +
-                          ", " +
-                          normalizedOddsOld[2]
-                      );
-                      console.log("NEW normalized odds: ");
-                      console.log(
-                        normalizedOddsNew[0] +
-                          ", " +
-                          normalizedOddsNew[1] +
-                          ", " +
-                          normalizedOddsNew[2]
-                      );
-
-                      let circuitBreakerExpected =
-                        await verifier.areOddsArrayInThreshold(
-                          sportIds[j],
-                          normalizedOddsOld,
-                          normalizedOddsNew,
-                          isSportTwoPositionsSport
-                        );
-                      console.log(
-                        "Circuit Breaker: " + !circuitBreakerExpected
-                      );
-
-                      // odds are not in threshold
-                      // and odds from API are valid
-                      if (
-                        !circuitBreakerExpected &&
-                        homeOddPinnacle != 0.01 &&
-                        awayOddPinnacle != 0.01 &&
-                        homeOddPinnacle != 0 &&
-                        awayOddPinnacle != 0
-                      ) {
-                        console.log("Circuit Breaker for odd!!!!");
-                        console.log(
-                          "Game id (contract): " + gamesOnContract[m]
-                        );
-                        console.log(
-                          "Game id (API): " + gamesListResponse[n].id
-                        );
-                        await sendMessageToDiscordOddsChanged(
-                          gamesListResponse[n].homeTeam,
-                          gamesListResponse[n].awayTeam,
-                          oddsForGame[0],
-                          homeOddPinnacle,
-                          oddsForGame[1],
-                          awayOddPinnacle,
-                          oddsForGame[2],
-                          drawOddPinnacle,
-                          gameStart,
-                          percentageChangeHome,
-                          percentageChangeAway,
-                          percentageChangeDraw,
-                          percentageChangePerSport,
-                          "1025081916141096961"
-                        );
-                      }
                     } else if (
                       // odds appear and game was paused by invalid odds or cancel status send request
                       homeOddPinnacle != 0.01 &&
