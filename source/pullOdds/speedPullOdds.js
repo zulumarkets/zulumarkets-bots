@@ -36,7 +36,7 @@ const consumer = new ethers.Contract(
   wallet
 );
 
-async function doPull(numberOfExecution) {
+async function doPull(numberOfExecution, lastStartDate) {
   const jobId = bytes32({ input: process.env.JOB_ID_ODDS });
   const jobIdResolve = bytes32({ input: process.env.JOB_ID_RESOLVE });
 
@@ -93,6 +93,10 @@ async function doPull(numberOfExecution) {
       let unixDate = getSecondsToDate(i);
       let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
       console.log("Unix date in miliseconds: " + unixDateMiliseconds);
+      let timeInMiliseconds = new Date().getTime(); // miliseconds
+      console.log("Time for proocessing:  " + timeInMiliseconds);
+
+      let dateSport = unixDate + "_" + sportIds;
 
       let isSportOnADate = await consumer.isSportOnADate(unixDate, sportIds);
       console.log("Having sport on a date:  " + isSportOnADate);
@@ -107,8 +111,20 @@ async function doPull(numberOfExecution) {
         sportIds
       );
 
-      // that day have games inside
-      if (isSportOnADate && gamesOnContract.length > 0) {
+      if (
+        gamesOnContract.length > 0 &&
+        lastStartDate[dateSport] === undefined
+      ) {
+        lastStartDate[dateSport] = 1;
+      }
+
+      // that day have games inside or in that day all games are in a past
+      if (
+        isSportOnADate &&
+        gamesOnContract.length > 0 &&
+        (numberOfExecution == 0 ||
+          lastGameHasPassed(lastStartDate[dateSport], timeInMiliseconds))
+      ) {
         console.log("Processing sport and date...");
 
         let sendRequestForOdds = false;
@@ -179,6 +195,10 @@ async function doPull(numberOfExecution) {
           }
         });
 
+        if (gamesListResponse.length == 0) {
+          lastStartDate[dateSport] = 0;
+        }
+
         // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
         for (let n = 0; n < gamesListResponse.length; n++) {
           if (sendRequestForOdds) {
@@ -222,6 +242,20 @@ async function doPull(numberOfExecution) {
 
               let gameStart = await queues.gameStartPerGameId(
                 gamesOnContract[m]
+              );
+
+              console.log(
+                "Last game on that date is (before): " +
+                  lastStartDate[dateSport]
+              );
+
+              if (lastStartDate[dateSport] < gameStart) {
+                console.log("Changing!!!");
+                lastStartDate[dateSport] = gameStart;
+              }
+
+              console.log(
+                "Last game on that date is (after): " + lastStartDate[dateSport]
               );
 
               // only ongoing games not resolved or already canceled
@@ -518,12 +552,13 @@ async function doIndefinitely() {
     process.env.WRAPPER_CONTRACT
   );
   var numberOfExecution = 0;
+  var lastStartDate = {};
   while (true) {
     try {
       console.log("---------START ODDS EXECUTION---------");
       console.log("Execution time: " + new Date());
       console.log("Execution number: " + numberOfExecution);
-      await doPull(numberOfExecution);
+      await doPull(numberOfExecution, lastStartDate);
       numberOfExecution++;
       console.log("---------END ODDS EXECUTION---------");
       await delay(process.env.ODDS_FREQUENCY);
@@ -535,6 +570,7 @@ async function doIndefinitely() {
           ", date: " +
           new Date()
       );
+      numberOfExecution++;
       // wait next process
       await delay(process.env.ODDS_FREQUENCY);
     }
@@ -832,6 +868,18 @@ function getSecondsToDate(dateFrom) {
   const date = new Date(Date.now() + dateFrom * 3600 * 1000 * 24);
   date.setUTCHours(0, 0, 0, 0);
   return Math.floor(date.getTime() / 1000);
+}
+
+function lastGameHasPassed(lastGameTime, currentTime) {
+  if (lastGameTime === undefined) {
+    return false;
+  }
+  if (lastGameTime === 1) {
+    return true;
+  }
+  return (
+    parseInt(lastGameTime) * process.env.MILISECONDS > parseInt(currentTime)
+  );
 }
 
 function dateConverter(UNIXTimestamp) {
