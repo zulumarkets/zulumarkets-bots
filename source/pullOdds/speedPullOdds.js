@@ -14,9 +14,7 @@ const axios = require("axios");
 const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
-const allowances = require("../../source/allowances.js");
-const linkToken = require("../../contracts/LinkToken.js");
-const verifierConsumer = require("../../contracts/RundownVerifier.js");
+const allowances = require("../allowances.js");
 
 const oddslib = require("oddslib");
 
@@ -38,25 +36,7 @@ const consumer = new ethers.Contract(
   wallet
 );
 
-const erc20Instance = new ethers.Contract(
-  process.env.LINK_CONTRACT,
-  linkToken.linkTokenContract.abi,
-  wallet
-);
-
 async function doPull(numberOfExecution) {
-  let amountOfToken = await erc20Instance.balanceOf(wallet.address);
-  console.log("Amount token in wallet: " + parseInt(amountOfToken));
-  console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
-
-  if (parseInt(amountOfToken) < parseInt(process.env.LINK_THRESHOLD)) {
-    await sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
-      "Amount of LINK in a odds-bot is: " + amountOfToken,
-      process.env.LINK_THRESHOLD,
-      wallet.address
-    );
-  }
-
   const jobId = bytes32({ input: process.env.JOB_ID_ODDS });
   const jobIdResolve = bytes32({ input: process.env.JOB_ID_RESOLVE });
 
@@ -68,12 +48,7 @@ async function doPull(numberOfExecution) {
   const backupBookmaker = process.env.BACKUP_ODDS_BOOKMAKER;
 
   // sportId
-  let sportIds = process.env.SPORT_IDS.split(",");
-  let riskySports = process.env.RISKY_SPORT_IDS.split(",");
-
-  console.log("sportIds -> " + sportIds.length);
-  console.log("riskySports" + riskySports.length);
-
+  let sportIds = process.env.SPORT_IDS;
   let cancelStatuses = process.env.CANCEL_STATUSES.split(",");
 
   // resolve market
@@ -100,455 +75,435 @@ async function doPull(numberOfExecution) {
     console.log("Primary bookmaker is (id): " + primaryBookmaker);
     console.log("USE_BACKUP_ODDS_BOOKMAKER is set to: " + useBackupBookmaker);
     console.log("Backup bookmaker is: " + backupBookmaker);
+    console.log("SPORT ID =>  " + sportIds);
 
     // do for all sportIds
-    for (let j = 0; j < sportIds.length; j++) {
-      let percentageChangePerSport =
-        ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]] !== undefined
-          ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]]
-          : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
 
-      // each second execution for non risky sports
-      if (
-        !isTheSportRisky(riskySports, sportIds[j]) &&
-        numberOfExecution % 2 == 0
-      ) {
-        console.log(
-          "Sport " +
-            sportIds[j] +
-            " is not risky and number of execution was: " +
-            numberOfExecution +
-            ", skiping!"
-        );
-        continue;
-      }
+    let percentageChangePerSport =
+      ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds] !== undefined
+        ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds]
+        : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
+
+    // from today!!! maybe some games still running
+    for (let i = 0; i <= daysInFront; i++) {
+      console.log("------------------------");
+      console.log("CHANGE: " + percentageChangePerSport);
+      console.log("Processing: TODAY +  " + i);
+
+      let unixDate = await getSecondsToDate(i);
+      let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
+      console.log("Unix date in miliseconds: " + unixDateMiliseconds);
+
+      let isSportOnADate = await consumer.isSportOnADate(unixDate, sportIds);
+      console.log("Having sport on a date:  " + isSportOnADate);
+
+      let gamesOnContract = await consumer.getGamesPerDatePerSport(
+        sportIds,
+        unixDate
+      );
+      console.log("Count games on a date: " + gamesOnContract.length);
 
       let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(
-        sportIds[j]
+        sportIds
       );
-      console.log("SPORT ID =>  " + sportIds[j]);
 
-      // from today!!! maybe some games still running
-      for (let i = 0; i <= daysInFront; i++) {
-        console.log("------------------------");
-        console.log("CHANGE: " + percentageChangePerSport);
-        console.log("Processing: TODAY +  " + i);
+      // that day have games inside
+      if (isSportOnADate && gamesOnContract.length > 0) {
+        console.log("Processing sport and date...");
 
-        let unixDate = getSecondsToDate(i);
-        console.log("Unix date in seconds: " + unixDate);
-        let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
-        console.log("Unix date in miliseconds: " + unixDateMiliseconds);
+        let sendRequestForOdds = false;
 
-        let isSportOnADate = await consumer.isSportOnADate(
-          unixDate,
-          sportIds[j]
-        );
-        console.log("Having sport on a date:  " + isSportOnADate);
+        const urlBuild =
+          baseUrl +
+          "/sports/" +
+          sportIds +
+          "/events/" +
+          dateConverter(unixDateMiliseconds);
+        let response = await axios.get(urlBuild, {
+          headers: {
+            "X-RapidAPI-Key": process.env.REQUEST_KEY,
+          },
+        });
 
-        let gamesOnContract = await consumer.getGamesPerDatePerSport(
-          sportIds[j],
-          unixDate
-        );
-        console.log("Count games on a date: " + gamesOnContract.length);
+        const gamesListResponse = [];
 
-        // that day have games inside
-        if (isSportOnADate && gamesOnContract.length > 0) {
-          console.log("Processing sport and date...");
+        response.data.events.forEach((event) => {
+          let status = checkIfUndefined(event.score);
+          // look only for scheduled or canceled games
+          if (
+            status == "STATUS_SCHEDULED" ||
+            isGameInRightStatus(cancelStatuses, status)
+          ) {
+            gamesListResponse.push({
+              id: event.event_id,
+              homeTeam: getTeam(
+                event.teams,
+                event.teams_normalized,
+                true,
+                americanSports,
+                sportIds
+              ),
+              awayTeam: getTeam(
+                event.teams,
+                event.teams_normalized,
+                false,
+                americanSports,
+                sportIds
+              ),
+              status: status,
+              homeOdd: getOdds(
+                event.lines,
+                1,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              awayOdd: getOdds(
+                event.lines,
+                2,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              drawOdd: getOdds(
+                event.lines,
+                0,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+            });
+          }
+        });
 
-          let sendRequestForOdds = false;
-
-          const urlBuild =
-            baseUrl +
-            "/sports/" +
-            sportIds[j] +
-            "/events/" +
-            dateConverter(unixDateMiliseconds);
-          let response = await axios.get(urlBuild, {
-            headers: {
-              "X-RapidAPI-Key": process.env.REQUEST_KEY,
-            },
-          });
-
-          const gamesListResponse = [];
-
-          response.data.events.forEach((event) => {
-            let status = checkIfUndefined(event.score);
-            // look only for scheduled or canceled games
-            if (
-              status == "STATUS_SCHEDULED" ||
-              isGameInRightStatus(cancelStatuses, status)
-            ) {
-              gamesListResponse.push({
-                id: event.event_id,
-                homeTeam: getTeam(
-                  event.teams,
-                  event.teams_normalized,
-                  true,
-                  americanSports,
-                  sportIds[j]
-                ),
-                awayTeam: getTeam(
-                  event.teams,
-                  event.teams_normalized,
-                  false,
-                  americanSports,
-                  sportIds[j]
-                ),
-                status: checkIfUndefined(event.score),
-                homeOdd: getOdds(
-                  event.lines,
-                  1,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                awayOdd: getOdds(
-                  event.lines,
-                  2,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                drawOdd: getOdds(
-                  event.lines,
-                  0,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-              });
-            }
-          });
-
-          // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
-          for (let n = 0; n < gamesListResponse.length; n++) {
+        // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
+        for (let n = 0; n < gamesListResponse.length; n++) {
+          if (sendRequestForOdds) {
+            break;
+          }
+          console.log("Game status -> " + gamesListResponse[n].status);
+          console.log(
+            "Obtaining game id (as string): -> " + gamesListResponse[n].id
+          );
+          console.log(
+            "Game: " +
+              gamesListResponse[n].homeTeam +
+              " " +
+              gamesListResponse[n].awayTeam
+          );
+          for (let m = 0; m < gamesOnContract.length; m++) {
             if (sendRequestForOdds) {
               break;
             }
-            console.log("Game status -> " + gamesListResponse[n].status);
-            console.log(
-              "Obtaining game id (as string): -> " + gamesListResponse[n].id
-            );
-            console.log(
-              "Game: " +
-                gamesListResponse[n].homeTeam +
-                " " +
-                gamesListResponse[n].awayTeam
-            );
-            for (let m = 0; m < gamesOnContract.length; m++) {
-              if (sendRequestForOdds) {
-                break;
-              }
-              // when game is found and status and status is STATUS_SCHEDULED
-              if (
-                gamesListResponse[n].id ==
-                  bytes32({ input: gamesOnContract[m] }) &&
-                gamesListResponse[n].status == "STATUS_SCHEDULED"
-              ) {
-                console.log("Odds, checking...");
+            // when game is found and status and status is STATUS_SCHEDULED
+            if (
+              gamesListResponse[n].id ==
+                bytes32({ input: gamesOnContract[m] }) &&
+              gamesListResponse[n].status == "STATUS_SCHEDULED"
+            ) {
+              console.log("Odds, checking...");
 
-                let marketAddress = await consumer.marketPerGameId(
+              let marketAddress = await consumer.marketPerGameId(
+                gamesOnContract[m]
+              );
+
+              let isMarketResolved = await consumer.marketResolved(
+                marketAddress
+              );
+              console.log("Market resolved: " + isMarketResolved);
+
+              let isMarketCanceled = await consumer.marketCanceled(
+                marketAddress
+              );
+              console.log("Market canceled: " + isMarketCanceled);
+
+              let gameStart = await queues.gameStartPerGameId(
+                gamesOnContract[m]
+              );
+
+              // only ongoing games not resolved or already canceled
+              if (!isMarketResolved && !isMarketCanceled) {
+                let homeOddPinnacle = gamesListResponse[n].homeOdd;
+                console.log(
+                  "homeOdd API: " +
+                    homeOddPinnacle +
+                    " id: " +
+                    gamesListResponse[n].id
+                );
+                let oddsForGame = await consumer.getOddsForGame(
                   gamesOnContract[m]
                 );
-
-                let isMarketResolved = await consumer.marketResolved(
-                  marketAddress
-                );
-                console.log("Market resolved: " + isMarketResolved);
-
-                let isMarketCanceled = await consumer.marketCanceled(
-                  marketAddress
-                );
-                console.log("Market canceled: " + isMarketCanceled);
-
-                let gameStart = await queues.gameStartPerGameId(
-                  gamesOnContract[m]
-                );
-
-                // only ongoing games not resolved or already canceled
-                if (!isMarketResolved && !isMarketCanceled) {
-                  let homeOddPinnacle = gamesListResponse[n].homeOdd;
-                  console.log(
-                    "homeOdd API: " +
-                      homeOddPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-                  let oddsForGame = await consumer.getOddsForGame(
+                console.log(
+                  "homeOdd contract: " +
+                    oddsForGame[0] +
+                    " id: " +
                     gamesOnContract[m]
-                  );
-                  console.log(
-                    "homeOdd contract: " +
-                      oddsForGame[0] +
-                      " id: " +
-                      gamesOnContract[m]
-                  );
-
-                  let awayOddPinnacle = gamesListResponse[n].awayOdd;
-                  console.log(
-                    "awayOdd API: " +
-                      awayOddPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-                  console.log(
-                    "awayOdd contract: " +
-                      oddsForGame[1] +
-                      " id: " +
-                      gamesOnContract[m]
-                  );
-
-                  let drawOddPinnacle = gamesListResponse[n].drawOdd;
-                  console.log(
-                    "drawOdd API: " +
-                      drawOddPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-                  console.log(
-                    "drawOdd contract: " +
-                      oddsForGame[2] +
-                      " id: " +
-                      gamesOnContract[m]
-                  );
-
-                  let invalidOdds = await consumer.invalidOdds(marketAddress);
-                  console.log("Is game paused by invalid odds: " + invalidOdds);
-                  let isPausedByCanceledStatus =
-                    await consumer.isPausedByCanceledStatus(marketAddress);
-                  console.log(
-                    "Is game paused by status: " + isPausedByCanceledStatus
-                  );
-
-                  if (
-                    oddsForGame[0] === undefined ||
-                    homeOddPinnacle === undefined ||
-                    oddsForGame[1] === undefined ||
-                    awayOddPinnacle === undefined
-                  ) {
-                    continue;
-                  }
-
-                  // percentage change >= percentageChangePerSport send request
-                  if (
-                    (getPercentageChange(
-                      oddsForGame[0],
-                      homeOddPinnacle,
-                      percentageChangePerSport
-                    ) >= percentageChangePerSport ||
-                      getPercentageChange(
-                        oddsForGame[1],
-                        awayOddPinnacle,
-                        percentageChangePerSport
-                      ) >= percentageChangePerSport ||
-                      getPercentageChange(
-                        oddsForGame[2],
-                        drawOddPinnacle,
-                        percentageChangePerSport
-                      ) >= percentageChangePerSport) &&
-                    !invalidOdds &&
-                    !isPausedByCanceledStatus
-                  ) {
-                    let percentageChangeHome = getPercentageChange(
-                      oddsForGame[0],
-                      homeOddPinnacle,
-                      percentageChangePerSport
-                    );
-                    let percentageChangeAway = getPercentageChange(
-                      oddsForGame[1],
-                      awayOddPinnacle,
-                      percentageChangePerSport
-                    );
-                    let percentageChangeDraw = getPercentageChange(
-                      oddsForGame[2],
-                      drawOddPinnacle,
-                      percentageChangePerSport
-                    );
-
-                    console.log("Home change odd: " + percentageChangeHome);
-                    console.log("Away change odd: " + percentageChangeAway);
-                    console.log("Draw change odd: " + percentageChangeDraw);
-
-                    console.log("Setting sendRequestForOdds to true");
-
-                    sendRequestForOdds = true;
-
-                    await sendMessageToDiscordOddsChanged(
-                      gamesListResponse[n].homeTeam,
-                      gamesListResponse[n].awayTeam,
-                      oddsForGame[0],
-                      homeOddPinnacle,
-                      oddsForGame[1],
-                      awayOddPinnacle,
-                      oddsForGame[2],
-                      drawOddPinnacle,
-                      gameStart,
-                      percentageChangeHome,
-                      percentageChangeAway,
-                      percentageChangeDraw,
-                      percentageChangePerSport,
-                      "1002145721543311370"
-                    );
-                  } else if (
-                    // odds appear and game was paused by invalid odds or cancel status send request
-                    homeOddPinnacle != 0.01 &&
-                    awayOddPinnacle != 0.01 &&
-                    homeOddPinnacle != 0 &&
-                    awayOddPinnacle != 0 &&
-                    (isSportTwoPositionsSport ||
-                      (drawOddPinnacle != 0.01 && drawOddPinnacle != 0)) &&
-                    (invalidOdds || isPausedByCanceledStatus)
-                  ) {
-                    console.log(
-                      "Receiving valid odds or unpause by wrong cancel status!"
-                    );
-                    sendRequestForOdds = true;
-                    await sendMessageToDiscordOddsChanged(
-                      gamesListResponse[n].homeTeam,
-                      gamesListResponse[n].awayTeam,
-                      0,
-                      homeOddPinnacle,
-                      0,
-                      awayOddPinnacle,
-                      0,
-                      drawOddPinnacle,
-                      gameStart,
-                      100,
-                      100,
-                      isSportTwoPositionsSport ? 0 : 100,
-                      percentageChangePerSport,
-                      "1002145721543311370"
-                    );
-                  }
-                } else {
-                  console.log("Market for game already resolved!");
-                }
-                // game is in cancel/resolved status on API
-              } else if (
-                gamesListResponse[n].id ==
-                  bytes32({ input: gamesOnContract[m] }) &&
-                isGameInRightStatus(cancelStatuses, gamesListResponse[n].status)
-              ) {
-                let marketAddress = await consumer.marketPerGameId(
-                  gamesOnContract[m]
                 );
 
+                let awayOddPinnacle = gamesListResponse[n].awayOdd;
+                console.log(
+                  "awayOdd API: " +
+                    awayOddPinnacle +
+                    " id: " +
+                    gamesListResponse[n].id
+                );
+                console.log(
+                  "awayOdd contract: " +
+                    oddsForGame[1] +
+                    " id: " +
+                    gamesOnContract[m]
+                );
+
+                let drawOddPinnacle = gamesListResponse[n].drawOdd;
+                console.log(
+                  "drawOdd API: " +
+                    drawOddPinnacle +
+                    " id: " +
+                    gamesListResponse[n].id
+                );
+                console.log(
+                  "drawOdd contract: " +
+                    oddsForGame[2] +
+                    " id: " +
+                    gamesOnContract[m]
+                );
+
+                let invalidOdds = await consumer.invalidOdds(marketAddress);
+                console.log("Is game paused by invalid odds: " + invalidOdds);
                 let isPausedByCanceledStatus =
                   await consumer.isPausedByCanceledStatus(marketAddress);
                 console.log(
                   "Is game paused by status: " + isPausedByCanceledStatus
                 );
 
-                let isMarketCanceledAlready = await consumer.marketCanceled(
-                  marketAddress
-                );
-                console.log("Canceled already: " + isMarketCanceledAlready);
-
-                console.log(
-                  "MARKET:  " +
-                    marketAddress +
-                    " paused: " +
-                    isPausedByCanceledStatus
-                );
-
-                // checking if it is already paused by cancel/resolved status
-                // if not pause it
-                if (!isPausedByCanceledStatus && !isMarketCanceledAlready) {
-                  let gameStart = await queues.gameStartPerGameId(
-                    gamesOnContract[m]
-                  );
-                  console.log("GAME start:  " + gameStart);
-
-                  try {
-                    console.log("Send request...");
-
-                    let tx = await wrapper.requestGamesResolveWithFilters(
-                      jobIdResolve,
-                      market,
-                      sportIds[j],
-                      gameStart,
-                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
-                      [gamesListResponse[n].id]
-                    );
-
-                    await tx.wait().then((e) => {
-                      console.log(
-                        "Requested for: " +
-                          gameStart +
-                          " with game id: " +
-                          gamesListResponse[n].id
-                      );
-                    });
-                    await sendMessageToDiscordGameCanceled(
-                      gamesListResponse[n].homeTeam,
-                      gamesListResponse[n].awayTeam,
-                      gameStart
-                    );
-                  } catch (e) {
-                    console.log(e);
-                    await sendErrorMessageToDiscordStatusCancel(
-                      "Request to CL odds-bot went wrong, can not pause game by cancel status! Please check LINK amount on bot, or kill and debug!",
-                      sportIds[j],
-                      gameStart,
-                      gamesListResponse[n].id
-                    );
-                    failedCounter++;
-                    await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) 10min for admin
-                  }
-                } else {
-                  console.log("Market already paused!");
+                if (
+                  oddsForGame[0] === undefined ||
+                  homeOddPinnacle === undefined ||
+                  oddsForGame[1] === undefined ||
+                  awayOddPinnacle === undefined
+                ) {
+                  continue;
                 }
+
+                // percentage change >= percentageChangePerSport send request
+                if (
+                  (getPercentageChange(
+                    oddsForGame[0],
+                    homeOddPinnacle,
+                    percentageChangePerSport
+                  ) >= percentageChangePerSport ||
+                    getPercentageChange(
+                      oddsForGame[1],
+                      awayOddPinnacle,
+                      percentageChangePerSport
+                    ) >= percentageChangePerSport ||
+                    getPercentageChange(
+                      oddsForGame[2],
+                      drawOddPinnacle,
+                      percentageChangePerSport
+                    ) >= percentageChangePerSport) &&
+                  !invalidOdds &&
+                  !isPausedByCanceledStatus
+                ) {
+                  let percentageChangeHome = getPercentageChange(
+                    oddsForGame[0],
+                    homeOddPinnacle,
+                    percentageChangePerSport
+                  );
+                  let percentageChangeAway = getPercentageChange(
+                    oddsForGame[1],
+                    awayOddPinnacle,
+                    percentageChangePerSport
+                  );
+                  let percentageChangeDraw = getPercentageChange(
+                    oddsForGame[2],
+                    drawOddPinnacle,
+                    percentageChangePerSport
+                  );
+
+                  console.log("Home change odd: " + percentageChangeHome);
+                  console.log("Away change odd: " + percentageChangeAway);
+                  console.log("Draw change odd: " + percentageChangeDraw);
+
+                  console.log("Setting sendRequestForOdds to true");
+
+                  sendRequestForOdds = true;
+
+                  await sendMessageToDiscordOddsChanged(
+                    gamesListResponse[n].homeTeam,
+                    gamesListResponse[n].awayTeam,
+                    oddsForGame[0],
+                    homeOddPinnacle,
+                    oddsForGame[1],
+                    awayOddPinnacle,
+                    oddsForGame[2],
+                    drawOddPinnacle,
+                    gameStart,
+                    percentageChangeHome,
+                    percentageChangeAway,
+                    percentageChangeDraw,
+                    percentageChangePerSport,
+                    "1002145721543311370"
+                  );
+                } else if (
+                  // odds appear and game was paused by invalid odds or cancel status send request
+                  homeOddPinnacle != 0.01 &&
+                  awayOddPinnacle != 0.01 &&
+                  homeOddPinnacle != 0 &&
+                  awayOddPinnacle != 0 &&
+                  (isSportTwoPositionsSport ||
+                    (drawOddPinnacle != 0.01 && drawOddPinnacle != 0)) &&
+                  (invalidOdds || isPausedByCanceledStatus)
+                ) {
+                  console.log(
+                    "Receiving valid odds or unpause by wrong cancel status!"
+                  );
+                  sendRequestForOdds = true;
+                  await sendMessageToDiscordOddsChanged(
+                    gamesListResponse[n].homeTeam,
+                    gamesListResponse[n].awayTeam,
+                    0,
+                    homeOddPinnacle,
+                    0,
+                    awayOddPinnacle,
+                    0,
+                    drawOddPinnacle,
+                    gameStart,
+                    100,
+                    100,
+                    isSportTwoPositionsSport ? 0 : 100,
+                    percentageChangePerSport,
+                    "1002145721543311370"
+                  );
+                }
+              } else {
+                console.log("Market for game already resolved!");
+              }
+              // game is in cancel/resolved status on API
+            } else if (
+              gamesListResponse[n].id ==
+                bytes32({ input: gamesOnContract[m] }) &&
+              isGameInRightStatus(cancelStatuses, gamesListResponse[n].status)
+            ) {
+              let marketAddress = await consumer.marketPerGameId(
+                gamesOnContract[m]
+              );
+
+              let isPausedByCanceledStatus =
+                await consumer.isPausedByCanceledStatus(marketAddress);
+              console.log(
+                "Is game paused by status: " + isPausedByCanceledStatus
+              );
+
+              let isMarketCanceledAlready = await consumer.marketCanceled(
+                marketAddress
+              );
+              console.log("Canceled already: " + isMarketCanceledAlready);
+
+              console.log(
+                "MARKET:  " +
+                  marketAddress +
+                  " paused: " +
+                  isPausedByCanceledStatus
+              );
+
+              // checking if it is already paused by cancel/resolved status
+              // if not pause it
+              if (!isPausedByCanceledStatus && !isMarketCanceledAlready) {
+                let gameStart = await queues.gameStartPerGameId(
+                  gamesOnContract[m]
+                );
+                console.log("GAME start:  " + gameStart);
+
+                try {
+                  console.log("Send request...");
+
+                  let tx = await wrapper.requestGamesResolveWithFilters(
+                    jobIdResolve,
+                    market,
+                    sportIds,
+                    gameStart,
+                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
+                    [gamesListResponse[n].id]
+                  );
+
+                  await tx.wait().then((e) => {
+                    console.log(
+                      "Requested for: " +
+                        gameStart +
+                        " with game id: " +
+                        gamesListResponse[n].id
+                    );
+                  });
+                  await sendMessageToDiscordGameCanceled(
+                    gamesListResponse[n].homeTeam,
+                    gamesListResponse[n].awayTeam,
+                    gameStart
+                  );
+                } catch (e) {
+                  console.log(e);
+                  await sendErrorMessageToDiscordStatusCancel(
+                    "Request to CL odds-bot went wrong, can not pause game by cancel status! Please check LINK amount on bot, or kill and debug!",
+                    sportIds,
+                    gameStart,
+                    gamesListResponse[n].id
+                  );
+                  failedCounter++;
+                  await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) 10 min
+                }
+              } else {
+                console.log("Market already paused!");
               }
             }
           }
+        }
 
-          // odds changed
-          if (sendRequestForOdds) {
-            console.log("Sending request, odds changed...");
-            try {
-              console.log("Send request...");
+        // odds changed
+        if (sendRequestForOdds) {
+          console.log("Sending request, odds changed...");
+          try {
+            console.log("Send request...");
 
-              let gameIds = [];
-              if (sportIds[j] == 1) {
-                gamesOnContract.forEach((g) => {
-                  gameIds.push(bytes32({ input: g }));
-                });
-              }
-
-              let tx = await wrapper.requestOddsWithFilters(
-                jobId,
-                sportIds[j],
-                unixDate,
-                gameIds, //ids,
-                {
-                  gasLimit: process.env.GAS_LIMIT,
-                }
-              );
-
-              await tx.wait().then((e) => {
-                console.log(
-                  "Requested for: " + unixDate + " for sport: " + sportIds[j]
-                );
+            let gameIds = [];
+            if (sportIds == 1) {
+              gamesOnContract.forEach((g) => {
+                gameIds.push(bytes32({ input: g }));
               });
-            } catch (e) {
-              console.log(e);
-              await sendErrorMessageToDiscordRequestOddsfromCL(
-                "Request to CL odds-bot went wrong, can not pull odds! Please check LINK amount on bot, or kill and debug!",
-                sportIds[j],
-                unixDate
-              );
-              failedCounter++;
-              await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) 10min for admin
             }
-          } else {
-            console.log("Not still for processing...");
+
+            let tx = await wrapper.requestOddsWithFilters(
+              jobId,
+              sportIds,
+              unixDate,
+              gameIds, //ids,
+              {
+                gasLimit: process.env.GAS_LIMIT,
+              }
+            );
+
+            await tx.wait().then((e) => {
+              console.log(
+                "Requested for: " + unixDate + " for sport: " + sportIds
+              );
+            });
+          } catch (e) {
+            console.log(e);
+            await sendErrorMessageToDiscordRequestOddsfromCL(
+              "Request to CL odds-bot went wrong, can not pull odds! Please check LINK amount on bot, or kill and debug!",
+              sportIds,
+              unixDate
+            );
+            failedCounter++;
+            await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           }
         } else {
-          console.log("Next date...");
+          console.log("Not still for processing...");
         }
+      } else {
+        console.log("Next date...");
       }
     }
 
