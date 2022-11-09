@@ -356,6 +356,25 @@ const rundownVerifier = {
     {
       inputs: [
         {
+          internalType: "bytes32[]",
+          name: "_gameIds",
+          type: "bytes32[]",
+        },
+      ],
+      name: "getOddsForGames",
+      outputs: [
+        {
+          internalType: "int24[]",
+          name: "odds",
+          type: "int24[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "address",
           name: "_owner",
           type: "address",
