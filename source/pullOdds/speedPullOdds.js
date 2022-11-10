@@ -43,9 +43,9 @@ async function doPull(numberOfExecution, lastStartDate) {
   // number of days in front for calculation
   const daysInFront = process.env.CREATION_DAYS_INFRONT;
 
-  const primaryBookmaker = process.env.PRIMARY_ODDS_BOOKMAKER;
-  const useBackupBookmaker = process.env.USE_BACKUP_ODDS_BOOKMAKER === "true";
-  const backupBookmaker = process.env.BACKUP_ODDS_BOOKMAKER;
+  let primaryBookmaker;
+  let useBackupBookmaker;
+  let backupBookmaker;
 
   // sportId
   let sportIds = process.env.SPORT_IDS;
@@ -73,9 +73,17 @@ async function doPull(numberOfExecution, lastStartDate) {
 
     console.log("JOB ID =  " + jobId);
     console.log("Primary bookmaker is (id): " + primaryBookmaker);
-    console.log("USE_BACKUP_ODDS_BOOKMAKER is set to: " + useBackupBookmaker);
-    console.log("Backup bookmaker is: " + backupBookmaker);
-    console.log("SPORT ID =>  " + sportIds);
+
+    let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(sportIds);
+    useBackupBookmaker = oddsBookmakers.length > 1;
+    primaryBookmaker = oddsBookmakers[0];
+    console.log("Primary bookmaker is (id): " + primaryBookmaker);
+    console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
+
+    if (useBackupBookmaker) {
+      backupBookmaker = oddsBookmakers[1];
+      console.log("Backup bookmaker is (id): " + backupBookmaker);
+    }
 
     // do for all sportIds
 

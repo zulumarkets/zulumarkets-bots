@@ -32,6 +32,21 @@ const gamesWraperContract = {
           name: "_paymentOdds",
           type: "uint256",
         },
+        {
+          internalType: "bytes32",
+          name: "_oddsSpecId",
+          type: "bytes32",
+        },
+        {
+          internalType: "address",
+          name: "_sportsAMM",
+          type: "address",
+        },
+        {
+          internalType: "uint256[]",
+          name: "_defaultBookmakerIds",
+          type: "uint256[]",
+        },
       ],
       stateMutability: "nonpayable",
       type: "constructor",
@@ -80,6 +95,25 @@ const gamesWraperContract = {
       inputs: [
         {
           indexed: false,
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+        {
+          indexed: false,
+          internalType: "uint256[]",
+          name: "_ids",
+          type: "uint256[]",
+        },
+      ],
+      name: "NewBookmakerIdsBySportId",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
           internalType: "address",
           name: "_consumer",
           type: "address",
@@ -93,12 +127,38 @@ const gamesWraperContract = {
       inputs: [
         {
           indexed: false,
+          internalType: "uint256[]",
+          name: "_ids",
+          type: "uint256[]",
+        },
+      ],
+      name: "NewDefaultBookmakerIds",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
           internalType: "address",
           name: "_link",
           type: "address",
         },
       ],
       name: "NewLinkAddress",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
+          internalType: "bytes32",
+          name: "_specId",
+          type: "bytes32",
+        },
+      ],
+      name: "NewOddsSpecId",
       type: "event",
     },
     {
@@ -157,6 +217,19 @@ const gamesWraperContract = {
       anonymous: false,
       inputs: [
         {
+          indexed: false,
+          internalType: "address",
+          name: "_sportsAmm",
+          type: "address",
+        },
+      ],
+      name: "NewSportsAmmAddress",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
           indexed: true,
           internalType: "address",
           name: "previousOwner",
@@ -199,6 +272,44 @@ const gamesWraperContract = {
       type: "event",
     },
     {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "_date",
+          type: "uint256",
+        },
+        {
+          indexed: false,
+          internalType: "address",
+          name: "_marketAddress",
+          type: "address",
+        },
+      ],
+      name: "UpdateOddsFromAMMForAGame",
+      type: "event",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "_marketAddress",
+          type: "address",
+        },
+      ],
+      name: "callUpdateOddsForSpecificGame",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
       inputs: [],
       name: "consumer",
       outputs: [
@@ -220,6 +331,25 @@ const gamesWraperContract = {
         },
       ],
       name: "datePerRequest",
+      outputs: [
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      name: "defaultBookmakerIds",
       outputs: [
         {
           internalType: "uint256",
@@ -285,6 +415,25 @@ const gamesWraperContract = {
       type: "function",
     },
     {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+      ],
+      name: "getBookmakerIdsBySportId",
+      outputs: [
+        {
+          internalType: "uint256[]",
+          name: "",
+          type: "uint256[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
       inputs: [],
       name: "getOracleAddress",
       outputs: [
@@ -318,6 +467,19 @@ const gamesWraperContract = {
           internalType: "contract IERC20",
           name: "",
           type: "address",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "oddsSpecId",
+      outputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
         },
       ],
       stateMutability: "view",
@@ -492,6 +654,24 @@ const gamesWraperContract = {
     {
       inputs: [
         {
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+        {
+          internalType: "uint256[]",
+          name: "_bookmakerIds",
+          type: "uint256[]",
+        },
+      ],
+      name: "setBookmakerIdsBySportId",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "address",
           name: "_consumer",
           type: "address",
@@ -505,12 +685,38 @@ const gamesWraperContract = {
     {
       inputs: [
         {
+          internalType: "uint256[]",
+          name: "_defaultBookmakerIds",
+          type: "uint256[]",
+        },
+      ],
+      name: "setDefaultBookmakerIds",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "address",
           name: "_link",
           type: "address",
         },
       ],
       name: "setLink",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "_specId",
+          type: "bytes32",
+        },
+      ],
+      name: "setOddsSpecId",
       outputs: [],
       stateMutability: "nonpayable",
       type: "function",
@@ -570,6 +776,19 @@ const gamesWraperContract = {
     {
       inputs: [
         {
+          internalType: "address",
+          name: "_sportsAmm",
+          type: "address",
+        },
+      ],
+      name: "setSportsAmmAddress",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "bytes32",
           name: "",
           type: "bytes32",
@@ -581,6 +800,43 @@ const gamesWraperContract = {
           internalType: "uint256",
           name: "",
           type: "uint256",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      name: "sportIdToBookmakerIds",
+      outputs: [
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "sportsAMM",
+      outputs: [
+        {
+          internalType: "address",
+          name: "",
+          type: "address",
         },
       ],
       stateMutability: "view",
