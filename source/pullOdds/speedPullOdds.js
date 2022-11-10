@@ -72,7 +72,7 @@ async function doPull(numberOfExecution, lastStartDate) {
     processed = true;
 
     console.log("JOB ID =  " + jobId);
-    console.log("Primary bookmaker is (id): " + primaryBookmaker);
+    console.log("sportId: " + sportIds);
 
     let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(sportIds);
     useBackupBookmaker = oddsBookmakers.length > 1;
