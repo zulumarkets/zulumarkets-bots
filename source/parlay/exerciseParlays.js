@@ -4,9 +4,14 @@ const constants = require("../constants.js");
 const ethers = require("ethers");
 const wallet = new ethers.Wallet(constants.privateKey, constants.etherprovider);
 const bytes32 = require("bytes32");
+const linkToken = require("../../contracts/LinkToken.js");
 
 const parlayData = require("../../contracts/ParlayData.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
+
+const Discord = require("discord.js");
+const overtimeBot = new Discord.Client();
+overtimeBot.login(process.env.BOT_OVERTIME_RESOLVER);
 
 let parlaysToBeExercised = [];
 let newResolved = [];
@@ -22,6 +27,12 @@ const dataParlay = new ethers.Contract(
 const consumer = new ethers.Contract(
   process.env.CONSUMER_CONTRACT,
   gamesConsumer.gamesConsumerContract.abi,
+  wallet
+);
+
+const sUSDContract = new ethers.Contract(
+  process.env.SUSD_CONTRACT,
+  linkToken.linkTokenContract.abi,
   wallet
 );
 
@@ -325,6 +336,54 @@ async function collectExercisableParlays(
   }
 }
 
+async function sendInfoMessageToDiscord(numOfExercisedParlays, txID, messageForPrint) {
+  var message = new Discord.MessageEmbed();
+
+  message.addFields(
+      {
+        name: "BATCH of Parlays exercised: ",
+        value: numOfExercisedParlays+"\u200b",
+      },
+      {
+        name: "Tx:",
+        value: txID,
+      },
+      {
+        name: ":information_source: Parlay AMM:",
+        value: messageForPrint,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1039869584372662332");
+  await overtimeCreate.send(message);
+}
+
+async function sendErrorMessageToDiscord(messageForPrint) {
+  var message = new Discord.MessageEmbed();
+
+  message.addFields(
+      {
+        name: "TEST on parlay exercise bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":exclamation: Test message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeCreate = await overtimeBot.channels.fetch("1040194485436563486");
+  await overtimeCreate.send(message);
+}
+
 async function exerciseHistory(blocksInHistory) {
   console.log("Go back ", blocksInHistory, " blocks");
   let latestBlock = await constants.etherprovider.getBlockNumber();
@@ -377,10 +436,10 @@ async function doIndefinitely() {
   var numberOfExecution = 0;
   while (true) {
     try {
-      console.log("\x1b[35m---------START EXERCISE EXECUTION---------\x1b[0m");
+      console.log("\x1b[35m--------- START PARLAYS CHECK ---------\x1b[0m");
       let timeNow = new Date();
       console.log("Time: " + timeNow);
-      console.log("Exercise Time: "+ exerciseDate);
+      console.log("Exercise after: "+ exerciseDate);
       if (newResolved.length > 0) {
         let checkResolved = newResolved;
         newResolved = [];
@@ -392,6 +451,9 @@ async function doIndefinitely() {
           checkResolved.length,
           " \x1b[32m::::::::::::::\x1b[0m"
         );
+        await sendInfoMessageToDiscord(checkResolved.length, "txID",
+          " \nRetrieved: "+(parseFloat(10)-parseFloat(5)) + " sUSD to AMM"
+        );
         for (let i = 0; i < checkResolved.length; i++) {
           await collectExercisableParlays(
             i,
@@ -400,24 +462,36 @@ async function doIndefinitely() {
             checkResolved[i].outcome
           );
         }
+        if(parlaysToBeExercised.length > 0) {
+          console.log("\n\x1b[33m::Parlays to be exercised: ", parlaysToBeExercised.length);
+        }
       }
-      if (parlaysToBeExercised.length > 0 && timeNow >= exerciseDate) {
+      if ((timeNow >= exerciseDate && parlaysToBeExercised.length > 0)) {
         console.log(
           "\x1b[33m:::::::::::::: Exercise parlays ::::::::::::::\x1b[0m"
         );
         console.log("Number of parlays: " + parlaysToBeExercised.length);
+        console.log("Execution: " + numberOfExecution);
+        let init_balance = await sUSDContract.balanceOf(process.env.PARLAY_AMM_CONTRACT);
+        init_balance = ethers.utils.formatEther(init_balance);
+        console.log("AMM balance: ", parseFloat(init_balance));
         let exerciseParlays = parlaysToBeExercised;
         parlaysToBeExercised = [];
-        await doExercise(exerciseParlays);
-        exerciseDate.setMilliseconds(timeNow.getMilliseconds()+process.env.EXERCISE_PARLAYS_FREQUENCY);
+        let txID = await doExercise(exerciseParlays);
+        exerciseDate.setMilliseconds(timeNow.getMilliseconds()+parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY));
+        let balance = await sUSDContract.balanceOf(process.env.PARLAY_AMM_CONTRACT);
+        balance = ethers.utils.formatEther(balance);
+        console.log("AMM balance after: ", parseFloat(balance));
+        console.log("AMM retrieved: ", (parseFloat(balance)-parseFloat(init_balance)));
+        await sendInfoMessageToDiscord(exerciseParlays.length, txID,
+          " \nRetrieved: "+(parseFloat(balance)-parseFloat(init_balance)) + " sUSD to AMM"
+        );
         numberOfExecution++;
-      } else if(timeNow >= exerciseDate)  {
-        timeNow = new Date();
-        exerciseDate.setMilliseconds(timeNow.getMilliseconds()+process.env.EXERCISE_PARLAYS_FREQUENCY);
-      } else {
+      } else if (timeNow >= exerciseDate)  {
         console.log("[       Nothing to exercise       ]");
+        exerciseDate.setMilliseconds(timeNow.getMilliseconds()+parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY));
       }
-      console.log("\x1b[34m---------END EXERCISE EXECUTION---------\x1b[0m");
+      console.log("\x1b[34m--------- END PARLAYS CHECK ---------\x1b[0m");
       if (firstRun) {
         firstRun = false;
         await delay(5000);
@@ -427,6 +501,12 @@ async function doIndefinitely() {
     } catch (e) {
       console.log(e);
       // wait next process
+      sendErrorMessageToDiscord(
+        "Please check parlay-exerciser, error on execution: " +
+          numberOfExecution +
+          ", date: " +
+          new Date()
+      );
       await delay(process.env.EXERCISE_FREQUENCY);
     }
   }
@@ -442,7 +522,7 @@ if (parseInt(process.env.BLOCKS_BACK_IN_HISTORY) > 0 && historyUnprocessed) {
 }
 exerciseDate = new Date();
 exerciseDate.setMilliseconds(
-  exerciseDate.getMilliseconds() + process.env.EXERCISE_PARLAYS_FREQUENCY
+  exerciseDate.getMilliseconds() + parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY)
 );
 consumer.on("ResolveSportsMarket", (_marketAddress, _id, _outcome) => {
   console.log(
