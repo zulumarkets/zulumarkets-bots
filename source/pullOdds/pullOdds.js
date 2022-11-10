@@ -100,7 +100,7 @@ async function doPull(numberOfExecution) {
 
     // do for all sportIds
     for (let j = 0; j < sportIds.length; j++) {
-      let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(sportIds);
+      let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(sportIds[j]);
       useBackupBookmaker = oddsBookmakers.length > 1;
       primaryBookmaker = oddsBookmakers[0];
       console.log("Primary bookmaker is (id): " + primaryBookmaker);
