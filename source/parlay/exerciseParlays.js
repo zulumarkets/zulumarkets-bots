@@ -18,6 +18,7 @@ let newResolved = [];
 let firstRun = false;
 let historyUnprocessed = true;
 let exerciseDate;
+let exerciseHistoryTime = new Date();
 
 const dataParlay = new ethers.Contract(
   process.env.PARLAY_DATA_CONTRACT,
@@ -62,33 +63,30 @@ async function collectExercisableParlays(
   let numOfParlaysPerGamePosition;
   let numOfParlaysPerGamePositionArray;
   // check to exercise the already lost with the outcome or cancelled
-  if(sportMarketOutcome == 0) {
-    console.log("merket cancelled!")
-    numOfParlaysPerGamePositionArray = []
+  if (sportMarketOutcome == 0) {
+    console.log("merket cancelled!");
+    numOfParlaysPerGamePositionArray = [];
     cancelOutcome = true;
     let singleOutcomeNumOfParlaysPerGame;
-    for(let i=0; i<sportMarketOptionsCount; i++){
-      singleOutcomeNumOfParlaysPerGame = await dataParlay.numOfParlaysInGamePosition(
-        sportMarketAddress,
-        i
-      );
+    for (let i = 0; i < sportMarketOptionsCount; i++) {
+      singleOutcomeNumOfParlaysPerGame =
+        await dataParlay.numOfParlaysInGamePosition(sportMarketAddress, i);
       numOfParlaysPerGamePositionArray.push(singleOutcomeNumOfParlaysPerGame);
     }
-  }
-  else {
-    sportMarketOutcome = sportMarketOutcome-1;
+  } else {
+    sportMarketOutcome = sportMarketOutcome - 1;
     numOfParlaysPerGamePosition = await dataParlay.numOfParlaysInGamePosition(
       sportMarketAddress,
       sportMarketOutcome
     );
     console.log(
       "# of parlays with outcome",
-      sportMarketOutcome+1,
+      sportMarketOutcome + 1,
       " : ",
       parseInt(numOfParlaysPerGamePosition)
     );
   }
-  
+
   if (!cancelOutcome && parseInt(numOfParlaysPerGamePosition) > 0) {
     let parlayMarket;
     let parlayMarketDetails;
@@ -112,7 +110,11 @@ async function collectExercisableParlays(
         "| fundsIssued: ",
         parlayMarketDetails.fundsIssued
       );
-      if (parlayMarketDetails.initialized && parlayMarketDetails.alreadyLost && !parlayMarketDetails.fundsIssued) {
+      if (
+        parlayMarketDetails.initialized &&
+        parlayMarketDetails.alreadyLost &&
+        !parlayMarketDetails.fundsIssued
+      ) {
         // exercise parlay
         if (!parlaysToBeExercised.includes(parlayMarket)) {
           console.log(
@@ -124,14 +126,18 @@ async function collectExercisableParlays(
         }
       }
     }
-  }
-  else if(cancelOutcome){
-    for(let n=0; n<numOfParlaysPerGamePositionArray.length; n++){
-      console.log("cancelled market has parlays with outcome", n+1,": ", parseInt(numOfParlaysPerGamePositionArray[n]));
-      for(let j=0; j<numOfParlaysPerGamePositionArray[n]; j++){
+  } else if (cancelOutcome) {
+    for (let n = 0; n < numOfParlaysPerGamePositionArray.length; n++) {
+      console.log(
+        "cancelled market has parlays with outcome",
+        n + 1,
+        ": ",
+        parseInt(numOfParlaysPerGamePositionArray[n])
+      );
+      for (let j = 0; j < numOfParlaysPerGamePositionArray[n]; j++) {
         parlayMarket = await dataParlay.gameAddressPositionParlay(
           sportMarketAddress,
-          n+1,
+          n + 1,
           j
         );
         console.log("--> ", j, " checking parlay ", parlayMarket);
@@ -148,7 +154,11 @@ async function collectExercisableParlays(
           "| fundsIssued: ",
           parlayMarketDetails.fundsIssued
         );
-        if (parlayMarketDetails.initialized && parlayMarketDetails.alreadyLost && !parlayMarketDetails.fundsIssued) {
+        if (
+          parlayMarketDetails.initialized &&
+          parlayMarketDetails.alreadyLost &&
+          !parlayMarketDetails.fundsIssued
+        ) {
           // exercise parlay
           if (!parlaysToBeExercised.includes(parlayMarket)) {
             console.log(
@@ -162,7 +172,7 @@ async function collectExercisableParlays(
       }
     }
   }
-  
+
   if (!cancelOutcome && sportMarketOptionsCount > 2) {
     console.log("CHECKING DIFFERENT OUTCOMES --->");
     console.log("--> three option sport");
@@ -179,14 +189,14 @@ async function collectExercisableParlays(
     } else {
       differentOutcome = 0;
     }
-  
+
     numOfParlaysPerGamePosition = await dataParlay.numOfParlaysInGamePosition(
       sportMarketAddress,
       sportMarketOutcome
     );
     console.log(
       "# of parlays with diffrent outcome",
-      sportMarketOutcome+1,
+      sportMarketOutcome + 1,
       " : ",
       parseInt(numOfParlaysPerGamePosition)
     );
@@ -236,7 +246,7 @@ async function collectExercisableParlays(
     );
     console.log(
       "# of parlays with diffrent outcome",
-      sportMarketOutcome+1,
+      sportMarketOutcome + 1,
       " : ",
       parseInt(numOfParlaysPerGamePosition)
     );
@@ -279,8 +289,7 @@ async function collectExercisableParlays(
         }
       }
     }
-    
-  } else if(!cancelOutcome){
+  } else if (!cancelOutcome) {
     console.log("CHECKING DIFFERENT OUTCOMES --->");
     if (sportMarketOutcome == 0) {
       sportMarketOutcome = 1;
@@ -293,7 +302,7 @@ async function collectExercisableParlays(
     );
     console.log(
       "# of parlays with diffrent outcome",
-      sportMarketOutcome+1,
+      sportMarketOutcome + 1,
       " : ",
       parseInt(numOfParlaysPerGamePosition)
     );
@@ -332,25 +341,38 @@ async function collectExercisableParlays(
         }
       }
     }
-    
   }
 }
 
-async function sendInfoMessageToDiscord(numOfExercisedParlays, txID, messageForPrint) {
+async function sendInfoMessageToDiscord(
+  numOfExercisedParlays,
+  txID,
+  balanceBefore,
+  balanceAfter
+) {
   var message = new Discord.MessageEmbed();
 
-  message.addFields(
+  message
+    .addFields(
       {
         name: "BATCH of Parlays exercised: ",
-        value: numOfExercisedParlays+"\u200b",
+        value: numOfExercisedParlays + "\u200b",
       },
       {
         name: "Tx:",
-        value: txID,
+        value:
+          "[" + txID + "](https://optimistic.etherscan.io/tx/" + txID + ")",
       },
       {
-        name: ":information_source: Parlay AMM:",
-        value: messageForPrint,
+        name: ":information_source: Parlay AMM balance:",
+        value:
+          "before: " +
+          balanceBefore +
+          "\nafter ::: " +
+          balanceAfter +
+          "\nprofit :: " +
+          (parseFloat(balanceAfter) - parseFloat(balanceBefore)) +
+          " sUSD",
       },
       {
         name: ":alarm_clock: Timestamp:",
@@ -365,13 +387,14 @@ async function sendInfoMessageToDiscord(numOfExercisedParlays, txID, messageForP
 async function sendErrorMessageToDiscord(messageForPrint) {
   var message = new Discord.MessageEmbed();
 
-  message.addFields(
+  message
+    .addFields(
       {
-        name: "TEST on parlay exercise bot!",
+        name: "Error on parlay exercise bot!",
         value: "\u200b",
       },
       {
-        name: ":exclamation: Test message:",
+        name: ":exclamation: message:",
         value: messageForPrint,
       },
       {
@@ -429,6 +452,7 @@ async function doExercise(exerciseParlays) {
       console.log(exerciseParlays);
     });
     await delay(5000);
+    return tx.hash;
   }
 }
 
@@ -439,7 +463,8 @@ async function doIndefinitely() {
       console.log("\x1b[35m--------- START PARLAYS CHECK ---------\x1b[0m");
       let timeNow = new Date();
       console.log("Time: " + timeNow);
-      console.log("Exercise after: "+ exerciseDate);
+      console.log("Exercise after: " + exerciseDate);
+      console.log("History after: " + exerciseHistoryTime);
       if (newResolved.length > 0) {
         let checkResolved = newResolved;
         newResolved = [];
@@ -451,9 +476,6 @@ async function doIndefinitely() {
           checkResolved.length,
           " \x1b[32m::::::::::::::\x1b[0m"
         );
-        await sendInfoMessageToDiscord(checkResolved.length, "txID",
-          " \nRetrieved: "+(parseFloat(10)-parseFloat(5)) + " sUSD to AMM"
-        );
         for (let i = 0; i < checkResolved.length; i++) {
           await collectExercisableParlays(
             i,
@@ -462,34 +484,61 @@ async function doIndefinitely() {
             checkResolved[i].outcome
           );
         }
-        if(parlaysToBeExercised.length > 0) {
-          console.log("\n\x1b[33m::Parlays to be exercised: ", parlaysToBeExercised.length);
+        if (parlaysToBeExercised.length > 0) {
+          console.log(
+            "\n\x1b[33m::Parlays to be exercised: ",
+            parlaysToBeExercised.length
+          );
         }
       }
-      if ((timeNow >= exerciseDate && parlaysToBeExercised.length > 0)) {
+      if (timeNow >= exerciseDate && parlaysToBeExercised.length > 0) {
         console.log(
           "\x1b[33m:::::::::::::: Exercise parlays ::::::::::::::\x1b[0m"
         );
         console.log("Number of parlays: " + parlaysToBeExercised.length);
         console.log("Execution: " + numberOfExecution);
-        let init_balance = await sUSDContract.balanceOf(process.env.PARLAY_AMM_CONTRACT);
+        let init_balance = await sUSDContract.balanceOf(
+          process.env.PARLAY_AMM_CONTRACT
+        );
         init_balance = ethers.utils.formatEther(init_balance);
         console.log("AMM balance: ", parseFloat(init_balance));
         let exerciseParlays = parlaysToBeExercised;
         parlaysToBeExercised = [];
         let txID = await doExercise(exerciseParlays);
-        exerciseDate.setMilliseconds(timeNow.getMilliseconds()+parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY));
-        let balance = await sUSDContract.balanceOf(process.env.PARLAY_AMM_CONTRACT);
+        exerciseDate.setMilliseconds(
+          timeNow.getMilliseconds() +
+            parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY)
+        );
+        let balance = await sUSDContract.balanceOf(
+          process.env.PARLAY_AMM_CONTRACT
+        );
         balance = ethers.utils.formatEther(balance);
         console.log("AMM balance after: ", parseFloat(balance));
-        console.log("AMM retrieved: ", (parseFloat(balance)-parseFloat(init_balance)));
-        await sendInfoMessageToDiscord(exerciseParlays.length, txID,
-          " \nRetrieved: "+(parseFloat(balance)-parseFloat(init_balance)) + " sUSD to AMM"
+        console.log(
+          "AMM retrieved: ",
+          parseFloat(balance) - parseFloat(init_balance)
+        );
+        await sendInfoMessageToDiscord(
+          exerciseParlays.length,
+          txID,
+          parseFloat(init_balance),
+          parseFloat(balance)
         );
         numberOfExecution++;
-      } else if (timeNow >= exerciseDate)  {
+      } else if (timeNow >= exerciseHistoryTime) {
+        console.log("Exercising history....");
+        let currentTime = new Date();
+        exerciseHistoryTime.setMilliseconds(
+          currentTime.getMilliseconds() +
+            parseInt(process.env.EXERCISE_PARLAY_HISTORY)
+        );
+        await exerciseHistory(process.env.BLOCKS_BACK_IN_HISTORY);
+      } else if (timeNow >= exerciseDate) {
         console.log("[       Nothing to exercise       ]");
-        exerciseDate.setMilliseconds(timeNow.getMilliseconds()+parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY));
+        exerciseDate.setMilliseconds(
+          timeNow.getMilliseconds() +
+            parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY)
+        );
       }
       console.log("\x1b[34m--------- END PARLAYS CHECK ---------\x1b[0m");
       if (firstRun) {
@@ -519,10 +568,16 @@ if (parseInt(process.env.BLOCKS_BACK_IN_HISTORY) > 0 && historyUnprocessed) {
   historyUnprocessed = false;
   console.log("EXERCISING HISTORY......");
   exerciseHistory(process.env.BLOCKS_BACK_IN_HISTORY);
+  let currentTime = new Date();
+  exerciseHistoryTime.setMilliseconds(
+    currentTime.getMilliseconds() +
+      parseInt(process.env.EXERCISE_PARLAY_HISTORY)
+  );
 }
 exerciseDate = new Date();
 exerciseDate.setMilliseconds(
-  exerciseDate.getMilliseconds() + parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY)
+  exerciseDate.getMilliseconds() +
+    parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY)
 );
 consumer.on("ResolveSportsMarket", (_marketAddress, _id, _outcome) => {
   console.log(
