@@ -410,6 +410,7 @@ async function sendErrorMessageToDiscord(messageForPrint) {
 async function exerciseHistory(blocksInHistory) {
   console.log("Go back ", blocksInHistory, " blocks");
   let latestBlock = await constants.etherprovider.getBlockNumber();
+  console.log("Latest block:", parseInt(latestBlock));
   let startBlock = latestBlock - blocksInHistory;
   if (blocksInHistory != 0) {
     let eventFilter = consumer.filters.ResolveSportsMarket();
@@ -442,18 +443,46 @@ async function exerciseHistory(blocksInHistory) {
 
 async function doExercise(exerciseParlays) {
   // exercise parlays
+  let tx;
   if (exerciseParlays.length > 0) {
-    let tx = await dataParlay.exerciseParlays(exerciseParlays, {
-      gasLimit: process.env.GAS_LIMIT,
-    });
+    if(exerciseParlays.length > 20) {
+      let batch = [];
+        for(let i=0; i<exerciseParlays.length; i++ ){
+          batch.push(exerciseParlays[i]);
+          if(batch.length == 20) {
+            tx = await dataParlay.exerciseParlays(batch, {
+              gasLimit: process.env.GAS_LIMIT,
+            });
+        
+            await tx.wait().then((e) => {
+              console.log("Parlays exercised");
+              console.log(batch);
+            });
+            batch = [];
+          }
+        }
+        if(batch.length > 0) {
+          tx = await dataParlay.exerciseParlays(batch, {
+            gasLimit: process.env.GAS_LIMIT,
+          });
+      
+          await tx.wait().then((e) => {
+            console.log("Parlays exercised");
+            console.log(batch);
+          });
+        }
+      }
+  }
+    // let tx = await dataParlay.exerciseParlays(exerciseParlays, {
+    //   gasLimit: process.env.GAS_LIMIT,
+    // });
 
-    await tx.wait().then((e) => {
-      console.log("Parlays exercised");
-      console.log(exerciseParlays);
-    });
+    // await tx.wait().then((e) => {
+    //   console.log("Parlays exercised");
+    //   console.log(exerciseParlays);
+    // });
     await delay(5000);
     return tx.hash;
-  }
 }
 
 async function doIndefinitely() {
