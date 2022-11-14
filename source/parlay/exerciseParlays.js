@@ -472,6 +472,16 @@ async function doExercise(exerciseParlays) {
           });
         }
       }
+      else {
+        tx = await dataParlay.exerciseParlays(exerciseParlays, {
+          gasLimit: process.env.GAS_LIMIT,
+        });
+    
+        await tx.wait().then((e) => {
+          console.log("Parlays exercised");
+          console.log(batch);
+        });
+      }
   }
     // let tx = await dataParlay.exerciseParlays(exerciseParlays, {
     //   gasLimit: process.env.GAS_LIMIT,
