@@ -479,7 +479,7 @@ async function doExercise(exerciseParlays) {
     
         await tx.wait().then((e) => {
           console.log("Parlays exercised");
-          console.log(batch);
+          console.log(exerciseParlays);
         });
       }
   }
