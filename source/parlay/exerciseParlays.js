@@ -346,42 +346,58 @@ async function collectExercisableParlays(
 
 async function sendInfoMessageToDiscord(
   numOfExercisedParlays,
-  txID,
+  tx_batch,
   balanceBefore,
   balanceAfter
 ) {
-  var message = new Discord.MessageEmbed();
-
-  message
-    .addFields(
-      {
-        name: "BATCH of Parlays exercised: ",
-        value: numOfExercisedParlays + "\u200b",
-      },
-      {
-        name: "Tx:",
-        value:
-          "[" + txID + "](https://optimistic.etherscan.io/tx/" + txID + ")",
-      },
-      {
-        name: ":information_source: Parlay AMM balance:",
-        value:
-          "before: " +
-          balanceBefore +
-          "\nafter ::: " +
-          balanceAfter +
-          "\nprofit :: " +
-          (parseFloat(balanceAfter) - parseFloat(balanceBefore)) +
-          " sUSD",
-      },
-      {
-        name: ":alarm_clock: Timestamp:",
-        value: new Date(new Date().toUTCString()),
+  if(tx_batch.length > 0) {
+    let tx_message;
+    let info_message;
+    var message = new Discord.MessageEmbed();
+    if(tx_batch.length == 1) {
+      tx_message = "[" + tx_batch[0] + "](https://optimistic.etherscan.io/tx/" + tx_batch[0] + ")";
+    }
+    else {
+      tx_message = "[" + tx_batch[0] + "](https://optimistic.etherscan.io/tx/" + tx_batch[0] + ")";
+      for(let i=1; i<tx_batch.length; i++) {
+        tx_message += "\n[" + tx_batch[i] + "](https://optimistic.etherscan.io/tx/" + tx_batch[i] + ")";
       }
-    )
-    .setColor("#0037ff");
-  let overtimeCreate = await overtimeBot.channels.fetch("1039869584372662332");
-  await overtimeCreate.send(message);
+    }
+    if((parseFloat(balanceAfter) - parseFloat(balanceBefore)) > 0){
+      info_message = "before: " +
+            balanceBefore +
+            "\nafter ::: " +
+            balanceAfter +
+            "\nprofit :: " +
+            (parseFloat(balanceAfter) - parseFloat(balanceBefore)) +
+            " sUSD";
+    }
+    else {
+      info_message = "Parlays markets marked as lost: "+ numOfExercisedParlays;
+    }
+    message
+      .addFields(
+        {
+          name: "BATCH of Parlays exercised: ",
+          value: numOfExercisedParlays + "\u200b",
+        },
+        {
+          name: "Tx:",
+          value: tx_message,
+        },
+        {
+          name: ":information_source: Parlay AMM balance:",
+          value: info_message,
+        },
+        {
+          name: ":alarm_clock: Timestamp:",
+          value: new Date(new Date().toUTCString()),
+        }
+      )
+      .setColor("#0037ff");
+    let overtimeCreate = await overtimeBot.channels.fetch("1039869584372662332");
+    await overtimeCreate.send(message);
+  }
 }
 
 async function sendErrorMessageToDiscord(messageForPrint) {
@@ -444,24 +460,13 @@ async function exerciseHistory(blocksInHistory) {
 async function doExercise(exerciseParlays) {
   // exercise parlays
   let tx;
+  let tx_batch = [];
   if (exerciseParlays.length > 0) {
     if(exerciseParlays.length > 20) {
       let batch = [];
-        for(let i=0; i<exerciseParlays.length; i++ ){
-          batch.push(exerciseParlays[i]);
-          if(batch.length == 20) {
-            tx = await dataParlay.exerciseParlays(batch, {
-              gasLimit: process.env.GAS_LIMIT,
-            });
-        
-            await tx.wait().then((e) => {
-              console.log("Parlays exercised");
-              console.log(batch);
-            });
-            batch = [];
-          }
-        }
-        if(batch.length > 0) {
+      for(let i=0; i<exerciseParlays.length; i++ ){
+        batch.push(exerciseParlays[i]);
+        if(batch.length == 20) {
           tx = await dataParlay.exerciseParlays(batch, {
             gasLimit: process.env.GAS_LIMIT,
           });
@@ -470,29 +475,36 @@ async function doExercise(exerciseParlays) {
             console.log("Parlays exercised");
             console.log(batch);
           });
+          batch = [];
+          tx_batch.push(tx.hash);
         }
       }
-      else {
-        tx = await dataParlay.exerciseParlays(exerciseParlays, {
+      if(batch.length > 0) {
+        tx = await dataParlay.exerciseParlays(batch, {
           gasLimit: process.env.GAS_LIMIT,
         });
     
         await tx.wait().then((e) => {
           console.log("Parlays exercised");
-          console.log(exerciseParlays);
+          console.log(batch);
         });
+        tx_batch.push(tx.hash);
       }
+    }
+    else {
+      tx = await dataParlay.exerciseParlays(exerciseParlays, {
+        gasLimit: process.env.GAS_LIMIT,
+      });
+      
+      await tx.wait().then((e) => {
+        console.log("Parlays exercised");
+        console.log(exerciseParlays);
+      });
+      tx_batch.push(tx.hash);
+    }
   }
-    // let tx = await dataParlay.exerciseParlays(exerciseParlays, {
-    //   gasLimit: process.env.GAS_LIMIT,
-    // });
-
-    // await tx.wait().then((e) => {
-    //   console.log("Parlays exercised");
-    //   console.log(exerciseParlays);
-    // });
-    await delay(5000);
-    return tx.hash;
+  await delay(5000);
+  return tx_batch;
 }
 
 async function doIndefinitely() {
