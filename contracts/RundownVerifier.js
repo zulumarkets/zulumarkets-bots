@@ -5,6 +5,25 @@ const rundownVerifier = {
       inputs: [
         {
           indexed: false,
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+        {
+          indexed: false,
+          internalType: "uint256[]",
+          name: "_ids",
+          type: "uint256[]",
+        },
+      ],
+      name: "NewBookmakerIdsBySportId",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
           internalType: "address",
           name: "_consumer",
           type: "address",
@@ -30,6 +49,19 @@ const rundownVerifier = {
         },
       ],
       name: "NewCustomOddsThresholdForSport",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
+          internalType: "uint256[]",
+          name: "_ids",
+          type: "uint256[]",
+        },
+      ],
+      name: "NewDefaultBookmakerIds",
       type: "event",
     },
     {
@@ -341,6 +373,25 @@ const rundownVerifier = {
       type: "function",
     },
     {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      name: "defaultBookmakerIds",
+      outputs: [
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
       inputs: [],
       name: "defaultOddsThreshold",
       outputs: [
@@ -348,6 +399,25 @@ const rundownVerifier = {
           internalType: "uint256",
           name: "",
           type: "uint256",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+      ],
+      name: "getBookmakerIdsBySportId",
+      outputs: [
+        {
+          internalType: "uint256[]",
+          name: "",
+          type: "uint256[]",
         },
       ],
       stateMutability: "view",
@@ -367,6 +437,25 @@ const rundownVerifier = {
           internalType: "int24[]",
           name: "odds",
           type: "int24[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32[]",
+          name: "_ids",
+          type: "bytes32[]",
+        },
+      ],
+      name: "getStringIDsFromBytesArrayIDs",
+      outputs: [
+        {
+          internalType: "string[]",
+          name: "_gameIds",
+          type: "string[]",
         },
       ],
       stateMutability: "view",
@@ -607,6 +696,24 @@ const rundownVerifier = {
     {
       inputs: [
         {
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+        {
+          internalType: "uint256[]",
+          name: "_bookmakerIds",
+          type: "uint256[]",
+        },
+      ],
+      name: "setBookmakerIdsBySportId",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "address",
           name: "_consumer",
           type: "address",
@@ -631,6 +738,19 @@ const rundownVerifier = {
         },
       ],
       name: "setCustomOddsThresholdForSport",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "uint256[]",
+          name: "_defaultBookmakerIds",
+          type: "uint256[]",
+        },
+      ],
+      name: "setDefaultBookmakerIds",
       outputs: [],
       stateMutability: "nonpayable",
       type: "function",
@@ -708,6 +828,30 @@ const rundownVerifier = {
       name: "setSupportedMarketTypes",
       outputs: [],
       stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      name: "sportIdToBookmakerIds",
+      outputs: [
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      stateMutability: "view",
       type: "function",
     },
     {

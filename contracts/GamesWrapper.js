@@ -32,6 +32,21 @@ const gamesWraperContract = {
           name: "_paymentOdds",
           type: "uint256",
         },
+        {
+          internalType: "bytes32",
+          name: "_oddsSpecId",
+          type: "bytes32",
+        },
+        {
+          internalType: "address",
+          name: "_sportsAMM",
+          type: "address",
+        },
+        {
+          internalType: "address",
+          name: "_verifier",
+          type: "address",
+        },
       ],
       stateMutability: "nonpayable",
       type: "constructor",
@@ -106,6 +121,19 @@ const gamesWraperContract = {
       inputs: [
         {
           indexed: false,
+          internalType: "bytes32",
+          name: "_specId",
+          type: "bytes32",
+        },
+      ],
+      name: "NewOddsSpecId",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
           internalType: "address",
           name: "_oracle",
           type: "address",
@@ -157,6 +185,32 @@ const gamesWraperContract = {
       anonymous: false,
       inputs: [
         {
+          indexed: false,
+          internalType: "address",
+          name: "_sportsAmm",
+          type: "address",
+        },
+      ],
+      name: "NewSportsAmmAddress",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
+          internalType: "address",
+          name: "_verifier",
+          type: "address",
+        },
+      ],
+      name: "NewVerifier",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
           indexed: true,
           internalType: "address",
           name: "previousOwner",
@@ -197,6 +251,44 @@ const gamesWraperContract = {
       ],
       name: "Unpaused",
       type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "_date",
+          type: "uint256",
+        },
+        {
+          indexed: false,
+          internalType: "address",
+          name: "_marketAddress",
+          type: "address",
+        },
+      ],
+      name: "UpdateOddsFromAMMForAGame",
+      type: "event",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "_marketAddress",
+          type: "address",
+        },
+      ],
+      name: "callUpdateOddsForSpecificGame",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
     },
     {
       inputs: [],
@@ -285,6 +377,25 @@ const gamesWraperContract = {
       type: "function",
     },
     {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+      ],
+      name: "getBookmakerIdsBySportId",
+      outputs: [
+        {
+          internalType: "uint256[]",
+          name: "",
+          type: "uint256[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
       inputs: [],
       name: "getOracleAddress",
       outputs: [
@@ -318,6 +429,19 @@ const gamesWraperContract = {
           internalType: "contract IERC20",
           name: "",
           type: "address",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "oddsSpecId",
+      outputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
         },
       ],
       stateMutability: "view",
@@ -492,6 +616,24 @@ const gamesWraperContract = {
     {
       inputs: [
         {
+          internalType: "address payable",
+          name: "account",
+          type: "address",
+        },
+        {
+          internalType: "uint256",
+          name: "amount",
+          type: "uint256",
+        },
+      ],
+      name: "retrieveLINKAmount",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "address",
           name: "_consumer",
           type: "address",
@@ -511,6 +653,19 @@ const gamesWraperContract = {
         },
       ],
       name: "setLink",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "_specId",
+          type: "bytes32",
+        },
+      ],
+      name: "setOddsSpecId",
       outputs: [],
       stateMutability: "nonpayable",
       type: "function",
@@ -570,6 +725,32 @@ const gamesWraperContract = {
     {
       inputs: [
         {
+          internalType: "address",
+          name: "_sportsAmm",
+          type: "address",
+        },
+      ],
+      name: "setSportsAmmAddress",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "_verifier",
+          type: "address",
+        },
+      ],
+      name: "setVerifier",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "bytes32",
           name: "",
           type: "bytes32",
@@ -587,6 +768,19 @@ const gamesWraperContract = {
       type: "function",
     },
     {
+      inputs: [],
+      name: "sportsAMM",
+      outputs: [
+        {
+          internalType: "address",
+          name: "",
+          type: "address",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
       inputs: [
         {
           internalType: "address",
@@ -597,6 +791,19 @@ const gamesWraperContract = {
       name: "transferOwnership",
       outputs: [],
       stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "verifier",
+      outputs: [
+        {
+          internalType: "contract ITherundownConsumerVerifier",
+          name: "",
+          type: "address",
+        },
+      ],
+      stateMutability: "view",
       type: "function",
     },
   ],

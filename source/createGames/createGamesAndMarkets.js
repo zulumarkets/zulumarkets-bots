@@ -76,9 +76,9 @@ async function doCreate() {
   console.log(invalidNames);
   console.log("---------------");
 
-  const primaryBookmaker = process.env.PRIMARY_ODDS_BOOKMAKER;
-  const useBackupBookmaker = process.env.USE_BACKUP_ODDS_BOOKMAKER === "true";
-  const backupBookmaker = process.env.BACKUP_ODDS_BOOKMAKER;
+  let primaryBookmaker;
+  let useBackupBookmaker;
+  let backupBookmaker;
 
   console.log("Create Games...");
 
@@ -90,12 +90,20 @@ async function doCreate() {
 
     console.log("JOB ID =  " + jobId);
     console.log("MARKET =  " + market);
-    console.log("Primary bookmaker is (id): " + primaryBookmaker);
-    console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
-    console.log("Backup bookmaker is (id): " + backupBookmaker);
 
     // do for all sportIds
     for (let j = 0; j < sportIds.length; j++) {
+      let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(sportIds[j]);
+      useBackupBookmaker = oddsBookmakers.length > 1;
+      primaryBookmaker = oddsBookmakers[0];
+      console.log("Primary bookmaker is (id): " + primaryBookmaker);
+      console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
+
+      if (useBackupBookmaker) {
+        backupBookmaker = oddsBookmakers[1];
+        console.log("Backup bookmaker is (id): " + backupBookmaker);
+      }
+
       // do for next X days in front
       for (let i = 0; i <= daysInFront; i++) {
         console.log("------------------------");

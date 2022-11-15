@@ -63,9 +63,9 @@ async function doPull(numberOfExecution) {
   // number of days in front for calculation
   const daysInFront = process.env.CREATION_DAYS_INFRONT;
 
-  const primaryBookmaker = process.env.PRIMARY_ODDS_BOOKMAKER;
-  const useBackupBookmaker = process.env.USE_BACKUP_ODDS_BOOKMAKER === "true";
-  const backupBookmaker = process.env.BACKUP_ODDS_BOOKMAKER;
+  let primaryBookmaker;
+  let useBackupBookmaker;
+  let backupBookmaker;
 
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
@@ -97,12 +97,20 @@ async function doPull(numberOfExecution) {
     processed = true;
 
     console.log("JOB ID =  " + jobId);
-    console.log("Primary bookmaker is (id): " + primaryBookmaker);
-    console.log("USE_BACKUP_ODDS_BOOKMAKER is set to: " + useBackupBookmaker);
-    console.log("Backup bookmaker is: " + backupBookmaker);
 
     // do for all sportIds
     for (let j = 0; j < sportIds.length; j++) {
+      let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(sportIds[j]);
+      useBackupBookmaker = oddsBookmakers.length > 1;
+      primaryBookmaker = oddsBookmakers[0];
+      console.log("Primary bookmaker is (id): " + primaryBookmaker);
+      console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
+
+      if (useBackupBookmaker) {
+        backupBookmaker = oddsBookmakers[1];
+        console.log("Backup bookmaker is (id): " + backupBookmaker);
+      }
+
       let percentageChangePerSport =
         ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]] !== undefined
           ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]]
