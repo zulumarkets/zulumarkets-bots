@@ -438,6 +438,25 @@ const gamesConsumerContract = {
         {
           indexed: false,
           internalType: "address",
+          name: "_marketAddress",
+          type: "address",
+        },
+        {
+          indexed: false,
+          internalType: "bytes32",
+          name: "_id",
+          type: "bytes32",
+        },
+      ],
+      name: "OddsCircuitBreaker",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
+          internalType: "address",
           name: "oldOwner",
           type: "address",
         },
@@ -843,11 +862,6 @@ const gamesConsumerContract = {
           name: "_games",
           type: "bytes[]",
         },
-        {
-          internalType: "uint256",
-          name: "_date",
-          type: "uint256",
-        },
       ],
       name: "fulfillGamesOdds",
       outputs: [],
@@ -1187,44 +1201,27 @@ const gamesConsumerContract = {
     {
       inputs: [
         {
-          internalType: "bytes32",
-          name: "_gameId",
-          type: "bytes32",
+          internalType: "address",
+          name: "_market",
+          type: "address",
         },
       ],
-      name: "getGameResolvedById",
+      name: "getGamePropsForOdds",
       outputs: [
         {
-          components: [
-            {
-              internalType: "bytes32",
-              name: "gameId",
-              type: "bytes32",
-            },
-            {
-              internalType: "uint8",
-              name: "homeScore",
-              type: "uint8",
-            },
-            {
-              internalType: "uint8",
-              name: "awayScore",
-              type: "uint8",
-            },
-            {
-              internalType: "uint8",
-              name: "statusId",
-              type: "uint8",
-            },
-            {
-              internalType: "uint40",
-              name: "lastUpdated",
-              type: "uint40",
-            },
-          ],
-          internalType: "struct TherundownConsumer.GameResolve",
-          name: "",
-          type: "tuple",
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+        {
+          internalType: "uint256",
+          name: "_gameDate",
+          type: "uint256",
+        },
+        {
+          internalType: "bytes32",
+          name: "_id",
+          type: "bytes32",
         },
       ],
       stateMutability: "view",
