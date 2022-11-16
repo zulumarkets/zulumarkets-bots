@@ -16,7 +16,7 @@ const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
-const verifierConsumer = require("../../contracts/RundownVerifier.js");
+const gamesVerifier = require("../../contracts/RundownVerifier.js");
 
 const oddslib = require("oddslib");
 
@@ -35,6 +35,12 @@ const wrapper = new ethers.Contract(
 const consumer = new ethers.Contract(
   process.env.CONSUMER_CONTRACT,
   gamesConsumer.gamesConsumerContract.abi,
+  wallet
+);
+
+const verifier = new ethers.Contract(
+  process.env.CONSUMER_VERIFIER_CONTRACT,
+  gamesVerifier.rundownVerifier.abi,
   wallet
 );
 
@@ -71,8 +77,8 @@ async function doPull(numberOfExecution) {
   let sportIds = process.env.SPORT_IDS.split(",");
   let riskySports = process.env.RISKY_SPORT_IDS.split(",");
 
-  console.log("sportIds -> " + sportIds.length);
-  console.log("riskySports" + riskySports.length);
+  console.log("sportIds lenght -> " + sportIds.length);
+  console.log("riskySports length -> " + riskySports.length);
 
   let cancelStatuses = process.env.CANCEL_STATUSES.split(",");
 
@@ -131,9 +137,6 @@ async function doPull(numberOfExecution) {
         continue;
       }
 
-      let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(
-        sportIds[j]
-      );
       console.log("SPORT ID =>  " + sportIds[j]);
 
       // from today!!! maybe some games still running
@@ -147,21 +150,26 @@ async function doPull(numberOfExecution) {
         let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
         console.log("Unix date in miliseconds: " + unixDateMiliseconds);
 
-        let isSportOnADate = await consumer.isSportOnADate(
-          unixDate,
-          sportIds[j]
-        );
-        console.log("Having sport on a date:  " + isSportOnADate);
-
-        let gamesOnContract = await consumer.getGamesPerDatePerSport(
+        let sportProps = await verifier.getSportProperties(
           sportIds[j],
           unixDate
         );
+
+        let isSportOnADate = sportProps[0];
+        console.log("Having sport on a date:  " + isSportOnADate);
+
+        let gamesOnContract = sportProps[2];
         console.log("Count games on a date: " + gamesOnContract.length);
+
+        let isSportTwoPositionsSport = sportProps[1];
+        console.log("isSportTwoPositionsSport: " + isSportTwoPositionsSport);
 
         // that day have games inside
         if (isSportOnADate && gamesOnContract.length > 0) {
           console.log("Processing sport and date...");
+
+          let oddsForGames = await verifier.getOddsForGames(gamesOnContract);
+          console.log("Odds count: " + oddsForGames.length);
 
           let sendRequestForOdds = false;
 
@@ -258,18 +266,17 @@ async function doPull(numberOfExecution) {
               ) {
                 console.log("Odds, checking...");
 
-                let marketAddress = await consumer.marketPerGameId(
+                let gameProps = await verifier.getGameProperties(
                   gamesOnContract[m]
                 );
 
-                let isMarketResolved = await consumer.marketResolved(
-                  marketAddress
-                );
+                let marketAddress = gameProps[0];
+                console.log("Market: " + marketAddress);
+
+                let isMarketResolved = gameProps[1];
                 console.log("Market resolved: " + isMarketResolved);
 
-                let isMarketCanceled = await consumer.marketCanceled(
-                  marketAddress
-                );
+                let isMarketCanceled = gameProps[2];
                 console.log("Market canceled: " + isMarketCanceled);
 
                 let gameStart = await queues.gameStartPerGameId(
@@ -290,7 +297,7 @@ async function doPull(numberOfExecution) {
                   );
                   console.log(
                     "homeOdd contract: " +
-                      oddsForGame[0] +
+                      oddsForGames[m * 3] +
                       " id: " +
                       gamesOnContract[m]
                   );
@@ -304,7 +311,7 @@ async function doPull(numberOfExecution) {
                   );
                   console.log(
                     "awayOdd contract: " +
-                      oddsForGame[1] +
+                      oddsForGames[m * 3 + 1] +
                       " id: " +
                       gamesOnContract[m]
                   );
@@ -318,23 +325,22 @@ async function doPull(numberOfExecution) {
                   );
                   console.log(
                     "drawOdd contract: " +
-                      oddsForGame[2] +
+                      oddsForGames[m * 3 + 2] +
                       " id: " +
                       gamesOnContract[m]
                   );
 
-                  let invalidOdds = await consumer.invalidOdds(marketAddress);
+                  let invalidOdds = gameProps[3];
                   console.log("Is game paused by invalid odds: " + invalidOdds);
-                  let isPausedByCanceledStatus =
-                    await consumer.isPausedByCanceledStatus(marketAddress);
+                  let isPausedByCanceledStatus = gameProps[4];
                   console.log(
                     "Is game paused by status: " + isPausedByCanceledStatus
                   );
 
                   if (
-                    oddsForGame[0] === undefined ||
+                    oddsForGames[m * 3] === undefined ||
                     homeOddPinnacle === undefined ||
-                    oddsForGame[1] === undefined ||
+                    oddsForGames[m * 3 + 1] === undefined ||
                     awayOddPinnacle === undefined
                   ) {
                     continue;
@@ -343,17 +349,17 @@ async function doPull(numberOfExecution) {
                   // percentage change >= percentageChangePerSport send request
                   if (
                     (getPercentageChange(
-                      oddsForGame[0],
+                      oddsForGames[m * 3],
                       homeOddPinnacle,
                       percentageChangePerSport
                     ) >= percentageChangePerSport ||
                       getPercentageChange(
-                        oddsForGame[1],
+                        oddsForGames[m * 3 + 1],
                         awayOddPinnacle,
                         percentageChangePerSport
                       ) >= percentageChangePerSport ||
                       getPercentageChange(
-                        oddsForGame[2],
+                        oddsForGames[m * 3 + 2],
                         drawOddPinnacle,
                         percentageChangePerSport
                       ) >= percentageChangePerSport) &&
@@ -361,17 +367,17 @@ async function doPull(numberOfExecution) {
                     !isPausedByCanceledStatus
                   ) {
                     let percentageChangeHome = getPercentageChange(
-                      oddsForGame[0],
+                      oddsForGames[m * 3],
                       homeOddPinnacle,
                       percentageChangePerSport
                     );
                     let percentageChangeAway = getPercentageChange(
-                      oddsForGame[1],
+                      oddsForGames[m * 3 + 1],
                       awayOddPinnacle,
                       percentageChangePerSport
                     );
                     let percentageChangeDraw = getPercentageChange(
-                      oddsForGame[2],
+                      oddsForGames[m * 3 + 2],
                       drawOddPinnacle,
                       percentageChangePerSport
                     );
@@ -387,11 +393,11 @@ async function doPull(numberOfExecution) {
                     await sendMessageToDiscordOddsChanged(
                       gamesListResponse[n].homeTeam,
                       gamesListResponse[n].awayTeam,
-                      oddsForGame[0],
+                      oddsForGames[m * 3],
                       homeOddPinnacle,
-                      oddsForGame[1],
+                      oddsForGames[m * 3 + 1],
                       awayOddPinnacle,
-                      oddsForGame[2],
+                      oddsForGames[m * 3 + 2],
                       drawOddPinnacle,
                       gameStart,
                       percentageChangeHome,
@@ -440,19 +446,19 @@ async function doPull(numberOfExecution) {
                   bytes32({ input: gamesOnContract[m] }) &&
                 isGameInRightStatus(cancelStatuses, gamesListResponse[n].status)
               ) {
-                let marketAddress = await consumer.marketPerGameId(
+                let gameProps = await verifier.getGameProperties(
                   gamesOnContract[m]
                 );
 
-                let isPausedByCanceledStatus =
-                  await consumer.isPausedByCanceledStatus(marketAddress);
+                let marketAddress = gameProps[0];
+                console.log("Market: " + marketAddress);
+
+                let isPausedByCanceledStatus = gameProps[4];
                 console.log(
                   "Is game paused by status: " + isPausedByCanceledStatus
                 );
 
-                let isMarketCanceledAlready = await consumer.marketCanceled(
-                  marketAddress
-                );
+                let isMarketCanceledAlready = gameProps[2];
                 console.log("Canceled already: " + isMarketCanceledAlready);
 
                 console.log(
@@ -582,14 +588,14 @@ async function doIndefinitely() {
       await delay(process.env.ODDS_FREQUENCY);
     } catch (e) {
       console.log(e);
-      sendErrorMessageToDiscord(
+      /*sendErrorMessageToDiscord(
         "Please check odds-bot, error on execution: " +
           numberOfExecution +
           ", date: " +
           new Date()
       );
       // wait next process
-      await delay(process.env.ODDS_FREQUENCY);
+      await delay(process.env.ODDS_FREQUENCY);*/
     }
   }
 }
