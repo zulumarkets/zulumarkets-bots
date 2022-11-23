@@ -359,9 +359,7 @@ async function sendInfoMessageToDiscord(
     }
     else {
       tx_message = "[" + tx_batch[0] + "](https://optimistic.etherscan.io/tx/" + tx_batch[0] + ")";
-      for(let i=1; i<tx_batch.length; i++) {
-        tx_message += "\n[" + tx_batch[i] + "](https://optimistic.etherscan.io/tx/" + tx_batch[i] + ")";
-      }
+      tx_message += "\n[" + tx_batch[tx_batch.length-1] + "](https://optimistic.etherscan.io/tx/" + tx_batch[tx_batch.length-1] + ")";
     }
     if((parseFloat(balanceAfter) - parseFloat(balanceBefore)) > 0){
       info_message = "before: " +
