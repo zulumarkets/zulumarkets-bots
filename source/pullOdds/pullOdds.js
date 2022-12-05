@@ -588,14 +588,14 @@ async function doIndefinitely() {
       await delay(process.env.ODDS_FREQUENCY);
     } catch (e) {
       console.log(e);
-      /*sendErrorMessageToDiscord(
+      sendErrorMessageToDiscord(
         "Please check odds-bot, error on execution: " +
           numberOfExecution +
           ", date: " +
           new Date()
       );
       // wait next process
-      await delay(process.env.ODDS_FREQUENCY);*/
+      await delay(process.env.ODDS_FREQUENCY);
     }
   }
 }
