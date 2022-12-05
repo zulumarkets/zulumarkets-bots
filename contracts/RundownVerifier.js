@@ -426,6 +426,45 @@ const rundownVerifier = {
     {
       inputs: [
         {
+          internalType: "bytes32",
+          name: "_gameIds",
+          type: "bytes32",
+        },
+      ],
+      name: "getGameProperties",
+      outputs: [
+        {
+          internalType: "address",
+          name: "_market",
+          type: "address",
+        },
+        {
+          internalType: "bool",
+          name: "_marketResolved",
+          type: "bool",
+        },
+        {
+          internalType: "bool",
+          name: "_marketCanceled",
+          type: "bool",
+        },
+        {
+          internalType: "bool",
+          name: "_invalidOdds",
+          type: "bool",
+        },
+        {
+          internalType: "bool",
+          name: "_isPausedByCanceledStatus",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "bytes32[]",
           name: "_gameIds",
           type: "bytes32[]",
@@ -437,6 +476,40 @@ const rundownVerifier = {
           internalType: "int24[]",
           name: "odds",
           type: "int24[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
+        },
+        {
+          internalType: "uint256",
+          name: "_date",
+          type: "uint256",
+        },
+      ],
+      name: "getSportProperties",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "_isSportOnADate",
+          type: "bool",
+        },
+        {
+          internalType: "bool",
+          name: "_twoPositional",
+          type: "bool",
+        },
+        {
+          internalType: "bytes32[]",
+          name: "_gameIds",
+          type: "bytes32[]",
         },
       ],
       stateMutability: "view",
