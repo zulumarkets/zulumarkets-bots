@@ -108,8 +108,8 @@ async function doPull(numberOfExecution, lastStartDate) {
         : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
 
     let lineChangePerSport =
-      LINE_CHANGE_BY_SPORT[sportIds[j]] !== undefined
-        ? LINE_CHANGE_BY_SPORT[sportIds[j]]
+      LINE_CHANGE_BY_SPORT[sportIds] !== undefined
+        ? LINE_CHANGE_BY_SPORT[sportIds]
         : process.env.LINE_CHANGE_DEFAULT;
 
     // from today!!! maybe some games still running
