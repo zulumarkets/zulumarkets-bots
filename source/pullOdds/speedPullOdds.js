@@ -356,47 +356,32 @@ async function doPull(numberOfExecution, lastStartDate) {
               // only ongoing games not resolved or already canceled
               if (!isMarketResolved && !isMarketCanceled) {
                 let homeOddPinnacle = gamesListResponse[n].homeOdd;
+                console.log("Contract ID: " + gamesOnContract[m]);
+                console.log("API ID: " + gamesListResponse[n].id);
                 console.log(
-                  "homeOdd API: " +
+                  "Home Odds API: " +
                     homeOddPinnacle +
-                    " id: " +
-                    gamesListResponse[n].id
-                );
-
-                console.log(
-                  "homeOdd contract: " +
-                    oddsForGames[m * 3] +
-                    " id: " +
-                    gamesOnContract[m]
+                    ", Home Odds contract: " +
+                    oddsForGames[m * 3]
                 );
 
                 let awayOddPinnacle = gamesListResponse[n].awayOdd;
                 console.log(
-                  "awayOdd API: " +
+                  "Away Odds API: " +
                     awayOddPinnacle +
-                    " id: " +
-                    gamesListResponse[n].id
-                );
-                console.log(
-                  "awayOdd contract: " +
-                    oddsForGames[m * 3 + 1] +
-                    " id: " +
-                    gamesOnContract[m]
+                    ", Away Odds contract: " +
+                    oddsForGames[m * 3 + 1]
                 );
 
                 let drawOddPinnacle = gamesListResponse[n].drawOdd;
-                console.log(
-                  "drawOdd API: " +
-                    drawOddPinnacle +
-                    " id: " +
-                    gamesListResponse[n].id
-                );
-                console.log(
-                  "drawOdd contract: " +
-                    oddsForGames[m * 3 + 2] +
-                    " id: " +
-                    gamesOnContract[m]
-                );
+                if (isSportTwoPositionsSport) {
+                  console.log(
+                    "Draw Odds API: " +
+                      drawOddPinnacle +
+                      ", Draw Odds contract: " +
+                      oddsForGames[m * 3 + 2]
+                  );
+                }
 
                 let spreadHomePinnacle;
                 let spreadAwayPinnacle;
@@ -412,117 +397,62 @@ async function doPull(numberOfExecution, lastStartDate) {
                   console.log(
                     "Spread home LINE API: " +
                       spreadHomePinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-                  console.log(
-                    "Spread home LINE contract: " +
-                      spreadLinesForGames[m * 2] +
-                      " id: " +
-                      gamesOnContract[m]
+                      ", Spread home LINE contract: " +
+                      spreadLinesForGames[m * 2]
                   );
                   spreadAwayPinnacle = gamesListResponse[n].spreadAway;
                   console.log(
                     "Spread away LINE API: " +
                       spreadAwayPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-                  console.log(
-                    "Spread away LINE contract: " +
-                      spreadLinesForGames[m * 2 + 1] +
-                      " id: " +
-                      gamesOnContract[m]
+                      ", Spread away LINE contract: " +
+                      spreadLinesForGames[m * 2 + 1]
                   );
 
                   totalOverPinnacle = gamesListResponse[n].totalOver;
                   console.log(
                     "Total over LINE API: " +
                       totalOverPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-
-                  console.log(
-                    "Total over LINE contract: " +
-                      totalLinesForGames[m * 2] +
-                      " id: " +
-                      gamesOnContract[m]
+                      ", Total over LINE contract: " +
+                      totalLinesForGames[m * 2]
                   );
 
                   totalUnderPinnacle = gamesListResponse[n].totalUnder;
                   console.log(
                     "Total under LINE API: " +
                       totalUnderPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
+                      ", Total under LINE contract: " +
+                      totalLinesForGames[m * 2 + 1]
                   );
-
-                  console.log(
-                    "Total under LINE contract: " +
-                      totalLinesForGames[m * 2 + 1] +
-                      " id: " +
-                      gamesOnContract[m]
-                  );
-
                   spreadHomeOddsPinnacle = gamesListResponse[n].spreadHomeOdds;
                   console.log(
                     "Spread home ODDS API: " +
                       spreadHomeOddsPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-
-                  console.log(
-                    "Spread home ODDS contract: " +
-                      spreadTotalsOddsForGames[m * 4] +
-                      " id: " +
-                      gamesOnContract[m]
+                      ", Spread home ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4]
                   );
 
                   spreadAwayOddsPinnacle = gamesListResponse[n].spreadAwayOdds;
                   console.log(
                     "Spread away ODDS API: " +
                       spreadAwayOddsPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-
-                  console.log(
-                    "Spread away ODDS contract: " +
-                      spreadTotalsOddsForGames[m * 4 + 1] +
-                      " id: " +
-                      gamesOnContract[m]
+                      ", Spread away ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4 + 1]
                   );
 
                   totalOverOddsPinnacle = gamesListResponse[n].totalOverOdds;
                   console.log(
                     "Total over ODDS API: " +
                       totalOverOddsPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-
-                  console.log(
-                    "Total over ODDS contract: " +
-                      spreadTotalsOddsForGames[m * 4 + 2] +
-                      " id: " +
-                      gamesOnContract[m]
+                      ", Total over ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4 + 2]
                   );
 
                   totalUnderOddsPinnacle = gamesListResponse[n].totalUnderOdds;
                   console.log(
                     "Total under ODDS API: " +
                       totalUnderOddsPinnacle +
-                      " id: " +
-                      gamesListResponse[n].id
-                  );
-
-                  console.log(
-                    "Total under ODDS contract: " +
-                      spreadTotalsOddsForGames[m * 4 + 3] +
-                      " id: " +
-                      gamesOnContract[m]
+                      ", Total under ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4 + 3]
                   );
                 }
 
@@ -541,6 +471,8 @@ async function doPull(numberOfExecution, lastStartDate) {
                 ) {
                   continue;
                 }
+
+                console.log("--------------");
 
                 // percentage change >= percentageChangePerSport send request
                 // if doesSportSupportSpreadAndTotal is FALSE not check total/spread
@@ -640,6 +572,30 @@ async function doPull(numberOfExecution, lastStartDate) {
                     );
                     console.log(
                       "Total UNDER change odd: " + percentageChangeTotalUnder
+                    );
+                    console.log(
+                      "Spread HOME before: " +
+                        spreadLinesForGames[m * 2] +
+                        ", spread HOME now: " +
+                        spreadHomePinnacle
+                    );
+                    console.log(
+                      "Spread AWAY before: " +
+                        spreadLinesForGames[m * 2 + 1] +
+                        ", spread AWAY now: " +
+                        spreadAwayPinnacle
+                    );
+                    console.log(
+                      "Total OVER before: " +
+                        totalLinesForGames[m * 2] +
+                        ", total OVER now: " +
+                        totalOverPinnacle
+                    );
+                    console.log(
+                      "Total UNDER before: " +
+                        totalLinesForGames[m * 2 + 1] +
+                        ", total UNDER now: " +
+                        totalUnderPinnacle
                     );
                   }
 
