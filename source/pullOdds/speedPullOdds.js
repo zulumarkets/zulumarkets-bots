@@ -69,6 +69,10 @@ async function doPull(numberOfExecution, lastStartDate) {
     10: process.env.ODDS_PERCENTAGE_CHANGE_MLS,
   };
 
+  const LINE_CHANGE_BY_SPORT = {
+    4: process.env.LINE_CHANGE_DEFAULT,
+  };
+
   let americanSports = [1, 2, 3, 4, 6, 10];
   let failedCounter = 0;
 
@@ -103,10 +107,16 @@ async function doPull(numberOfExecution, lastStartDate) {
         ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds]
         : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
 
+    let lineChangePerSport =
+      LINE_CHANGE_BY_SPORT[sportIds[j]] !== undefined
+        ? LINE_CHANGE_BY_SPORT[sportIds[j]]
+        : process.env.LINE_CHANGE_DEFAULT;
+
     // from today!!! maybe some games still running
     for (let i = 0; i <= daysInFront; i++) {
       console.log("------------------------");
-      console.log("CHANGE: " + percentageChangePerSport);
+      console.log("CHANGE ODDS % : " + percentageChangePerSport);
+      console.log("CHANGE LINE AMOUNT: " + lineChangePerSport);
       console.log("Processing: TODAY +  " + i);
 
       let unixDate = getSecondsToDate(i);
@@ -497,7 +507,8 @@ async function doPull(numberOfExecution, lastStartDate) {
                       percentageChangePerSport,
                       spreadAwayOddsPinnacle,
                       totalOverOddsPinnacle,
-                      totalUnderOddsPinnacle
+                      totalUnderOddsPinnacle,
+                      lineChangePerSport
                     )) ||
                     getPercentageChange(
                       oddsForGames[m * 3],
@@ -1412,25 +1423,30 @@ function checkSpreadAndTotal(
   percentageChangePerSport,
   spreadAwayOddsPinnacle,
   totalOverOddsPinnacle,
-  totalUnderOddsPinnacle
+  totalUnderOddsPinnacle,
+  lineChangePerSport
 ) {
   return (
     doesSportSupportSpreadAndTotal &&
     (checkSpreadAndTotalThreshold(
       spreadLinesForGames[m * 2],
-      spreadHomePinnacle
+      spreadHomePinnacle,
+      lineChangePerSport
     ) ||
       checkSpreadAndTotalThreshold(
         spreadLinesForGames[m * 2 + 1],
-        spreadAwayPinnacle
+        spreadAwayPinnacle,
+        lineChangePerSport
       ) ||
       checkSpreadAndTotalThreshold(
         totalLinesForGames[m * 2],
-        totalOverPinnacle
+        totalOverPinnacle,
+        lineChangePerSport
       ) ||
       checkSpreadAndTotalThreshold(
         totalLinesForGames[m * 2 + 1],
-        totalUnderPinnacle
+        totalUnderPinnacle,
+        lineChangePerSport
       ) ||
       getPercentageChange(
         spreadTotalsOddsForGames[m * 4],
@@ -1455,12 +1471,11 @@ function checkSpreadAndTotal(
   );
 }
 
-function checkSpreadAndTotalThreshold(spreadOrTotalContract, spreadOrTotalAPI) {
-  // todo add threshold
-  // new line 0 200
-  // remove line 200 0
-  // change line 200 100
-  // same line 200 200
+function checkSpreadAndTotalThreshold(
+  spreadOrTotalContract,
+  spreadOrTotalAPI,
+  lineChangePerSport
+) {
   if (
     (spreadOrTotalContract == 0 && spreadOrTotalAPI != 0.01) ||
     (spreadOrTotalContract != 0 && spreadOrTotalAPI == 0.01) ||
@@ -1468,7 +1483,14 @@ function checkSpreadAndTotalThreshold(spreadOrTotalContract, spreadOrTotalAPI) {
       spreadOrTotalAPI != 0.01 &&
       spreadOrTotalContract != spreadOrTotalAPI)
   ) {
-    return true;
+    console.log("CHANGED LINE");
+    console.log("DIFF: ");
+    if (spreadOrTotalContract > spreadOrTotalAPI) {
+      console.log(spreadOrTotalContract - spreadOrTotalAPI);
+      return spreadOrTotalContract - spreadOrTotalAPI > lineChangePerSport;
+    }
+    console.log(spreadOrTotalAPI - spreadOrTotalContract);
+    return spreadOrTotalAPI - spreadOrTotalContract > lineChangePerSport;
   }
   return false;
 }
