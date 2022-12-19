@@ -155,7 +155,7 @@ async function doPull(numberOfExecution) {
       // from today!!! maybe some games still running
       for (let i = 0; i <= daysInFront; i++) {
         console.log("------------------------");
-        console.log("CHANGE ODDS %: " + percentageChangePerSport);
+        console.log("CHANGE ODDS % : " + percentageChangePerSport);
         console.log("CHANGE LINE AMOUNT: " + lineChangePerSport);
         console.log("Processing: TODAY +  " + i);
 
@@ -214,9 +214,7 @@ async function doPull(numberOfExecution) {
             "/events/" +
             dateConverter(unixDateMiliseconds);
           let response = await axios.get(urlBuild, {
-            headers: {
-              "X-RapidAPI-Key": process.env.REQUEST_KEY,
-            },
+            params: { key: process.env.REQUEST_KEY },
           });
 
           const gamesListResponse = [];

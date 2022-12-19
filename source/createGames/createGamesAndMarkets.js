@@ -136,9 +136,7 @@ async function doCreate() {
           "/events/" +
           dateConverter(unixDateMiliseconds);
         let response = await axios.get(urlBuild, {
-          headers: {
-            "X-RapidAPI-Key": process.env.REQUEST_KEY,
-          },
+          params: { key: process.env.REQUEST_KEY },
         });
 
         const gamesListResponse = [];
