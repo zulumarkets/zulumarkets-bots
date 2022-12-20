@@ -606,6 +606,22 @@ async function doPull(numberOfExecution, lastStartDate) {
                         ", total UNDER now: " +
                         totalUnderPinnacle
                     );
+
+                    await sendMessageSpreadTotalChangedDiscord(
+                      gamesListResponse[n].homeTeam,
+                      gamesListResponse[n].awayTeam,
+                      spreadLinesForGames[m * 2],
+                      spreadHomePinnacle,
+                      spreadLinesForGames[m * 2 + 1],
+                      spreadAwayPinnacle,
+                      totalLinesForGames[m * 2],
+                      totalOverPinnacle,
+                      totalLinesForGames[m * 2 + 1],
+                      totalUnderPinnacle,
+                      lineChangePerSport,
+                      gameStart,
+                      "1054737348170092644"
+                    );
                   }
 
                   console.log("Setting sendRequestForOdds to true");
@@ -872,133 +888,225 @@ async function sendMessageToDiscordOddsChanged(
   percentageChangePerSport,
   discordID
 ) {
-  homeOddPinnacle = homeOddPinnacle == 0.01 ? 0 : homeOddPinnacle / 100;
-  awayOddPinnacle = awayOddPinnacle == 0.01 ? 0 : awayOddPinnacle / 100;
-  drawOddPinnacle = drawOddPinnacle == 0.01 ? 0 : drawOddPinnacle / 100;
-
-  homeOddContract = homeOddContract == 0 ? 0 : homeOddContract / 100;
-  awayOddContract = awayOddContract == 0 ? 0 : awayOddContract / 100;
-  drawOddContract = drawOddContract == 0 ? 0 : drawOddContract / 100;
-
-  let homeOddContractImp = oddslib
-    .from("moneyline", homeOddContract)
-    .to("impliedProbability");
-  homeOddContractImp == 1 ? 0 : homeOddContractImp;
-  let awayOddContractImp = oddslib
-    .from("moneyline", awayOddContract)
-    .to("impliedProbability");
-  awayOddContractImp == 1 ? 0 : awayOddContractImp;
-  let drawOddContractImp = oddslib
-    .from("moneyline", drawOddContract)
-    .to("impliedProbability");
-  drawOddContractImp == 1 ? 0 : drawOddContractImp;
-
-  let homeOddPinnacleImpl = oddslib
-    .from("moneyline", homeOddPinnacle)
-    .to("impliedProbability");
-  homeOddPinnacleImpl == 1 ? 0 : homeOddPinnacleImpl;
-  let awayOddPinnacleImp = oddslib
-    .from("moneyline", awayOddPinnacle)
-    .to("impliedProbability");
-  awayOddPinnacleImp == 1 ? 0 : awayOddPinnacleImp;
-  let drawOddPinnacleImp = oddslib
-    .from("moneyline", drawOddPinnacle)
-    .to("impliedProbability");
-  drawOddPinnacleImp == 1 ? 0 : drawOddPinnacleImp;
-
-  var messageHomeChange;
-  var messageAwayChange;
-  var messageDrawChange;
-
-  if (percentageChangeHome === 100) {
-    messageHomeChange =
-      "Odds appear, " + "New odd API: " + homeOddPinnacleImpl.toFixed(3);
-  } else if (percentageChangeAway === 0) {
-    messageHomeChange = "No change of homeodds";
-  } else if (homeOddPinnacleImpl === 1) {
-    messageHomeChange = "Odd removed from API, pausing game, invalid odds";
+  if (
+    percentageChangeHome === 0 &&
+    percentageChangeAway === 0 &&
+    percentageChangeDraw === 0
+  ) {
+    console.log("No printing needed, main odds not changed!");
   } else {
-    messageHomeChange =
-      "Old odd: " +
-      homeOddContractImp.toFixed(3) +
-      ", New odd API: " +
-      homeOddPinnacleImpl.toFixed(3) +
-      ", change = " +
-      percentageChangeHome.toFixed(3) +
-      "%";
-  }
+    homeOddPinnacle = homeOddPinnacle == 0.01 ? 0 : homeOddPinnacle / 100;
+    awayOddPinnacle = awayOddPinnacle == 0.01 ? 0 : awayOddPinnacle / 100;
+    drawOddPinnacle = drawOddPinnacle == 0.01 ? 0 : drawOddPinnacle / 100;
 
-  if (percentageChangeAway == 100) {
-    messageAwayChange =
-      "Odds appear, " + "New odd API: " + awayOddPinnacleImp.toFixed(3);
-  } else if (percentageChangeAway === 0) {
-    messageAwayChange = "No change of awayodds";
-  } else if (awayOddPinnacleImp === 1) {
-    messageAwayChange = "Odd removed from API, pausing game, invalid odds";
+    homeOddContract = homeOddContract == 0 ? 0 : homeOddContract / 100;
+    awayOddContract = awayOddContract == 0 ? 0 : awayOddContract / 100;
+    drawOddContract = drawOddContract == 0 ? 0 : drawOddContract / 100;
+
+    let homeOddContractImp = oddslib
+      .from("moneyline", homeOddContract)
+      .to("impliedProbability");
+    homeOddContractImp == 1 ? 0 : homeOddContractImp;
+    let awayOddContractImp = oddslib
+      .from("moneyline", awayOddContract)
+      .to("impliedProbability");
+    awayOddContractImp == 1 ? 0 : awayOddContractImp;
+    let drawOddContractImp = oddslib
+      .from("moneyline", drawOddContract)
+      .to("impliedProbability");
+    drawOddContractImp == 1 ? 0 : drawOddContractImp;
+
+    let homeOddPinnacleImpl = oddslib
+      .from("moneyline", homeOddPinnacle)
+      .to("impliedProbability");
+    homeOddPinnacleImpl == 1 ? 0 : homeOddPinnacleImpl;
+    let awayOddPinnacleImp = oddslib
+      .from("moneyline", awayOddPinnacle)
+      .to("impliedProbability");
+    awayOddPinnacleImp == 1 ? 0 : awayOddPinnacleImp;
+    let drawOddPinnacleImp = oddslib
+      .from("moneyline", drawOddPinnacle)
+      .to("impliedProbability");
+    drawOddPinnacleImp == 1 ? 0 : drawOddPinnacleImp;
+
+    var messageHomeChange;
+    var messageAwayChange;
+    var messageDrawChange;
+
+    if (percentageChangeHome === 100) {
+      messageHomeChange =
+        "Odds appear, " + "New odd API: " + homeOddPinnacleImpl.toFixed(3);
+    } else if (percentageChangeAway === 0) {
+      messageHomeChange = "No change of homeodds";
+    } else if (homeOddPinnacleImpl === 1) {
+      messageHomeChange = "Odd removed from API, pausing game, invalid odds";
+    } else {
+      messageHomeChange =
+        "Old odd: " +
+        homeOddContractImp.toFixed(3) +
+        ", New odd API: " +
+        homeOddPinnacleImpl.toFixed(3) +
+        ", change = " +
+        percentageChangeHome.toFixed(3) +
+        "%";
+    }
+
+    if (percentageChangeAway == 100) {
+      messageAwayChange =
+        "Odds appear, " + "New odd API: " + awayOddPinnacleImp.toFixed(3);
+    } else if (percentageChangeAway === 0) {
+      messageAwayChange = "No change of awayodds";
+    } else if (awayOddPinnacleImp === 1) {
+      messageAwayChange = "Odd removed from API, pausing game, invalid odds";
+    } else {
+      messageAwayChange =
+        "Old odd: " +
+        awayOddContractImp.toFixed(3) +
+        ", New odd API: " +
+        awayOddPinnacleImp.toFixed(3) +
+        ", change = " +
+        percentageChangeAway.toFixed(3) +
+        "%";
+    }
+
+    if (percentageChangeDraw === 100) {
+      messageDrawChange =
+        "Odds appear, " + "New odd API: " + drawOddPinnacleImp.toFixed(3);
+    } else if (percentageChangeAway === 0) {
+      messageDrawChange = "No change of drawodds";
+    } else if (awayOddPinnacleImp === 1) {
+      messageDrawChange =
+        "There is no odd for draw! If two positional sport ignoring this odd, if three pausing game, invalid odds";
+    } else {
+      messageDrawChange =
+        "Old odd: " +
+        drawOddContractImp.toFixed(3) +
+        ", New odd API: " +
+        drawOddPinnacleImp.toFixed(3) +
+        ", change = " +
+        percentageChangeDraw.toFixed(3) +
+        "%";
+    }
+
+    var message = new Discord.MessageEmbed()
+      .addFields(
+        {
+          name: "Odds changed more than threshold!",
+          value: "\u200b",
+        },
+        {
+          name: ":abacus: Value of threshold: ",
+          value: percentageChangePerSport + "%",
+        },
+        {
+          name: ":stadium: Overtime game:",
+          value: homeTeam + " - " + awayTeam,
+        },
+        {
+          name: ":arrow_up_down: Home odds changed (implied probability):",
+          value: messageHomeChange,
+        },
+        {
+          name: ":arrow_up_down: Away odds changed (implied probability):",
+          value: messageAwayChange,
+        },
+        {
+          name: ":arrow_up_down: Draw odds changed (implied probability):",
+          value: messageDrawChange,
+        },
+        {
+          name: ":alarm_clock: Game time:",
+          value: new Date(gameTime * 1000),
+        }
+      )
+      .setColor("#0037ff");
+    let overtimeOdds = await overtimeBot.channels.fetch(discordID);
+    overtimeOdds.send(message);
+  }
+}
+
+async function sendMessageSpreadTotalChangedDiscord(
+  homeTeam,
+  awayTeam,
+  spreadHomeContract,
+  spreadHomeAPI,
+  spreadAwayContract,
+  spreadAwayAPI,
+  totalOverContract,
+  totalOverAPI,
+  totalUnderContract,
+  totalUnderAPI,
+  linechange,
+  gameTime,
+  discordID
+) {
+  if (
+    spreadHomeContract == 0 &&
+    (spreadHomeAPI == 0 || spreadHomeAPI == 0.01) &&
+    spreadAwayContract == 0 &&
+    (spreadAwayAPI == 0 || spreadAwayAPI == 0.01) &&
+    totalOverContract == 0 &&
+    (totalOverAPI == 0 || totalOverAPI == 0.01) &&
+    totalUnderContract == 0 &&
+    (totalUnderAPI == 0 || totalUnderAPI == 0.01)
+  ) {
+    console.log("No spread and total yet available!");
   } else {
-    messageAwayChange =
-      "Old odd: " +
-      awayOddContractImp.toFixed(3) +
-      ", New odd API: " +
-      awayOddPinnacleImp.toFixed(3) +
-      ", change = " +
-      percentageChangeAway.toFixed(3) +
-      "%";
+    var message = new Discord.MessageEmbed()
+      .addFields(
+        {
+          name: "Spread/Total changed more than threshold!",
+          value: "\u200b",
+        },
+        {
+          name: ":abacus: Value of threshold: ",
+          value: linechange / 100,
+        },
+        {
+          name: ":stadium: Overtime game:",
+          value: homeTeam + " - " + awayTeam,
+        },
+        {
+          name: ":arrow_up_down: Spread HOME line:",
+          value:
+            "Line was: " +
+            spreadHomeContract / 100 +
+            ", now it is: " +
+            spreadHomeAPI / 100,
+        },
+        {
+          name: ":arrow_up_down: Spread AWAY line:",
+          value:
+            "Line was: " +
+            spreadAwayContract / 100 +
+            ", now it is: " +
+            spreadAwayAPI / 100,
+        },
+        {
+          name: ":arrow_up_down: Total OVER line:",
+          value:
+            "Line was: " +
+            totalOverContract / 100 +
+            ", now it is: " +
+            totalOverAPI / 100,
+        },
+        {
+          name: ":arrow_up_down: Total UNDER line:",
+          value:
+            "Line was: " +
+            totalUnderContract / 100 +
+            ", now it is: " +
+            totalUnderAPI / 100,
+        },
+        {
+          name: ":alarm_clock: Game time:",
+          value: new Date(gameTime * 1000),
+        }
+      )
+      .setColor("#0037ff");
+    let overtimeOdds = await overtimeBot.channels.fetch(discordID);
+    overtimeOdds.send(message);
   }
-
-  if (percentageChangeDraw === 100) {
-    messageDrawChange =
-      "Odds appear, " + "New odd API: " + drawOddPinnacleImp.toFixed(3);
-  } else if (percentageChangeAway === 0) {
-    messageDrawChange = "No change of drawodds";
-  } else if (awayOddPinnacleImp === 1) {
-    messageDrawChange =
-      "There is no odd for draw! If two positional sport ignoring this odd, if three pausing game, invalid odds";
-  } else {
-    messageDrawChange =
-      "Old odd: " +
-      drawOddContractImp.toFixed(3) +
-      ", New odd API: " +
-      drawOddPinnacleImp.toFixed(3) +
-      ", change = " +
-      percentageChangeDraw.toFixed(3) +
-      "%";
-  }
-
-  var message = new Discord.MessageEmbed()
-    .addFields(
-      {
-        name: "Odds changed more than threshold!",
-        value: "\u200b",
-      },
-      {
-        name: ":abacus: Value of threshold: ",
-        value: percentageChangePerSport + "%",
-      },
-      {
-        name: ":stadium: Overtime game:",
-        value: homeTeam + " - " + awayTeam,
-      },
-      {
-        name: ":arrow_up_down: Home odds changed (implied probability):",
-        value: messageHomeChange,
-      },
-      {
-        name: ":arrow_up_down: Away odds changed (implied probability):",
-        value: messageAwayChange,
-      },
-      {
-        name: ":arrow_up_down: Draw odds changed (implied probability):",
-        value: messageDrawChange,
-      },
-      {
-        name: ":alarm_clock: Game time:",
-        value: new Date(gameTime * 1000),
-      }
-    )
-    .setColor("#0037ff");
-  let overtimeOdds = await overtimeBot.channels.fetch(discordID);
-  overtimeOdds.send(message);
 }
 
 async function sendMessageToDiscordGameCanceled(homeTeam, awayTeam, gameTime) {
