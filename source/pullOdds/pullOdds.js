@@ -777,9 +777,12 @@ async function doPull(numberOfExecution) {
               console.log("Send request...");
 
               let gameIds = [];
-              gamesOnContract.forEach((g) => {
-                gameIds.push(bytes32({ input: g }));
-              });
+
+              if (sportIds[j] == 1 || doesSportSupportSpreadAndTotal) {
+                gamesOnContract.forEach((g) => {
+                  gameIds.push(bytes32({ input: g }));
+                });
+              }
 
               console.log("Requesting games: " + gameIds.length);
               if (gameIds.length > process.env.CL_ODDS_BATCH) {
