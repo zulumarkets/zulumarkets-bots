@@ -33,6 +33,12 @@ const gamesOddsObtainerContract = {
           name: "_normalizedOdds",
           type: "uint256[]",
         },
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "_type",
+          type: "uint256",
+        },
       ],
       name: "CreateChildSpreadSportsMarket",
       type: "event",
@@ -69,6 +75,12 @@ const gamesOddsObtainerContract = {
           internalType: "uint256[]",
           name: "_normalizedOdds",
           type: "uint256[]",
+        },
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "_type",
+          type: "uint256",
         },
       ],
       name: "CreateChildTotalSportsMarket",
@@ -165,6 +177,105 @@ const gamesOddsObtainerContract = {
         },
       ],
       name: "GameOddsAdded",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
+          internalType: "bytes32",
+          name: "_id",
+          type: "bytes32",
+        },
+        {
+          indexed: false,
+          internalType: "address",
+          name: "_market",
+          type: "address",
+        },
+        {
+          components: [
+            {
+              internalType: "bytes32",
+              name: "gameId",
+              type: "bytes32",
+            },
+            {
+              internalType: "int24",
+              name: "homeOdds",
+              type: "int24",
+            },
+            {
+              internalType: "int24",
+              name: "awayOdds",
+              type: "int24",
+            },
+            {
+              internalType: "int24",
+              name: "drawOdds",
+              type: "int24",
+            },
+            {
+              internalType: "int16",
+              name: "spreadHome",
+              type: "int16",
+            },
+            {
+              internalType: "int24",
+              name: "spreadHomeOdds",
+              type: "int24",
+            },
+            {
+              internalType: "int16",
+              name: "spreadAway",
+              type: "int16",
+            },
+            {
+              internalType: "int24",
+              name: "spreadAwayOdds",
+              type: "int24",
+            },
+            {
+              internalType: "uint24",
+              name: "totalOver",
+              type: "uint24",
+            },
+            {
+              internalType: "int24",
+              name: "totalOverOdds",
+              type: "int24",
+            },
+            {
+              internalType: "uint24",
+              name: "totalUnder",
+              type: "uint24",
+            },
+            {
+              internalType: "int24",
+              name: "totalUnderOdds",
+              type: "int24",
+            },
+          ],
+          indexed: false,
+          internalType: "struct IGamesOddsObtainer.GameOdds",
+          name: "_game",
+          type: "tuple",
+        },
+        {
+          indexed: false,
+          internalType: "uint256[]",
+          name: "_normalizedChildOdds",
+          type: "uint256[]",
+        },
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "_type",
+          type: "uint256",
+        },
+      ],
+      name: "GamedOddsAddedChild",
       type: "event",
     },
     {
@@ -369,6 +480,18 @@ const gamesOddsObtainerContract = {
           internalType: "address",
           name: "_main",
           type: "address",
+        },
+        {
+          indexed: false,
+          internalType: "uint24",
+          name: "_homeScore",
+          type: "uint24",
+        },
+        {
+          indexed: false,
+          internalType: "uint24",
+          name: "_awayScore",
+          type: "uint24",
         },
       ],
       name: "ResolveChildMarket",
@@ -818,6 +941,25 @@ const gamesOddsObtainerContract = {
     {
       inputs: [
         {
+          internalType: "address",
+          name: "_parent",
+          type: "address",
+        },
+      ],
+      name: "getAllChildMarketsFromParent",
+      outputs: [
+        {
+          internalType: "address[]",
+          name: "",
+          type: "address[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "bytes32",
           name: "_gameId",
           type: "bytes32",
@@ -877,6 +1019,25 @@ const gamesOddsObtainerContract = {
         },
       ],
       name: "getNormalizedOdds",
+      outputs: [
+        {
+          internalType: "uint256[]",
+          name: "",
+          type: "uint256[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "_market",
+          type: "address",
+        },
+      ],
+      name: "getNormalizedOddsForMarket",
       outputs: [
         {
           internalType: "uint256[]",
@@ -1210,6 +1371,11 @@ const gamesOddsObtainerContract = {
           internalType: "struct IGamesOddsObtainer.GameOdds",
           name: "_game",
           type: "tuple",
+        },
+        {
+          internalType: "uint256",
+          name: "_sportId",
+          type: "uint256",
         },
       ],
       name: "obtainOdds",

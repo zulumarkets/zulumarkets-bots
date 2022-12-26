@@ -1379,6 +1379,25 @@ const gamesConsumerContract = {
     {
       inputs: [
         {
+          internalType: "address",
+          name: "_market",
+          type: "address",
+        },
+      ],
+      name: "isChildMarket",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "bytes32",
           name: "_gameId",
           type: "bytes32",
@@ -1650,6 +1669,24 @@ const gamesConsumerContract = {
         },
       ],
       name: "pauseOrUnpauseMarket",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "_market",
+          type: "address",
+        },
+        {
+          internalType: "bool",
+          name: "_pause",
+          type: "bool",
+        },
+      ],
+      name: "pauseOrUnpauseMarketManually",
       outputs: [],
       stateMutability: "nonpayable",
       type: "function",
