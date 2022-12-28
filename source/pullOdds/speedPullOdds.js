@@ -14,6 +14,7 @@ const axios = require("axios");
 const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesVerifier = require("../../contracts/RundownVerifier.js");
+const gamesOddsObtainer = require("../../contracts/GamesOddsObtainer.js");
 const allowances = require("../allowances.js");
 
 const oddslib = require("oddslib");
@@ -33,6 +34,12 @@ const wrapper = new ethers.Contract(
 const verifier = new ethers.Contract(
   process.env.CONSUMER_VERIFIER_CONTRACT,
   gamesVerifier.rundownVerifier.abi,
+  wallet
+);
+
+const obtainer = new ethers.Contract(
+  process.env.ODDS_OBTAINER_CONTRACT,
+  gamesOddsObtainer.gamesOddsObtainerContract.abi,
   wallet
 );
 
@@ -62,6 +69,10 @@ async function doPull(numberOfExecution, lastStartDate) {
     10: process.env.ODDS_PERCENTAGE_CHANGE_MLS,
   };
 
+  const LINE_CHANGE_BY_SPORT = {
+    4: process.env.LINE_CHANGE_DEFAULT,
+  };
+
   let americanSports = [1, 2, 3, 4, 6, 10];
   let failedCounter = 0;
 
@@ -85,6 +96,10 @@ async function doPull(numberOfExecution, lastStartDate) {
       console.log("Backup bookmaker is (id): " + backupBookmaker);
     }
 
+    let doesSportSupportSpreadAndTotal =
+      await obtainer.doesSportSupportSpreadAndTotal(sportIds);
+    console.log("Support total and spred: " + doesSportSupportSpreadAndTotal);
+
     // do for all sportIds
 
     let percentageChangePerSport =
@@ -92,10 +107,16 @@ async function doPull(numberOfExecution, lastStartDate) {
         ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds]
         : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
 
+    let lineChangePerSport =
+      LINE_CHANGE_BY_SPORT[sportIds] !== undefined
+        ? LINE_CHANGE_BY_SPORT[sportIds]
+        : process.env.LINE_CHANGE_DEFAULT;
+
     // from today!!! maybe some games still running
     for (let i = 0; i <= daysInFront; i++) {
       console.log("------------------------");
-      console.log("CHANGE: " + percentageChangePerSport);
+      console.log("CHANGE ODDS % : " + percentageChangePerSport);
+      console.log("CHANGE LINE AMOUNT: " + lineChangePerSport);
       console.log("Processing: TODAY +  " + i);
 
       let unixDate = getSecondsToDate(i);
@@ -134,6 +155,27 @@ async function doPull(numberOfExecution, lastStartDate) {
 
         let oddsForGames = await verifier.getOddsForGames(gamesOnContract);
         console.log("Odds count: " + oddsForGames.length);
+
+        let spreadLinesForGames = [];
+        let totalLinesForGames = [];
+        let spreadTotalsOddsForGames = [];
+
+        if (doesSportSupportSpreadAndTotal) {
+          spreadLinesForGames = await verifier.getSpreadLinesForGames(
+            gamesOnContract
+          );
+          totalLinesForGames = await verifier.getTotalLinesForGames(
+            gamesOnContract
+          );
+          spreadTotalsOddsForGames = await verifier.getSpreadTotalsOddsForGames(
+            gamesOnContract
+          );
+        }
+        console.log("spread lines count: " + spreadLinesForGames.length);
+        console.log("total lines count: " + totalLinesForGames.length);
+        console.log(
+          "spread/totals odds count: " + spreadTotalsOddsForGames.length
+        );
 
         let sendRequestForOdds = false;
 
@@ -196,6 +238,62 @@ async function doPull(numberOfExecution, lastStartDate) {
                 useBackupBookmaker,
                 backupBookmaker,
                 isSportTwoPositionsSport
+              ),
+              spreadHome: getSpreadAndTotalLines(
+                event.lines,
+                1,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker
+              ),
+              spreadAway: getSpreadAndTotalLines(
+                event.lines,
+                2,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker
+              ),
+              spreadHomeOdds: getSpreadAndTotalOdds(
+                event.lines,
+                1,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker
+              ),
+              spreadAwayOdds: getSpreadAndTotalOdds(
+                event.lines,
+                2,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker
+              ),
+              totalOver: getSpreadAndTotalLines(
+                event.lines,
+                3,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker
+              ),
+              totalUnder: getSpreadAndTotalLines(
+                event.lines,
+                4,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker
+              ),
+              totalOverOdds: getSpreadAndTotalOdds(
+                event.lines,
+                3,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker
+              ),
+              totalUnderOdds: getSpreadAndTotalOdds(
+                event.lines,
+                4,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker
               ),
             });
           }
@@ -266,47 +364,105 @@ async function doPull(numberOfExecution, lastStartDate) {
               // only ongoing games not resolved or already canceled
               if (!isMarketResolved && !isMarketCanceled) {
                 let homeOddPinnacle = gamesListResponse[n].homeOdd;
+                console.log("Contract ID: " + gamesOnContract[m]);
+                console.log("API ID: " + gamesListResponse[n].id);
                 console.log(
-                  "homeOdd API: " +
+                  "Home Odds API: " +
                     homeOddPinnacle +
-                    " id: " +
-                    gamesListResponse[n].id
-                );
-
-                console.log(
-                  "homeOdd contract: " +
-                    oddsForGames[m * 3] +
-                    " id: " +
-                    gamesOnContract[m]
+                    ", Home Odds contract: " +
+                    oddsForGames[m * 3]
                 );
 
                 let awayOddPinnacle = gamesListResponse[n].awayOdd;
                 console.log(
-                  "awayOdd API: " +
+                  "Away Odds API: " +
                     awayOddPinnacle +
-                    " id: " +
-                    gamesListResponse[n].id
-                );
-                console.log(
-                  "awayOdd contract: " +
-                    oddsForGames[m * 3 + 1] +
-                    " id: " +
-                    gamesOnContract[m]
+                    ", Away Odds contract: " +
+                    oddsForGames[m * 3 + 1]
                 );
 
                 let drawOddPinnacle = gamesListResponse[n].drawOdd;
-                console.log(
-                  "drawOdd API: " +
-                    drawOddPinnacle +
-                    " id: " +
-                    gamesListResponse[n].id
-                );
-                console.log(
-                  "drawOdd contract: " +
-                    oddsForGames[m * 3 + 2] +
-                    " id: " +
-                    gamesOnContract[m]
-                );
+                if (isSportTwoPositionsSport) {
+                  console.log(
+                    "Draw Odds API: " +
+                      drawOddPinnacle +
+                      ", Draw Odds contract: " +
+                      oddsForGames[m * 3 + 2]
+                  );
+                }
+
+                let spreadHomePinnacle;
+                let spreadAwayPinnacle;
+                let totalOverPinnacle;
+                let totalUnderPinnacle;
+                let spreadHomeOddsPinnacle;
+                let spreadAwayOddsPinnacle;
+                let totalOverOddsPinnacle;
+                let totalUnderOddsPinnacle;
+
+                if (doesSportSupportSpreadAndTotal) {
+                  spreadHomePinnacle = gamesListResponse[n].spreadHome;
+                  console.log(
+                    "Spread home LINE API: " +
+                      spreadHomePinnacle +
+                      ", Spread home LINE contract: " +
+                      spreadLinesForGames[m * 2]
+                  );
+                  spreadAwayPinnacle = gamesListResponse[n].spreadAway;
+                  console.log(
+                    "Spread away LINE API: " +
+                      spreadAwayPinnacle +
+                      ", Spread away LINE contract: " +
+                      spreadLinesForGames[m * 2 + 1]
+                  );
+
+                  totalOverPinnacle = gamesListResponse[n].totalOver;
+                  console.log(
+                    "Total over LINE API: " +
+                      totalOverPinnacle +
+                      ", Total over LINE contract: " +
+                      totalLinesForGames[m * 2]
+                  );
+
+                  totalUnderPinnacle = gamesListResponse[n].totalUnder;
+                  console.log(
+                    "Total under LINE API: " +
+                      totalUnderPinnacle +
+                      ", Total under LINE contract: " +
+                      totalLinesForGames[m * 2 + 1]
+                  );
+                  spreadHomeOddsPinnacle = gamesListResponse[n].spreadHomeOdds;
+                  console.log(
+                    "Spread home ODDS API: " +
+                      spreadHomeOddsPinnacle +
+                      ", Spread home ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4]
+                  );
+
+                  spreadAwayOddsPinnacle = gamesListResponse[n].spreadAwayOdds;
+                  console.log(
+                    "Spread away ODDS API: " +
+                      spreadAwayOddsPinnacle +
+                      ", Spread away ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4 + 1]
+                  );
+
+                  totalOverOddsPinnacle = gamesListResponse[n].totalOverOdds;
+                  console.log(
+                    "Total over ODDS API: " +
+                      totalOverOddsPinnacle +
+                      ", Total over ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4 + 2]
+                  );
+
+                  totalUnderOddsPinnacle = gamesListResponse[n].totalUnderOdds;
+                  console.log(
+                    "Total under ODDS API: " +
+                      totalUnderOddsPinnacle +
+                      ", Total under ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4 + 3]
+                  );
+                }
 
                 let invalidOdds = gameProps[3];
                 console.log("Is game paused by invalid odds: " + invalidOdds);
@@ -324,13 +480,39 @@ async function doPull(numberOfExecution, lastStartDate) {
                   continue;
                 }
 
+                console.log("--------------");
+
                 // percentage change >= percentageChangePerSport send request
+                // if doesSportSupportSpreadAndTotal is FALSE not check total/spread
                 if (
-                  (getPercentageChange(
-                    oddsForGames[m * 3],
-                    homeOddPinnacle,
-                    percentageChangePerSport
-                  ) >= percentageChangePerSport ||
+                  ((homeOddPinnacle != 0.01 &&
+                    awayOddPinnacle != 0.01 &&
+                    homeOddPinnacle != 0 &&
+                    awayOddPinnacle != 0 &&
+                    (isSportTwoPositionsSport ||
+                      (drawOddPinnacle != 0.01 && drawOddPinnacle != 0)) &&
+                    checkSpreadAndTotal(
+                      doesSportSupportSpreadAndTotal,
+                      spreadLinesForGames,
+                      m,
+                      spreadHomePinnacle,
+                      spreadAwayPinnacle,
+                      totalLinesForGames,
+                      totalOverPinnacle,
+                      totalUnderPinnacle,
+                      spreadTotalsOddsForGames,
+                      spreadHomeOddsPinnacle,
+                      percentageChangePerSport,
+                      spreadAwayOddsPinnacle,
+                      totalOverOddsPinnacle,
+                      totalUnderOddsPinnacle,
+                      lineChangePerSport
+                    )) ||
+                    getPercentageChange(
+                      oddsForGames[m * 3],
+                      homeOddPinnacle,
+                      percentageChangePerSport
+                    ) >= percentageChangePerSport ||
                     getPercentageChange(
                       oddsForGames[m * 3 + 1],
                       awayOddPinnacle,
@@ -363,6 +545,84 @@ async function doPull(numberOfExecution, lastStartDate) {
                   console.log("Home change odd: " + percentageChangeHome);
                   console.log("Away change odd: " + percentageChangeAway);
                   console.log("Draw change odd: " + percentageChangeDraw);
+
+                  if (doesSportSupportSpreadAndTotal) {
+                    let percentageChangeSpreadHome = getPercentageChange(
+                      spreadTotalsOddsForGames[m * 4],
+                      spreadHomeOddsPinnacle,
+                      percentageChangePerSport
+                    );
+
+                    let percentageChangeSpreadAway = getPercentageChange(
+                      spreadTotalsOddsForGames[m * 4 + 1],
+                      spreadAwayOddsPinnacle,
+                      percentageChangePerSport
+                    );
+
+                    let percentageChangeTotalOver = getPercentageChange(
+                      spreadTotalsOddsForGames[m * 4 + 2],
+                      totalOverOddsPinnacle,
+                      percentageChangePerSport
+                    );
+
+                    let percentageChangeTotalUnder = getPercentageChange(
+                      spreadTotalsOddsForGames[m * 4 + 3],
+                      totalUnderOddsPinnacle,
+                      percentageChangePerSport
+                    );
+                    console.log(
+                      "Spread HOME change odd: " + percentageChangeSpreadHome
+                    );
+                    console.log(
+                      "Spread AWAY change odd: " + percentageChangeSpreadAway
+                    );
+                    console.log(
+                      "Total OVER change odd: " + percentageChangeTotalOver
+                    );
+                    console.log(
+                      "Total UNDER change odd: " + percentageChangeTotalUnder
+                    );
+                    console.log(
+                      "Spread HOME before: " +
+                        spreadLinesForGames[m * 2] +
+                        ", spread HOME now: " +
+                        spreadHomePinnacle
+                    );
+                    console.log(
+                      "Spread AWAY before: " +
+                        spreadLinesForGames[m * 2 + 1] +
+                        ", spread AWAY now: " +
+                        spreadAwayPinnacle
+                    );
+                    console.log(
+                      "Total OVER before: " +
+                        totalLinesForGames[m * 2] +
+                        ", total OVER now: " +
+                        totalOverPinnacle
+                    );
+                    console.log(
+                      "Total UNDER before: " +
+                        totalLinesForGames[m * 2 + 1] +
+                        ", total UNDER now: " +
+                        totalUnderPinnacle
+                    );
+
+                    await sendMessageSpreadTotalChangedDiscord(
+                      gamesListResponse[n].homeTeam,
+                      gamesListResponse[n].awayTeam,
+                      spreadLinesForGames[m * 2],
+                      spreadHomePinnacle,
+                      spreadLinesForGames[m * 2 + 1],
+                      spreadAwayPinnacle,
+                      totalLinesForGames[m * 2],
+                      totalOverPinnacle,
+                      totalLinesForGames[m * 2 + 1],
+                      totalUnderPinnacle,
+                      lineChangePerSport,
+                      gameStart,
+                      "1054737348170092644"
+                    );
+                  }
 
                   console.log("Setting sendRequestForOdds to true");
 
@@ -504,27 +764,63 @@ async function doPull(numberOfExecution, lastStartDate) {
             console.log("Send request...");
 
             let gameIds = [];
-            if (sportIds == 1) {
+
+            if (sportIds[j] == 1 || doesSportSupportSpreadAndTotal) {
               gamesOnContract.forEach((g) => {
                 gameIds.push(bytes32({ input: g }));
               });
             }
 
-            let tx = await wrapper.requestOddsWithFilters(
-              jobId,
-              sportIds,
-              unixDate,
-              gameIds, //ids,
-              {
-                gasLimit: process.env.GAS_LIMIT,
-              }
-            );
+            console.log("Requesting games: " + gameIds.length);
+            if (gameIds.length > process.env.CL_ODDS_BATCH) {
+              let gamesInBatchforCL = [];
+              for (let i = 0; i < gameIds.length; i++) {
+                gamesInBatchforCL.push(gameIds[i]);
+                if (
+                  (gamesInBatchforCL.length > 0 &&
+                    gamesInBatchforCL.length % process.env.CL_ODDS_BATCH ==
+                      0) ||
+                  gameIds.length - 1 == i // last one
+                ) {
+                  console.log("Batch...");
+                  console.log(gamesInBatchforCL);
 
-            await tx.wait().then((e) => {
-              console.log(
-                "Requested for: " + unixDate + " for sport: " + sportIds
+                  let tx = await wrapper.requestOddsWithFilters(
+                    jobId,
+                    sportIds,
+                    unixDate,
+                    gamesInBatchforCL, //ids,
+                    {
+                      gasLimit: process.env.GAS_LIMIT,
+                    }
+                  );
+
+                  await tx.wait().then((e) => {
+                    console.log(
+                      "Requested for: " + unixDate + " for sport: " + sportIds
+                    );
+                  });
+
+                  gamesInBatchforCL = [];
+                }
+              }
+            } else {
+              let tx = await wrapper.requestOddsWithFilters(
+                jobId,
+                sportIds,
+                unixDate,
+                gameIds, //ids,
+                {
+                  gasLimit: process.env.GAS_LIMIT,
+                }
               );
-            });
+
+              await tx.wait().then((e) => {
+                console.log(
+                  "Requested for: " + unixDate + " for sport: " + sportIds
+                );
+              });
+            }
           } catch (e) {
             console.log(e);
             await sendErrorMessageToDiscordRequestOddsfromCL(
@@ -595,133 +891,225 @@ async function sendMessageToDiscordOddsChanged(
   percentageChangePerSport,
   discordID
 ) {
-  homeOddPinnacle = homeOddPinnacle == 0.01 ? 0 : homeOddPinnacle / 100;
-  awayOddPinnacle = awayOddPinnacle == 0.01 ? 0 : awayOddPinnacle / 100;
-  drawOddPinnacle = drawOddPinnacle == 0.01 ? 0 : drawOddPinnacle / 100;
-
-  homeOddContract = homeOddContract == 0 ? 0 : homeOddContract / 100;
-  awayOddContract = awayOddContract == 0 ? 0 : awayOddContract / 100;
-  drawOddContract = drawOddContract == 0 ? 0 : drawOddContract / 100;
-
-  let homeOddContractImp = oddslib
-    .from("moneyline", homeOddContract)
-    .to("impliedProbability");
-  homeOddContractImp == 1 ? 0 : homeOddContractImp;
-  let awayOddContractImp = oddslib
-    .from("moneyline", awayOddContract)
-    .to("impliedProbability");
-  awayOddContractImp == 1 ? 0 : awayOddContractImp;
-  let drawOddContractImp = oddslib
-    .from("moneyline", drawOddContract)
-    .to("impliedProbability");
-  drawOddContractImp == 1 ? 0 : drawOddContractImp;
-
-  let homeOddPinnacleImpl = oddslib
-    .from("moneyline", homeOddPinnacle)
-    .to("impliedProbability");
-  homeOddPinnacleImpl == 1 ? 0 : homeOddPinnacleImpl;
-  let awayOddPinnacleImp = oddslib
-    .from("moneyline", awayOddPinnacle)
-    .to("impliedProbability");
-  awayOddPinnacleImp == 1 ? 0 : awayOddPinnacleImp;
-  let drawOddPinnacleImp = oddslib
-    .from("moneyline", drawOddPinnacle)
-    .to("impliedProbability");
-  drawOddPinnacleImp == 1 ? 0 : drawOddPinnacleImp;
-
-  var messageHomeChange;
-  var messageAwayChange;
-  var messageDrawChange;
-
-  if (percentageChangeHome === 100) {
-    messageHomeChange =
-      "Odds appear, " + "New odd API: " + homeOddPinnacleImpl.toFixed(3);
-  } else if (percentageChangeAway === 0) {
-    messageHomeChange = "No change of homeodds";
-  } else if (homeOddPinnacleImpl === 1) {
-    messageHomeChange = "Odd removed from API, pausing game, invalid odds";
+  if (
+    percentageChangeHome === 0 &&
+    percentageChangeAway === 0 &&
+    percentageChangeDraw === 0
+  ) {
+    console.log("No printing needed, main odds not changed!");
   } else {
-    messageHomeChange =
-      "Old odd: " +
-      homeOddContractImp.toFixed(3) +
-      ", New odd API: " +
-      homeOddPinnacleImpl.toFixed(3) +
-      ", change = " +
-      percentageChangeHome.toFixed(3) +
-      "%";
-  }
+    homeOddPinnacle = homeOddPinnacle == 0.01 ? 0 : homeOddPinnacle / 100;
+    awayOddPinnacle = awayOddPinnacle == 0.01 ? 0 : awayOddPinnacle / 100;
+    drawOddPinnacle = drawOddPinnacle == 0.01 ? 0 : drawOddPinnacle / 100;
 
-  if (percentageChangeAway == 100) {
-    messageAwayChange =
-      "Odds appear, " + "New odd API: " + awayOddPinnacleImp.toFixed(3);
-  } else if (percentageChangeAway === 0) {
-    messageAwayChange = "No change of awayodds";
-  } else if (awayOddPinnacleImp === 1) {
-    messageAwayChange = "Odd removed from API, pausing game, invalid odds";
+    homeOddContract = homeOddContract == 0 ? 0 : homeOddContract / 100;
+    awayOddContract = awayOddContract == 0 ? 0 : awayOddContract / 100;
+    drawOddContract = drawOddContract == 0 ? 0 : drawOddContract / 100;
+
+    let homeOddContractImp = oddslib
+      .from("moneyline", homeOddContract)
+      .to("impliedProbability");
+    homeOddContractImp == 1 ? 0 : homeOddContractImp;
+    let awayOddContractImp = oddslib
+      .from("moneyline", awayOddContract)
+      .to("impliedProbability");
+    awayOddContractImp == 1 ? 0 : awayOddContractImp;
+    let drawOddContractImp = oddslib
+      .from("moneyline", drawOddContract)
+      .to("impliedProbability");
+    drawOddContractImp == 1 ? 0 : drawOddContractImp;
+
+    let homeOddPinnacleImpl = oddslib
+      .from("moneyline", homeOddPinnacle)
+      .to("impliedProbability");
+    homeOddPinnacleImpl == 1 ? 0 : homeOddPinnacleImpl;
+    let awayOddPinnacleImp = oddslib
+      .from("moneyline", awayOddPinnacle)
+      .to("impliedProbability");
+    awayOddPinnacleImp == 1 ? 0 : awayOddPinnacleImp;
+    let drawOddPinnacleImp = oddslib
+      .from("moneyline", drawOddPinnacle)
+      .to("impliedProbability");
+    drawOddPinnacleImp == 1 ? 0 : drawOddPinnacleImp;
+
+    var messageHomeChange;
+    var messageAwayChange;
+    var messageDrawChange;
+
+    if (percentageChangeHome === 100) {
+      messageHomeChange =
+        "Odds appear, " + "New odd API: " + homeOddPinnacleImpl.toFixed(3);
+    } else if (percentageChangeAway === 0) {
+      messageHomeChange = "No change of homeodds";
+    } else if (homeOddPinnacleImpl === 1) {
+      messageHomeChange = "Odd removed from API, pausing game, invalid odds";
+    } else {
+      messageHomeChange =
+        "Old odd: " +
+        homeOddContractImp.toFixed(3) +
+        ", New odd API: " +
+        homeOddPinnacleImpl.toFixed(3) +
+        ", change = " +
+        percentageChangeHome.toFixed(3) +
+        "%";
+    }
+
+    if (percentageChangeAway == 100) {
+      messageAwayChange =
+        "Odds appear, " + "New odd API: " + awayOddPinnacleImp.toFixed(3);
+    } else if (percentageChangeAway === 0) {
+      messageAwayChange = "No change of awayodds";
+    } else if (awayOddPinnacleImp === 1) {
+      messageAwayChange = "Odd removed from API, pausing game, invalid odds";
+    } else {
+      messageAwayChange =
+        "Old odd: " +
+        awayOddContractImp.toFixed(3) +
+        ", New odd API: " +
+        awayOddPinnacleImp.toFixed(3) +
+        ", change = " +
+        percentageChangeAway.toFixed(3) +
+        "%";
+    }
+
+    if (percentageChangeDraw === 100) {
+      messageDrawChange =
+        "Odds appear, " + "New odd API: " + drawOddPinnacleImp.toFixed(3);
+    } else if (percentageChangeAway === 0) {
+      messageDrawChange = "No change of drawodds";
+    } else if (awayOddPinnacleImp === 1) {
+      messageDrawChange =
+        "There is no odd for draw! If two positional sport ignoring this odd, if three pausing game, invalid odds";
+    } else {
+      messageDrawChange =
+        "Old odd: " +
+        drawOddContractImp.toFixed(3) +
+        ", New odd API: " +
+        drawOddPinnacleImp.toFixed(3) +
+        ", change = " +
+        percentageChangeDraw.toFixed(3) +
+        "%";
+    }
+
+    var message = new Discord.MessageEmbed()
+      .addFields(
+        {
+          name: "Odds changed more than threshold!",
+          value: "\u200b",
+        },
+        {
+          name: ":abacus: Value of threshold: ",
+          value: percentageChangePerSport + "%",
+        },
+        {
+          name: ":stadium: Overtime game:",
+          value: homeTeam + " - " + awayTeam,
+        },
+        {
+          name: ":arrow_up_down: Home odds changed (implied probability):",
+          value: messageHomeChange,
+        },
+        {
+          name: ":arrow_up_down: Away odds changed (implied probability):",
+          value: messageAwayChange,
+        },
+        {
+          name: ":arrow_up_down: Draw odds changed (implied probability):",
+          value: messageDrawChange,
+        },
+        {
+          name: ":alarm_clock: Game time:",
+          value: new Date(gameTime * 1000),
+        }
+      )
+      .setColor("#0037ff");
+    let overtimeOdds = await overtimeBot.channels.fetch(discordID);
+    overtimeOdds.send(message);
+  }
+}
+
+async function sendMessageSpreadTotalChangedDiscord(
+  homeTeam,
+  awayTeam,
+  spreadHomeContract,
+  spreadHomeAPI,
+  spreadAwayContract,
+  spreadAwayAPI,
+  totalOverContract,
+  totalOverAPI,
+  totalUnderContract,
+  totalUnderAPI,
+  linechange,
+  gameTime,
+  discordID
+) {
+  if (
+    spreadHomeContract == 0 &&
+    (spreadHomeAPI == 0 || spreadHomeAPI == 0.01) &&
+    spreadAwayContract == 0 &&
+    (spreadAwayAPI == 0 || spreadAwayAPI == 0.01) &&
+    totalOverContract == 0 &&
+    (totalOverAPI == 0 || totalOverAPI == 0.01) &&
+    totalUnderContract == 0 &&
+    (totalUnderAPI == 0 || totalUnderAPI == 0.01)
+  ) {
+    console.log("No spread and total yet available!");
   } else {
-    messageAwayChange =
-      "Old odd: " +
-      awayOddContractImp.toFixed(3) +
-      ", New odd API: " +
-      awayOddPinnacleImp.toFixed(3) +
-      ", change = " +
-      percentageChangeAway.toFixed(3) +
-      "%";
+    var message = new Discord.MessageEmbed()
+      .addFields(
+        {
+          name: "Spread/Total changed more than threshold!",
+          value: "\u200b",
+        },
+        {
+          name: ":abacus: Value of threshold: ",
+          value: linechange / 100,
+        },
+        {
+          name: ":stadium: Overtime game:",
+          value: homeTeam + " - " + awayTeam,
+        },
+        {
+          name: ":arrow_up_down: Spread HOME line:",
+          value:
+            "Line was: " +
+            spreadHomeContract / 100 +
+            ", now it is: " +
+            spreadHomeAPI / 100,
+        },
+        {
+          name: ":arrow_up_down: Spread AWAY line:",
+          value:
+            "Line was: " +
+            spreadAwayContract / 100 +
+            ", now it is: " +
+            spreadAwayAPI / 100,
+        },
+        {
+          name: ":arrow_up_down: Total OVER line:",
+          value:
+            "Line was: " +
+            totalOverContract / 100 +
+            ", now it is: " +
+            totalOverAPI / 100,
+        },
+        {
+          name: ":arrow_up_down: Total UNDER line:",
+          value:
+            "Line was: " +
+            totalUnderContract / 100 +
+            ", now it is: " +
+            totalUnderAPI / 100,
+        },
+        {
+          name: ":alarm_clock: Game time:",
+          value: new Date(gameTime * 1000),
+        }
+      )
+      .setColor("#0037ff");
+    let overtimeOdds = await overtimeBot.channels.fetch(discordID);
+    overtimeOdds.send(message);
   }
-
-  if (percentageChangeDraw === 100) {
-    messageDrawChange =
-      "Odds appear, " + "New odd API: " + drawOddPinnacleImp.toFixed(3);
-  } else if (percentageChangeAway === 0) {
-    messageDrawChange = "No change of drawodds";
-  } else if (awayOddPinnacleImp === 1) {
-    messageDrawChange =
-      "There is no odd for draw! If two positional sport ignoring this odd, if three pausing game, invalid odds";
-  } else {
-    messageDrawChange =
-      "Old odd: " +
-      drawOddContractImp.toFixed(3) +
-      ", New odd API: " +
-      drawOddPinnacleImp.toFixed(3) +
-      ", change = " +
-      percentageChangeDraw.toFixed(3) +
-      "%";
-  }
-
-  var message = new Discord.MessageEmbed()
-    .addFields(
-      {
-        name: "Odds changed more than threshold!",
-        value: "\u200b",
-      },
-      {
-        name: ":abacus: Value of threshold: ",
-        value: percentageChangePerSport + "%",
-      },
-      {
-        name: ":stadium: Overtime game:",
-        value: homeTeam + " - " + awayTeam,
-      },
-      {
-        name: ":arrow_up_down: Home odds changed (implied probability):",
-        value: messageHomeChange,
-      },
-      {
-        name: ":arrow_up_down: Away odds changed (implied probability):",
-        value: messageAwayChange,
-      },
-      {
-        name: ":arrow_up_down: Draw odds changed (implied probability):",
-        value: messageDrawChange,
-      },
-      {
-        name: ":alarm_clock: Game time:",
-        value: new Date(gameTime * 1000),
-      }
-    )
-    .setColor("#0037ff");
-  let overtimeOdds = await overtimeBot.channels.fetch(discordID);
-  overtimeOdds.send(message);
 }
 
 async function sendMessageToDiscordGameCanceled(homeTeam, awayTeam, gameTime) {
@@ -985,26 +1373,235 @@ function getOddsFromBackupBookmaker(
   }
 }
 
-function packOddsFromAPI(
-  isSportTwoPositionsSport,
-  homeOddPinnacle,
-  awayOddPinnacle,
-  drawOddPinnacle
+function getSpreadAndTotalLines(
+  lines,
+  oddNumber,
+  primaryBookmaker,
+  useBackupBookmaker,
+  backupBookmaker
 ) {
-  var odds = [];
-
-  odds[0] = homeOddPinnacle != 0.01 ? homeOddPinnacle : 0;
-  odds[1] = awayOddPinnacle != 0.01 ? awayOddPinnacle : 0;
-
-  if (isSportTwoPositionsSport) {
-    odds[2] = 0;
-  } else {
-    odds[2] = drawOddPinnacle != 0.01 ? drawOddPinnacle : 0;
+  var linesResult = [];
+  for (key in lines) {
+    linesResult.push(Object.assign(lines[key], { name: key }));
   }
 
-  console.log("Packed odds for checking:");
-  console.log(odds);
-  return odds;
+  let oddPrimary = linesResult.filter(function (bookmaker) {
+    return bookmaker.name == primaryBookmaker; // primary example 3 - Pinnacle
+  });
+
+  let oddBackup = linesResult.filter(function (bookmaker) {
+    return bookmaker.name == backupBookmaker; // bck example 11 - Luwvig
+  });
+
+  if (oddPrimary.length == 0) {
+    return useBackupBookmaker
+      ? getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber)
+      : 0;
+  } else if (oddNumber == 1) {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].spread.point_spread_home === 0.0001
+    ) {
+      return getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber);
+    } else {
+      return oddPrimary[0].spread.point_spread_home * 100;
+    }
+  } else if (oddNumber == 2) {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].spread.point_spread_away === 0.0001
+    ) {
+      return getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber);
+    } else {
+      return oddPrimary[0].spread.point_spread_away * 100;
+    }
+  } else if (oddNumber == 3) {
+    if (useBackupBookmaker && oddPrimary[0].total.total_over === 0.0001) {
+      return getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber);
+    } else {
+      return oddPrimary[0].total.total_over * 100;
+    }
+  } else if (oddNumber == 4) {
+    if (useBackupBookmaker && oddPrimary[0].total.total_under === 0.0001) {
+      return getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber);
+    } else {
+      return oddPrimary[0].total.total_under * 100;
+    }
+  }
+}
+
+function getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber) {
+  if (oddBackup.length == 0) {
+    return 0;
+  } else if (oddNumber == 1) {
+    return oddBackup[0].spread.point_spread_home * 100;
+  } else if (oddNumber == 2) {
+    return oddBackup[0].spread.point_spread_away * 100;
+  } else if (oddNumber == 3) {
+    return oddBackup[0].total.total_over * 100;
+  } else if (oddNumber == 4) {
+    return oddBackup[0].total.total_under * 100;
+  }
+}
+
+function getSpreadAndTotalOdds(
+  lines,
+  oddNumber,
+  primaryBookmaker,
+  useBackupBookmaker,
+  backupBookmaker
+) {
+  var odds = [];
+  for (key in lines) {
+    odds.push(Object.assign(lines[key], { name: key }));
+  }
+
+  let oddPrimary = odds.filter(function (bookmaker) {
+    return bookmaker.name == primaryBookmaker; // primary example 3 - Pinnacle
+  });
+
+  let oddBackup = odds.filter(function (bookmaker) {
+    return bookmaker.name == backupBookmaker; // bck example 11 - Luwvig
+  });
+
+  if (oddPrimary.length == 0) {
+    return useBackupBookmaker
+      ? getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber)
+      : 0;
+  } else if (oddNumber == 1) {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].spread.point_spread_home_money === 0.0001
+    ) {
+      return getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber);
+    } else {
+      return oddPrimary[0].spread.point_spread_home_money * 100;
+    }
+  } else if (oddNumber == 2) {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].spread.point_spread_away_money === 0.0001
+    ) {
+      return getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber);
+    } else {
+      return oddPrimary[0].spread.point_spread_away_money * 100;
+    }
+  } else if (oddNumber == 3) {
+    if (useBackupBookmaker && oddPrimary[0].total.total_over_money === 0.0001) {
+      return getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber);
+    } else {
+      return oddPrimary[0].total.total_over_money * 100;
+    }
+  } else if (oddNumber == 4) {
+    if (
+      useBackupBookmaker &&
+      oddPrimary[0].total.total_under_money === 0.0001
+    ) {
+      return getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber);
+    } else {
+      return oddPrimary[0].total.total_under_money * 100;
+    }
+  }
+}
+
+function getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber) {
+  if (oddBackup.length == 0) {
+    return 0;
+  } else if (oddNumber == 1) {
+    return oddBackup[0].spread.point_spread_home_money * 100;
+  } else if (oddNumber == 2) {
+    return oddBackup[0].spread.point_spread_away_money * 100;
+  } else if (oddNumber == 3) {
+    return oddBackup[0].total.total_over_money * 100;
+  } else if (oddNumber == 4) {
+    return oddBackup[0].total.total_under_money * 100;
+  }
+}
+
+function checkSpreadAndTotal(
+  doesSportSupportSpreadAndTotal,
+  spreadLinesForGames,
+  m,
+  spreadHomePinnacle,
+  spreadAwayPinnacle,
+  totalLinesForGames,
+  totalOverPinnacle,
+  totalUnderPinnacle,
+  spreadTotalsOddsForGames,
+  spreadHomeOddsPinnacle,
+  percentageChangePerSport,
+  spreadAwayOddsPinnacle,
+  totalOverOddsPinnacle,
+  totalUnderOddsPinnacle,
+  lineChangePerSport
+) {
+  return (
+    doesSportSupportSpreadAndTotal &&
+    (checkSpreadAndTotalThreshold(
+      spreadLinesForGames[m * 2],
+      spreadHomePinnacle,
+      lineChangePerSport
+    ) ||
+      checkSpreadAndTotalThreshold(
+        spreadLinesForGames[m * 2 + 1],
+        spreadAwayPinnacle,
+        lineChangePerSport
+      ) ||
+      checkSpreadAndTotalThreshold(
+        totalLinesForGames[m * 2],
+        totalOverPinnacle,
+        lineChangePerSport
+      ) ||
+      checkSpreadAndTotalThreshold(
+        totalLinesForGames[m * 2 + 1],
+        totalUnderPinnacle,
+        lineChangePerSport
+      ) ||
+      getPercentageChange(
+        spreadTotalsOddsForGames[m * 4],
+        spreadHomeOddsPinnacle,
+        percentageChangePerSport
+      ) >= percentageChangePerSport ||
+      getPercentageChange(
+        spreadTotalsOddsForGames[m * 4 + 1],
+        spreadAwayOddsPinnacle,
+        percentageChangePerSport
+      ) >= percentageChangePerSport ||
+      getPercentageChange(
+        spreadTotalsOddsForGames[m * 4 + 2],
+        totalOverOddsPinnacle,
+        percentageChangePerSport
+      ) >= percentageChangePerSport ||
+      getPercentageChange(
+        spreadTotalsOddsForGames[m * 4 + 3],
+        totalUnderOddsPinnacle,
+        percentageChangePerSport
+      ) >= percentageChangePerSport)
+  );
+}
+
+function checkSpreadAndTotalThreshold(
+  spreadOrTotalContract,
+  spreadOrTotalAPI,
+  lineChangePerSport
+) {
+  if (
+    (spreadOrTotalContract == 0 && spreadOrTotalAPI != 0.01) ||
+    (spreadOrTotalContract != 0 && spreadOrTotalAPI == 0.01) ||
+    (spreadOrTotalContract != 0 &&
+      spreadOrTotalAPI != 0.01 &&
+      spreadOrTotalContract != spreadOrTotalAPI)
+  ) {
+    console.log("CHANGED LINE");
+    console.log("DIFF: ");
+    if (spreadOrTotalContract > spreadOrTotalAPI) {
+      console.log(spreadOrTotalContract - spreadOrTotalAPI);
+      return spreadOrTotalContract - spreadOrTotalAPI > lineChangePerSport;
+    }
+    console.log(spreadOrTotalAPI - spreadOrTotalContract);
+    return spreadOrTotalAPI - spreadOrTotalContract > lineChangePerSport;
+  }
+  return false;
 }
 
 function getPercentageChange(oldNumber, newNumber, percentage) {

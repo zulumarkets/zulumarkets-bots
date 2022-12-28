@@ -83,6 +83,19 @@ const rundownVerifier = {
         {
           indexed: false,
           internalType: "address",
+          name: "_obtainer",
+          type: "address",
+        },
+      ],
+      name: "NewObtainerAddress",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
+          internalType: "address",
           name: "oldOwner",
           type: "address",
         },
@@ -319,6 +332,40 @@ const rundownVerifier = {
     {
       inputs: [
         {
+          internalType: "int16",
+          name: "spreadHome",
+          type: "int16",
+        },
+        {
+          internalType: "int24",
+          name: "spreadHomeOdds",
+          type: "int24",
+        },
+        {
+          internalType: "int16",
+          name: "spreadAway",
+          type: "int16",
+        },
+        {
+          internalType: "int24",
+          name: "spreadAwayOdds",
+          type: "int24",
+        },
+      ],
+      name: "areSpreadOddsValid",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "string",
           name: "_teamA",
           type: "string",
@@ -330,6 +377,40 @@ const rundownVerifier = {
         },
       ],
       name: "areTeamsEqual",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "uint24",
+          name: "totalOver",
+          type: "uint24",
+        },
+        {
+          internalType: "int24",
+          name: "totalOverOdds",
+          type: "int24",
+        },
+        {
+          internalType: "uint24",
+          name: "totalUnder",
+          type: "uint24",
+        },
+        {
+          internalType: "int24",
+          name: "totalUnderOdds",
+          type: "int24",
+        },
+      ],
+      name: "areTotalOddsValid",
       outputs: [
         {
           internalType: "bool",
@@ -519,6 +600,44 @@ const rundownVerifier = {
       inputs: [
         {
           internalType: "bytes32[]",
+          name: "_gameIds",
+          type: "bytes32[]",
+        },
+      ],
+      name: "getSpreadLinesForGames",
+      outputs: [
+        {
+          internalType: "int16[]",
+          name: "lines",
+          type: "int16[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32[]",
+          name: "_gameIds",
+          type: "bytes32[]",
+        },
+      ],
+      name: "getSpreadTotalsOddsForGames",
+      outputs: [
+        {
+          internalType: "int24[]",
+          name: "odds",
+          type: "int24[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32[]",
           name: "_ids",
           type: "bytes32[]",
         },
@@ -529,6 +648,25 @@ const rundownVerifier = {
           internalType: "string[]",
           name: "_gameIds",
           type: "string[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32[]",
+          name: "_gameIds",
+          type: "bytes32[]",
+        },
+      ],
+      name: "getTotalLinesForGames",
+      outputs: [
+        {
+          internalType: "uint24[]",
+          name: "lines",
+          type: "uint24[]",
         },
       ],
       stateMutability: "view",
@@ -722,6 +860,19 @@ const rundownVerifier = {
       type: "function",
     },
     {
+      inputs: [],
+      name: "obtainer",
+      outputs: [
+        {
+          internalType: "contract IGamesOddsObtainer",
+          name: "",
+          type: "address",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
       inputs: [
         {
           internalType: "uint256",
@@ -855,6 +1006,19 @@ const rundownVerifier = {
         },
       ],
       name: "setInvalidNames",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "_obtainer",
+          type: "address",
+        },
+      ],
+      name: "setObtainer",
       outputs: [],
       stateMutability: "nonpayable",
       type: "function",

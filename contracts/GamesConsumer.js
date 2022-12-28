@@ -402,6 +402,12 @@ const gamesConsumerContract = {
           name: "_verifier",
           type: "address",
         },
+        {
+          indexed: false,
+          internalType: "address",
+          name: "_oddsObtainer",
+          type: "address",
+        },
       ],
       name: "NewSportContracts",
       type: "event",
@@ -1254,6 +1260,25 @@ const gamesConsumerContract = {
     {
       inputs: [
         {
+          internalType: "address",
+          name: "_market",
+          type: "address",
+        },
+      ],
+      name: "getNormalizedChildOdds",
+      outputs: [
+        {
+          internalType: "uint256[]",
+          name: "",
+          type: "uint256[]",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "bytes32",
           name: "_gameId",
           type: "bytes32",
@@ -1273,27 +1298,17 @@ const gamesConsumerContract = {
     {
       inputs: [
         {
-          internalType: "bytes32",
-          name: "_gameId",
-          type: "bytes32",
+          internalType: "address",
+          name: "_market",
+          type: "address",
         },
       ],
-      name: "getOddsForGame",
+      name: "getNormalizedOddsForMarket",
       outputs: [
         {
-          internalType: "int24",
+          internalType: "uint256[]",
           name: "",
-          type: "int24",
-        },
-        {
-          internalType: "int24",
-          name: "",
-          type: "int24",
-        },
-        {
-          internalType: "int24",
-          name: "",
-          type: "int24",
+          type: "uint256[]",
         },
       ],
       stateMutability: "view",
@@ -1351,6 +1366,25 @@ const gamesConsumerContract = {
         },
       ],
       name: "invalidOdds",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "_market",
+          type: "address",
+        },
+      ],
+      name: "isChildMarket",
       outputs: [
         {
           internalType: "bool",
@@ -1451,44 +1485,6 @@ const gamesConsumerContract = {
         },
       ],
       name: "isSportTwoPositionsSport",
-      outputs: [
-        {
-          internalType: "bool",
-          name: "",
-          type: "bool",
-        },
-      ],
-      stateMutability: "view",
-      type: "function",
-    },
-    {
-      inputs: [
-        {
-          internalType: "string",
-          name: "_market",
-          type: "string",
-        },
-      ],
-      name: "isSupportedMarketType",
-      outputs: [
-        {
-          internalType: "bool",
-          name: "",
-          type: "bool",
-        },
-      ],
-      stateMutability: "view",
-      type: "function",
-    },
-    {
-      inputs: [
-        {
-          internalType: "uint256",
-          name: "_sportId",
-          type: "uint256",
-        },
-      ],
-      name: "isSupportedSport",
       outputs: [
         {
           internalType: "bool",
@@ -1635,6 +1631,19 @@ const gamesConsumerContract = {
     },
     {
       inputs: [],
+      name: "oddsObtainer",
+      outputs: [
+        {
+          internalType: "contract IGamesOddsObtainer",
+          name: "",
+          type: "address",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [],
       name: "owner",
       outputs: [
         {
@@ -1644,6 +1653,42 @@ const gamesConsumerContract = {
         },
       ],
       stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "_market",
+          type: "address",
+        },
+        {
+          internalType: "bool",
+          name: "_pause",
+          type: "bool",
+        },
+      ],
+      name: "pauseOrUnpauseMarket",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "_market",
+          type: "address",
+        },
+        {
+          internalType: "bool",
+          name: "_pause",
+          type: "bool",
+        },
+      ],
+      name: "pauseOrUnpauseMarketManually",
+      outputs: [],
+      stateMutability: "nonpayable",
       type: "function",
     },
     {
@@ -1801,6 +1846,24 @@ const gamesConsumerContract = {
     {
       inputs: [
         {
+          internalType: "bytes32",
+          name: "_gameId",
+          type: "bytes32",
+        },
+        {
+          internalType: "address",
+          name: "_child",
+          type: "address",
+        },
+      ],
+      name: "setGameIdPerChildMarket",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "address",
           name: "_owner",
           type: "address",
@@ -1828,6 +1891,24 @@ const gamesConsumerContract = {
       inputs: [
         {
           internalType: "address",
+          name: "_market",
+          type: "address",
+        },
+        {
+          internalType: "bool",
+          name: "_flag",
+          type: "bool",
+        },
+      ],
+      name: "setPausedByCanceledStatus",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
           name: "_wrapperAddress",
           type: "address",
         },
@@ -1844,6 +1925,11 @@ const gamesConsumerContract = {
         {
           internalType: "address",
           name: "_verifier",
+          type: "address",
+        },
+        {
+          internalType: "address",
+          name: "_oddsObtainer",
           type: "address",
         },
       ],

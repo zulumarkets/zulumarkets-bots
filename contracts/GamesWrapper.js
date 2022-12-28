@@ -330,6 +330,11 @@ const gamesWraperContract = {
           type: "bytes32",
         },
         {
+          internalType: "uint256",
+          name: "_remainder",
+          type: "uint256",
+        },
+        {
           internalType: "bytes[]",
           name: "_games",
           type: "bytes[]",
@@ -348,6 +353,11 @@ const gamesWraperContract = {
           type: "bytes32",
         },
         {
+          internalType: "uint256",
+          name: "_remainder",
+          type: "uint256",
+        },
+        {
           internalType: "bytes[]",
           name: "_games",
           type: "bytes[]",
@@ -364,6 +374,11 @@ const gamesWraperContract = {
           internalType: "bytes32",
           name: "_requestId",
           type: "bytes32",
+        },
+        {
+          internalType: "uint256",
+          name: "_remainder",
+          type: "uint256",
         },
         {
           internalType: "bytes[]",
@@ -583,6 +598,78 @@ const gamesWraperContract = {
       name: "requestGamesResolveWithFilters",
       outputs: [],
       stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
+        },
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      name: "requestIdGamesCreated",
+      outputs: [
+        {
+          internalType: "bytes",
+          name: "",
+          type: "bytes",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
+        },
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      name: "requestIdGamesOdds",
+      outputs: [
+        {
+          internalType: "bytes",
+          name: "",
+          type: "bytes",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
+        },
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      name: "requestIdGamesResolved",
+      outputs: [
+        {
+          internalType: "bytes",
+          name: "",
+          type: "bytes",
+        },
+      ],
+      stateMutability: "view",
       type: "function",
     },
     {
