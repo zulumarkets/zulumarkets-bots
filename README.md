@@ -4,28 +4,9 @@
 
 ### Rundown
 
--   `createGamesAndMarkets.js` - bot which calls CL for fetching games and putting them in a queue, and also the part which creates markets for fetched games.
--   `resolveGamesAndMarkets.js` - bot which calls CL for resolving games and also part for resolving markets based on fetched data.
--   `pullOdds.js` - bot which calls CL for fetching odds for games that are in an unprocessed state.
-
-### Apex
-
--   `createRace.js` - script which calls CL for fetching race metadata.
-    -   Parameters:
-        -   sport - possible values: "formula1", "motogp"
-    -   Example: `createRace.js formula1`
--   `createGamesAndMarketsUpdateOdds.js` - script which calls CL for fetching games and creates markets for fetched games, and also can be used for updating odds.
-    -   Parameters:
-        -   sport - possible values: "formula1", "motogp"
-        -   bet type - possible values: "outright_head_to_head", "top3", "top5", "top10" (top10 only for formula1)
-        -   qualifying status - possible values: "pre", "post"
-        -   update odds only (optional) - possible values: "updateOddsOnly"
-    -   Example: `createGamesAndMarketsUpdateOdds.js formula1 top3 pre`
--   `resolveGamesAndMarkets.js` - script which calls CL for resolving games and also part for resolving markets based on fetched data.
-    -   Parameters:
-        -   sport - possible values: "formula1", "motogp"
-        -   bet type - possible values: "outright_head_to_head", "top3", "top5", "top10" (top10 only for formula1)
-    -   Example: `resolveGamesAndMarkets.js formula1 top3`
+- `createGamesAndMarkets.js` - bot which calls CL for fetching games and putting them in a queue, and also the part which creates markets for fetched games.
+- `resolveGamesAndMarkets.js` - bot which calls CL for resolving games and also part for resolving markets based on fetched data.
+- `pullOdds.js` - bot which calls CL for fetching odds for games that are in an unprocessed state.
 
 NOTE: PLEASE CHECK ABI FILES TO BE UP TO DATE!
 
@@ -101,7 +82,7 @@ volumes:
 
 ## Create/Resolve/Pull odds
 
--   Add .env file with following variables set:
+- Add .env file with following variables set:
 
 ```
 PRIVATE_KEY=GetItFromMetamask
@@ -168,17 +149,17 @@ Check SPORT_IDS which we support
 
 After testing it on kovan please check the following
 
--   ODDS_PERCENTAGE_CHANGE_MLB
--   ODDS_PERCENTAGE_CHANGE_MLS
--   ODDS_PERCENTAGE_CHANGE_UFC
--   EXPECTED_GAME_UFC
--   EXPECTED_GAME_NFL
--   ODDS_PERCENTAGE_CHANGE_DEFAULT
--   EXPECTED_GAME_DURATIN
--   ODDS_FREQUENCY
--   RESOLVE_FREQUENCY
--   CREATION_FREQUENCY
-    etc.
+- ODDS_PERCENTAGE_CHANGE_MLB
+- ODDS_PERCENTAGE_CHANGE_MLS
+- ODDS_PERCENTAGE_CHANGE_UFC
+- EXPECTED_GAME_UFC
+- EXPECTED_GAME_NFL
+- ODDS_PERCENTAGE_CHANGE_DEFAULT
+- EXPECTED_GAME_DURATIN
+- ODDS_FREQUENCY
+- RESOLVE_FREQUENCY
+- CREATION_FREQUENCY
+  etc.
 
 ### ADITIONAL DATA CHECKER BOT
 
@@ -205,15 +186,3 @@ SPORT_IDS=4,10
 DATA_CHECKER_FREQUENCY=time
 CREATE_BATCH=10
 ```
-
-### APEX VARIABLES
-
-```
-APEX_CONSUMER_CONTRACT=0x03500619C58F4377c047A8918AE09594adb23f11
-APEX_CONSUMER_WRAPPER_CONTRACT=0x6b81a14cB40b038Edb183f0Ce53FddB5d2fEC726
-APEX_WAIT_TIME=60 # in seconds
-```
-
-** NOTE: these properties are set for goerli network, please check next variables for MAIN **
-
-APEX_CONSUMER_CONTRACT, APEX_CONSUMER_WRAPPER_CONTRACT, APEX_WAIT_TIME (set to 30s)
