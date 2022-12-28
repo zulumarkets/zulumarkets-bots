@@ -1054,6 +1054,13 @@ async function sendMessageSpreadTotalChangedDiscord(
     (totalUnderAPI == 0 || totalUnderAPI == 0.01)
   ) {
     console.log("No spread and total yet available!");
+  } else if (
+    spreadHomeContract == spreadHomeAPI &&
+    spreadAwayContract == spreadAwayAPI &&
+    totalOverContract == totalOverAPI &&
+    totalUnderContract == totalUnderAPI
+  ) {
+    console.log("Line not changed, skip printing!");
   } else {
     var message = new Discord.MessageEmbed()
       .addFields(
