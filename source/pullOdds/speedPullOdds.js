@@ -765,7 +765,7 @@ async function doPull(numberOfExecution, lastStartDate) {
 
             let gameIds = [];
 
-            if (sportIds[j] == 1 || doesSportSupportSpreadAndTotal) {
+            if (sportIds == 1 || doesSportSupportSpreadAndTotal) {
               gamesOnContract.forEach((g) => {
                 gameIds.push(bytes32({ input: g }));
               });
