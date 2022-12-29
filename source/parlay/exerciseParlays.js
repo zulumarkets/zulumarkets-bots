@@ -8,6 +8,8 @@ const linkToken = require("../../contracts/LinkToken.js");
 
 const parlayData = require("../../contracts/ParlayData.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
+const gamesOddsObtainer = require("../../contracts/GamesOddsObtainer.js");
+
 
 const Discord = require("discord.js");
 const overtimeBot = new Discord.Client();
@@ -37,6 +39,12 @@ const sUSDContract = new ethers.Contract(
   wallet
 );
 
+const obtainer = new ethers.Contract(
+  process.env.ODDS_OBTAINER_CONTRACT,
+  gamesOddsObtainer.gamesOddsObtainerContract.abi,
+  wallet
+);
+
 async function collectExercisableParlays(
   number,
   sportMarketAddress,
@@ -44,11 +52,18 @@ async function collectExercisableParlays(
   sportMarketOutcome
 ) {
   let sportMarketOptionsCount;
-  sportMarketOptionsCount = (await consumer.isSportTwoPositionsSport(
-    sportMarketId
-  ))
-    ? 2
-    : 3;
+  let isChild = false;
+  if(sportMarketId == "child") {
+    sportMarketOptionsCount = 2;
+    isChild = true;
+  }
+  else {
+    sportMarketOptionsCount = (await consumer.isSportTwoPositionsSport(
+      sportMarketId
+    ))
+      ? 2
+      : 3;
+  }
   console.log(
     "\n",
     number,
@@ -57,7 +72,9 @@ async function collectExercisableParlays(
     " | optionsCount: ",
     sportMarketOptionsCount,
     " | outcome: ",
-    sportMarketOutcome
+    sportMarketOutcome,
+    " | isChild: ",
+    isChild
   );
   let cancelOutcome = false;
   let numOfParlaysPerGamePosition;
@@ -452,6 +469,32 @@ async function exerciseHistory(blocksInHistory) {
         console.log("Parlays to be exercised: ", parlaysToBeExercised);
       }
     }
+    console.log("CHILD FILTER CHECK ---> ")
+    eventFilter = obtainer.filters.ResolveChildMarket();
+    events = await obtainer.queryFilter(
+      eventFilter,
+      startBlock,
+      latestBlock
+    );
+    console.log("CHILD MARKETS RESOLUTIONS: ", events.length)
+    if (events.length > 0) {
+      let sportMarketAddress;
+      let sportMarketId;
+      let sportMarketOutcome;
+      let sportMarketOptionsCount;
+      for (let i = 0; i < events.length; i++) {
+        sportMarketAddress = events[i].args._child;
+        sportMarketOutcome = parseInt(events[i].args._outcome);
+        newResolved.push({
+          address: sportMarketAddress,
+          id: "child",
+          outcome: sportMarketOutcome,
+        });
+      }
+      if (parlaysToBeExercised.length > 0) {
+        console.log("Parlays to be exercised: ", parlaysToBeExercised);
+      }
+    }
   }
 }
 
@@ -526,12 +569,14 @@ async function doIndefinitely() {
           " \x1b[32m::::::::::::::\x1b[0m"
         );
         for (let i = 0; i < checkResolved.length; i++) {
-          await collectExercisableParlays(
-            i,
-            checkResolved[i].address,
-            checkResolved[i].id,
-            checkResolved[i].outcome
-          );
+          if(checkResolved[i].id == "child") {
+            await collectExercisableParlays(
+              i,
+              checkResolved[i].address,
+              checkResolved[i].id,
+              checkResolved[i].outcome
+            );
+          }
         }
         if (parlaysToBeExercised.length > 0) {
           console.log(
@@ -644,6 +689,27 @@ consumer.on("ResolveSportsMarket", (_marketAddress, _id, _outcome) => {
   });
 });
 console.log("Resolve listener started");
+
+obtainer.on("ResolveChildMarket", (_child, _outcome, _mainAddress, _homeScore, _awayScore) => {
+  console.log(
+    "\x1b[37m=========> New CHILD Market resolved =========> \x1b[0m\n",
+    _marketAddress,
+    "\noutcome: ",
+    parseInt(_outcome),
+    "\nmainMarket: ",
+    _mainAddress,
+    "\nhomeScore: ",
+    parseInt(_homeScore),
+    "\nawayScore: ",
+    parseInt(_awayScore)
+  );
+  newResolved.push({
+    address: _child,
+    id: "child",
+    outcome: parseInt(_outcome),
+  });
+});
+console.log(" Child Resolve listener started");
 doIndefinitely();
 
 //end MAIN __________________________________________________________________________________
