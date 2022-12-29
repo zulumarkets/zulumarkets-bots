@@ -569,14 +569,12 @@ async function doIndefinitely() {
           " \x1b[32m::::::::::::::\x1b[0m"
         );
         for (let i = 0; i < checkResolved.length; i++) {
-          if(checkResolved[i].id == "child") {
-            await collectExercisableParlays(
-              i,
-              checkResolved[i].address,
-              checkResolved[i].id,
-              checkResolved[i].outcome
-            );
-          }
+          await collectExercisableParlays(
+            i,
+            checkResolved[i].address,
+            checkResolved[i].id,
+            checkResolved[i].outcome
+          );
         }
         if (parlaysToBeExercised.length > 0) {
           console.log(
@@ -690,14 +688,14 @@ consumer.on("ResolveSportsMarket", (_marketAddress, _id, _outcome) => {
 });
 console.log("Resolve listener started");
 
-obtainer.on("ResolveChildMarket", (_child, _outcome, _mainAddress, _homeScore, _awayScore) => {
+obtainer.on("ResolveChildMarket", (_child, _outcome, _main, _homeScore, _awayScore) => {
   console.log(
     "\x1b[37m=========> New CHILD Market resolved =========> \x1b[0m\n",
-    _marketAddress,
+    _child,
     "\noutcome: ",
     parseInt(_outcome),
     "\nmainMarket: ",
-    _mainAddress,
+    _main,
     "\nhomeScore: ",
     parseInt(_homeScore),
     "\nawayScore: ",
