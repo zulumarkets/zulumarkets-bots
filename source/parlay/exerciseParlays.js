@@ -557,7 +557,6 @@ async function doIndefinitely() {
       console.log("Time: " + timeNow);
       console.log("Exercise after: " + exerciseDate);
       console.log("History after: " + exerciseHistoryTime);
-      await exerciseHistory(process.env.REGULAR_BLOCKS_BACK);
       if (newResolved.length > 0) {
         let checkResolved = newResolved;
         newResolved = [];
@@ -618,7 +617,7 @@ async function doIndefinitely() {
           parseFloat(balance)
         );
         numberOfExecution++;
-      } else if (timeNow >= exerciseHistoryTime) {
+      } else if (timeNow >= exerciseHistoryTime || firstRun) {
         console.log("Exercising history....");
         let currentTime = new Date();
         exerciseHistoryTime.setMilliseconds(
@@ -639,6 +638,7 @@ async function doIndefinitely() {
         await delay(5000);
       } else {
         await delay(process.env.EXERCISE_FREQUENCY);
+        await exerciseHistory(process.env.REGULAR_BLOCKS_BACK);
       }
     } catch (e) {
       console.log(e);
@@ -656,17 +656,17 @@ async function doIndefinitely() {
 
 //MAIN __________________________________________________________________________________
 
-if (parseInt(process.env.BLOCKS_BACK_IN_HISTORY) > 0 && historyUnprocessed) {
-  firstRun = true;
-  historyUnprocessed = false;
-  console.log("EXERCISING HISTORY......");
-  exerciseHistory(process.env.BLOCKS_BACK_IN_HISTORY);
-  let currentTime = new Date();
-  exerciseHistoryTime.setMilliseconds(
-    currentTime.getMilliseconds() +
-      parseInt(process.env.EXERCISE_PARLAY_HISTORY)
-  );
-}
+// if (parseInt(process.env.BLOCKS_BACK_IN_HISTORY) > 0 && historyUnprocessed) {
+//   firstRun = true;
+//   historyUnprocessed = false;
+//   console.log("EXERCISING HISTORY......");
+//   exerciseHistory(process.env.BLOCKS_BACK_IN_HISTORY);
+//   let currentTime = new Date();
+//   exerciseHistoryTime.setMilliseconds(
+//     currentTime.getMilliseconds() +
+//       parseInt(process.env.EXERCISE_PARLAY_HISTORY)
+//   );
+// }
 exerciseDate = new Date();
 exerciseDate.setMilliseconds(
   exerciseDate.getMilliseconds() +
