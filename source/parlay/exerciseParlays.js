@@ -557,6 +557,7 @@ async function doIndefinitely() {
       console.log("Time: " + timeNow);
       console.log("Exercise after: " + exerciseDate);
       console.log("History after: " + exerciseHistoryTime);
+      await exerciseHistory(process.env.REGULAR_BLOCKS_BACK);
       if (newResolved.length > 0) {
         let checkResolved = newResolved;
         newResolved = [];
@@ -671,43 +672,43 @@ exerciseDate.setMilliseconds(
   exerciseDate.getMilliseconds() +
     parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY)
 );
-consumer.on("ResolveSportsMarket", (_marketAddress, _id, _outcome) => {
-  console.log(
-    "\x1b[37m=========> New Market resolved =========> \x1b[0m\n",
-    _marketAddress,
-    "\nid: ",
-    _id,
-    "\noutcome: ",
-    parseInt(_outcome)
-  );
-  newResolved.push({
-    address: _marketAddress,
-    id: _id,
-    outcome: parseInt(_outcome),
-  });
-});
-console.log("Resolve listener started");
+// consumer.on("ResolveSportsMarket", (_marketAddress, _id, _outcome) => {
+//   console.log(
+//     "\x1b[37m=========> New Market resolved =========> \x1b[0m\n",
+//     _marketAddress,
+//     "\nid: ",
+//     _id,
+//     "\noutcome: ",
+//     parseInt(_outcome)
+//   );
+//   newResolved.push({
+//     address: _marketAddress,
+//     id: _id,
+//     outcome: parseInt(_outcome),
+//   });
+// });
+// console.log("Resolve listener started");
 
-obtainer.on("ResolveChildMarket", (_child, _outcome, _main, _homeScore, _awayScore) => {
-  console.log(
-    "\x1b[37m=========> New CHILD Market resolved =========> \x1b[0m\n",
-    _child,
-    "\noutcome: ",
-    parseInt(_outcome),
-    "\nmainMarket: ",
-    _main,
-    "\nhomeScore: ",
-    parseInt(_homeScore),
-    "\nawayScore: ",
-    parseInt(_awayScore)
-  );
-  newResolved.push({
-    address: _child,
-    id: "child",
-    outcome: parseInt(_outcome),
-  });
-});
-console.log(" Child Resolve listener started");
+// obtainer.on("ResolveChildMarket", (_child, _outcome, _main, _homeScore, _awayScore) => {
+//   console.log(
+//     "\x1b[37m=========> New CHILD Market resolved =========> \x1b[0m\n",
+//     _child,
+//     "\noutcome: ",
+//     parseInt(_outcome),
+//     "\nmainMarket: ",
+//     _main,
+//     "\nhomeScore: ",
+//     parseInt(_homeScore),
+//     "\nawayScore: ",
+//     parseInt(_awayScore)
+//   );
+//   newResolved.push({
+//     address: _child,
+//     id: "child",
+//     outcome: parseInt(_outcome),
+//   });
+// });
+// console.log(" Child Resolve listener started");
 doIndefinitely();
 
 //end MAIN __________________________________________________________________________________
