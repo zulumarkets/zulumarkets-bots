@@ -327,11 +327,13 @@ async function doPull(numberOfExecution) {
             }
           });
 
+          let gamesWhichOddsChanged = [];
+
           // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
           for (let n = 0; n < gamesListResponse.length; n++) {
-            if (sendRequestForOdds) {
+            /*if (sendRequestForOdds) {
               break;
-            }
+            }*/
             console.log("Game status -> " + gamesListResponse[n].status);
             console.log(
               "Obtaining game id (as string): -> " + gamesListResponse[n].id
@@ -343,9 +345,9 @@ async function doPull(numberOfExecution) {
                 gamesListResponse[n].awayTeam
             );
             for (let m = 0; m < gamesOnContract.length; m++) {
-              if (sendRequestForOdds) {
+              /*if (sendRequestForOdds) {
                 break;
-              }
+                }*/
               // when game is found and status and status is STATUS_SCHEDULED
               if (
                 gamesListResponse[n].id ==
@@ -640,6 +642,7 @@ async function doPull(numberOfExecution) {
                     console.log("Setting sendRequestForOdds to true");
 
                     sendRequestForOdds = true;
+                    gamesWhichOddsChanged.push(gamesListResponse[n].id);
 
                     await sendMessageToDiscordOddsChanged(
                       gamesListResponse[n].homeTeam,
@@ -671,6 +674,7 @@ async function doPull(numberOfExecution) {
                       "Receiving valid odds or unpause by wrong cancel status!"
                     );
                     sendRequestForOdds = true;
+                    gamesWhichOddsChanged.push(gamesListResponse[n].id);
                     await sendMessageToDiscordOddsChanged(
                       gamesListResponse[n].homeTeam,
                       gamesListResponse[n].awayTeam,
@@ -770,30 +774,29 @@ async function doPull(numberOfExecution) {
             }
           }
 
+          console.log("Games to be send: ");
+          console.log("------");
+          console.log(gamesWhichOddsChanged);
+          console.log("------");
+
           // odds changed
-          if (sendRequestForOdds) {
+          if (sendRequestForOdds && gamesWhichOddsChanged.length > 0) {
             console.log("Sending request, odds changed...");
             try {
               console.log("Send request...");
 
-              let gameIds = [];
-
-              if (sportIds[j] == 1 || doesSportSupportSpreadAndTotal) {
-                gamesOnContract.forEach((g) => {
-                  gameIds.push(bytes32({ input: g }));
-                });
-              }
-
-              console.log("Requesting games: " + gameIds.length);
-              if (gameIds.length > process.env.CL_ODDS_BATCH) {
+              console.log(
+                "Requesting games count: " + gamesWhichOddsChanged.length
+              );
+              if (gamesWhichOddsChanged.length > process.env.CL_ODDS_BATCH) {
                 let gamesInBatchforCL = [];
-                for (let i = 0; i < gameIds.length; i++) {
-                  gamesInBatchforCL.push(gameIds[i]);
+                for (let i = 0; i < gamesWhichOddsChanged.length; i++) {
+                  gamesInBatchforCL.push(gamesWhichOddsChanged[i]);
                   if (
                     (gamesInBatchforCL.length > 0 &&
                       gamesInBatchforCL.length % process.env.CL_ODDS_BATCH ==
                         0) ||
-                    gameIds.length - 1 == i // last one
+                    gamesWhichOddsChanged.length - 1 == i // last one
                   ) {
                     console.log("Batch...");
                     console.log(gamesInBatchforCL);
@@ -825,7 +828,7 @@ async function doPull(numberOfExecution) {
                   jobId,
                   sportIds[j],
                   unixDate,
-                  gameIds, //ids,
+                  gamesWhichOddsChanged, //ids,
                   {
                     gasLimit: process.env.GAS_LIMIT,
                   }
