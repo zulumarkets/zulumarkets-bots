@@ -96,6 +96,19 @@ const rundownVerifier = {
         {
           indexed: false,
           internalType: "address",
+          name: "_manager",
+          type: "address",
+        },
+      ],
+      name: "NewSportsManagerAddress",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
+          internalType: "address",
           name: "oldOwner",
           type: "address",
         },
@@ -230,6 +243,25 @@ const rundownVerifier = {
       name: "acceptOwnership",
       outputs: [],
       stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "_gameIds",
+          type: "bytes32",
+        },
+      ],
+      name: "areInvalidOdds",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "_invalidOdds",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
       type: "function",
     },
     {
@@ -537,6 +569,11 @@ const rundownVerifier = {
         {
           internalType: "bool",
           name: "_isPausedByCanceledStatus",
+          type: "bool",
+        },
+        {
+          internalType: "bool",
+          name: "_isMarketPaused",
           type: "bool",
         },
       ],
@@ -1052,6 +1089,19 @@ const rundownVerifier = {
     {
       inputs: [
         {
+          internalType: "address",
+          name: "_manager",
+          type: "address",
+        },
+      ],
+      name: "setSportsManager",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "string[]",
           name: "_supportedMarketTypes",
           type: "string[]",
@@ -1086,6 +1136,19 @@ const rundownVerifier = {
           internalType: "uint256",
           name: "",
           type: "uint256",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "sportsManager",
+      outputs: [
+        {
+          internalType: "contract ISportPositionalMarketManager",
+          name: "",
+          type: "address",
         },
       ],
       stateMutability: "view",

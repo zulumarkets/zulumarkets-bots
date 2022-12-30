@@ -69,6 +69,10 @@ async function doPull(numberOfExecution, lastStartDate) {
     10: process.env.ODDS_PERCENTAGE_CHANGE_MLS,
   };
 
+  const PRICE_AMOUNT_CHANGE_BY_SPORT = {
+    3: process.env.PRICE_AMOUNT_CHANGE_DEFAULT,
+  };
+
   const LINE_CHANGE_BY_SPORT = {
     4: process.env.LINE_CHANGE_DEFAULT,
   };
@@ -107,6 +111,11 @@ async function doPull(numberOfExecution, lastStartDate) {
         ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds]
         : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
 
+    let priceChangePerSport =
+      PRICE_AMOUNT_CHANGE_BY_SPORT[sportIds] !== undefined
+        ? PRICE_AMOUNT_CHANGE_BY_SPORT[sportIds]
+        : process.env.PRICE_AMOUNT_CHANGE_DEFAULT;
+
     let lineChangePerSport =
       LINE_CHANGE_BY_SPORT[sportIds] !== undefined
         ? LINE_CHANGE_BY_SPORT[sportIds]
@@ -116,6 +125,7 @@ async function doPull(numberOfExecution, lastStartDate) {
     for (let i = 0; i <= daysInFront; i++) {
       console.log("------------------------");
       console.log("CHANGE ODDS % : " + percentageChangePerSport);
+      console.log("PRICE ODDS CHANGING (in cents) : " + priceChangePerSport);
       console.log("CHANGE LINE AMOUNT: " + lineChangePerSport);
       console.log("Processing: TODAY +  " + i);
 
@@ -303,11 +313,13 @@ async function doPull(numberOfExecution, lastStartDate) {
           lastStartDate[dateSport] = 0;
         }
 
+        let gamesWhichOddsChanged = [];
+
         // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
         for (let n = 0; n < gamesListResponse.length; n++) {
-          if (sendRequestForOdds) {
+          /*if (sendRequestForOdds) {
             break;
-          }
+          }*/
           console.log("Game status -> " + gamesListResponse[n].status);
           console.log(
             "Obtaining game id (as string): -> " + gamesListResponse[n].id
@@ -319,9 +331,9 @@ async function doPull(numberOfExecution, lastStartDate) {
               gamesListResponse[n].awayTeam
           );
           for (let m = 0; m < gamesOnContract.length; m++) {
-            if (sendRequestForOdds) {
+            /*if (sendRequestForOdds) {
               break;
-            }
+            }*/
             // when game is found and status and status is STATUS_SCHEDULED
             if (
               gamesListResponse[n].id ==
@@ -382,7 +394,7 @@ async function doPull(numberOfExecution, lastStartDate) {
                 );
 
                 let drawOddPinnacle = gamesListResponse[n].drawOdd;
-                if (isSportTwoPositionsSport) {
+                if (!isSportTwoPositionsSport) {
                   console.log(
                     "Draw Odds API: " +
                       drawOddPinnacle +
@@ -471,6 +483,9 @@ async function doPull(numberOfExecution, lastStartDate) {
                   "Is game paused by status: " + isPausedByCanceledStatus
                 );
 
+                let isMarketPaused = gameProps[5];
+                console.log("Market paused: " + isMarketPaused);
+
                 if (
                   oddsForGames[m * 3] === undefined ||
                   homeOddPinnacle === undefined ||
@@ -506,40 +521,48 @@ async function doPull(numberOfExecution, lastStartDate) {
                       spreadAwayOddsPinnacle,
                       totalOverOddsPinnacle,
                       totalUnderOddsPinnacle,
-                      lineChangePerSport
+                      lineChangePerSport,
+                      priceChangePerSport
                     )) ||
-                    getPercentageChange(
+                    isPercentageOrPriceChanged(
                       oddsForGames[m * 3],
                       homeOddPinnacle,
-                      percentageChangePerSport
-                    ) >= percentageChangePerSport ||
-                    getPercentageChange(
+                      percentageChangePerSport,
+                      priceChangePerSport
+                    ) ||
+                    isPercentageOrPriceChanged(
                       oddsForGames[m * 3 + 1],
                       awayOddPinnacle,
-                      percentageChangePerSport
-                    ) >= percentageChangePerSport ||
-                    getPercentageChange(
+                      percentageChangePerSport,
+                      priceChangePerSport
+                    ) ||
+                    isPercentageOrPriceChanged(
                       oddsForGames[m * 3 + 2],
                       drawOddPinnacle,
-                      percentageChangePerSport
-                    ) >= percentageChangePerSport) &&
+                      percentageChangePerSport,
+                      priceChangePerSport
+                    )) &&
                   !invalidOdds &&
-                  !isPausedByCanceledStatus
+                  !isPausedByCanceledStatus &&
+                  !isMarketPaused
                 ) {
-                  let percentageChangeHome = getPercentageChange(
+                  let percentageChangeHome = getPercentageOrPriceChange(
                     oddsForGames[m * 3],
                     homeOddPinnacle,
-                    percentageChangePerSport
+                    percentageChangePerSport,
+                    1
                   );
-                  let percentageChangeAway = getPercentageChange(
+                  let percentageChangeAway = getPercentageOrPriceChange(
                     oddsForGames[m * 3 + 1],
                     awayOddPinnacle,
-                    percentageChangePerSport
+                    percentageChangePerSport,
+                    1
                   );
-                  let percentageChangeDraw = getPercentageChange(
+                  let percentageChangeDraw = getPercentageOrPriceChange(
                     oddsForGames[m * 3 + 2],
                     drawOddPinnacle,
-                    percentageChangePerSport
+                    percentageChangePerSport,
+                    1
                   );
 
                   console.log("Home change odd: " + percentageChangeHome);
@@ -547,28 +570,32 @@ async function doPull(numberOfExecution, lastStartDate) {
                   console.log("Draw change odd: " + percentageChangeDraw);
 
                   if (doesSportSupportSpreadAndTotal) {
-                    let percentageChangeSpreadHome = getPercentageChange(
+                    let percentageChangeSpreadHome = getPercentageOrPriceChange(
                       spreadTotalsOddsForGames[m * 4],
                       spreadHomeOddsPinnacle,
-                      percentageChangePerSport
+                      percentageChangePerSport,
+                      1
                     );
 
-                    let percentageChangeSpreadAway = getPercentageChange(
+                    let percentageChangeSpreadAway = getPercentageOrPriceChange(
                       spreadTotalsOddsForGames[m * 4 + 1],
                       spreadAwayOddsPinnacle,
-                      percentageChangePerSport
+                      percentageChangePerSport,
+                      1
                     );
 
-                    let percentageChangeTotalOver = getPercentageChange(
+                    let percentageChangeTotalOver = getPercentageOrPriceChange(
                       spreadTotalsOddsForGames[m * 4 + 2],
                       totalOverOddsPinnacle,
-                      percentageChangePerSport
+                      percentageChangePerSport,
+                      1
                     );
 
-                    let percentageChangeTotalUnder = getPercentageChange(
+                    let percentageChangeTotalUnder = getPercentageOrPriceChange(
                       spreadTotalsOddsForGames[m * 4 + 3],
                       totalUnderOddsPinnacle,
-                      percentageChangePerSport
+                      percentageChangePerSport,
+                      1
                     );
                     console.log(
                       "Spread HOME change odd: " + percentageChangeSpreadHome
@@ -628,6 +655,8 @@ async function doPull(numberOfExecution, lastStartDate) {
 
                   sendRequestForOdds = true;
 
+                  gamesWhichOddsChanged.push(gamesListResponse[n].id);
+
                   await sendMessageToDiscordOddsChanged(
                     gamesListResponse[n].homeTeam,
                     gamesListResponse[n].awayTeam,
@@ -658,6 +687,7 @@ async function doPull(numberOfExecution, lastStartDate) {
                     "Receiving valid odds or unpause by wrong cancel status!"
                   );
                   sendRequestForOdds = true;
+                  gamesWhichOddsChanged.push(gamesListResponse[n].id);
                   await sendMessageToDiscordOddsChanged(
                     gamesListResponse[n].homeTeam,
                     gamesListResponse[n].awayTeam,
@@ -757,30 +787,29 @@ async function doPull(numberOfExecution, lastStartDate) {
           }
         }
 
+        console.log("Games to be send: ");
+        console.log("------");
+        console.log(gamesWhichOddsChanged);
+        console.log("------");
+
         // odds changed
-        if (sendRequestForOdds) {
+        if (sendRequestForOdds && gamesWhichOddsChanged.length > 0) {
           console.log("Sending request, odds changed...");
           try {
             console.log("Send request...");
 
-            let gameIds = [];
-
-            if (sportIds == 1 || doesSportSupportSpreadAndTotal) {
-              gamesOnContract.forEach((g) => {
-                gameIds.push(bytes32({ input: g }));
-              });
-            }
-
-            console.log("Requesting games: " + gameIds.length);
-            if (gameIds.length > process.env.CL_ODDS_BATCH) {
+            console.log(
+              "Requesting games count: " + gamesWhichOddsChanged.length
+            );
+            if (gamesWhichOddsChanged.length > process.env.CL_ODDS_BATCH) {
               let gamesInBatchforCL = [];
-              for (let i = 0; i < gameIds.length; i++) {
-                gamesInBatchforCL.push(gameIds[i]);
+              for (let i = 0; i < gamesWhichOddsChanged.length; i++) {
+                gamesInBatchforCL.push(gamesWhichOddsChanged[i]);
                 if (
                   (gamesInBatchforCL.length > 0 &&
                     gamesInBatchforCL.length % process.env.CL_ODDS_BATCH ==
                       0) ||
-                  gameIds.length - 1 == i // last one
+                  gamesWhichOddsChanged.length - 1 == i // last one
                 ) {
                   console.log("Batch...");
                   console.log(gamesInBatchforCL);
@@ -809,7 +838,7 @@ async function doPull(numberOfExecution, lastStartDate) {
                 jobId,
                 sportIds,
                 unixDate,
-                gameIds, //ids,
+                gamesWhichOddsChanged, //ids,
                 {
                   gasLimit: process.env.GAS_LIMIT,
                 }
@@ -1540,7 +1569,8 @@ function checkSpreadAndTotal(
   spreadAwayOddsPinnacle,
   totalOverOddsPinnacle,
   totalUnderOddsPinnacle,
-  lineChangePerSport
+  lineChangePerSport,
+  priceChangePerSport
 ) {
   return (
     doesSportSupportSpreadAndTotal &&
@@ -1564,26 +1594,29 @@ function checkSpreadAndTotal(
         totalUnderPinnacle,
         lineChangePerSport
       ) ||
-      getPercentageChange(
+      isPercentageOrPriceChanged(
         spreadTotalsOddsForGames[m * 4],
         spreadHomeOddsPinnacle,
-        percentageChangePerSport
-      ) >= percentageChangePerSport ||
-      getPercentageChange(
+        percentageChangePerSport,
+        priceChangePerSport
+      ) ||
+      isPercentageOrPriceChanged(
         spreadTotalsOddsForGames[m * 4 + 1],
         spreadAwayOddsPinnacle,
         percentageChangePerSport
-      ) >= percentageChangePerSport ||
-      getPercentageChange(
+      ) ||
+      isPercentageOrPriceChanged(
         spreadTotalsOddsForGames[m * 4 + 2],
         totalOverOddsPinnacle,
-        percentageChangePerSport
-      ) >= percentageChangePerSport ||
-      getPercentageChange(
+        percentageChangePerSport,
+        priceChangePerSport
+      ) ||
+      isPercentageOrPriceChanged(
         spreadTotalsOddsForGames[m * 4 + 3],
         totalUnderOddsPinnacle,
-        percentageChangePerSport
-      ) >= percentageChangePerSport)
+        percentageChangePerSport,
+        priceChangePerSport
+      ))
   );
 }
 
@@ -1611,7 +1644,20 @@ function checkSpreadAndTotalThreshold(
   return false;
 }
 
-function getPercentageChange(oldNumber, newNumber, percentage) {
+function isPercentageOrPriceChanged(oldNumber, newNumber, percentage, price) {
+  return (
+    getPercentageOrPriceChange(oldNumber, newNumber, percentage, 1) >
+      percentage &&
+    getPercentageOrPriceChange(oldNumber, newNumber, percentage, 2) > price
+  );
+}
+
+function getPercentageOrPriceChange(
+  oldNumber,
+  newNumber,
+  percentage,
+  typeOfChecking
+) {
   if (oldNumber === newNumber) {
     return 0;
   }
@@ -1627,11 +1673,19 @@ function getPercentageChange(oldNumber, newNumber, percentage) {
       .from("moneyline", newNumber / 100)
       .to("impliedProbability");
     var decreaseValue = oldNumberImplied - newNumberImplied;
-    let percentageChange = Math.abs((decreaseValue / oldNumberImplied) * 100);
-    if (percentageChange > percentage) {
-      console.log("Odds changed more than threshold!");
+    if (typeOfChecking === 1) {
+      let percentageChange = Math.abs((decreaseValue / oldNumberImplied) * 100);
+      if (percentageChange > percentage) {
+        console.log("Odds changed more than threshold!");
+      }
+      return percentageChange;
+    } else {
+      console.log("Difference in odds: " + oldNumberImplied);
+      console.log("Difference in odds: " + newNumberImplied);
+      let amountChanged = Math.abs(decreaseValue) * 100;
+      console.log("Difference in odds: " + amountChanged);
+      return amountChanged;
     }
-    return percentageChange;
   }
 }
 
