@@ -10,7 +10,6 @@ const parlayData = require("../../contracts/ParlayData.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const gamesOddsObtainer = require("../../contracts/GamesOddsObtainer.js");
 
-
 const Discord = require("discord.js");
 const overtimeBot = new Discord.Client();
 overtimeBot.login(process.env.BOT_OVERTIME_RESOLVER);
@@ -53,11 +52,10 @@ async function collectExercisableParlays(
 ) {
   let sportMarketOptionsCount;
   let isChild = false;
-  if(sportMarketId == "child") {
+  if (sportMarketId == "child") {
     sportMarketOptionsCount = 2;
     isChild = true;
-  }
-  else {
+  } else {
     sportMarketOptionsCount = (await consumer.isSportTwoPositionsSport(
       sportMarketId
     ))
@@ -158,32 +156,34 @@ async function collectExercisableParlays(
           j
         );
         console.log("--> ", j, " checking parlay ", parlayMarket);
-        parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(
-          parlayMarket
-        );
-        console.log(
-          "initialized: ",
-          parlayMarketDetails.initialized,
-          "| resolved: ",
-          parlayMarketDetails.resolved,
-          "| alreadyLost: ",
-          parlayMarketDetails.alreadyLost,
-          "| fundsIssued: ",
-          parlayMarketDetails.fundsIssued
-        );
-        if (
-          parlayMarketDetails.initialized &&
-          parlayMarketDetails.alreadyLost &&
-          !parlayMarketDetails.fundsIssued
-        ) {
-          // exercise parlay
-          if (!parlaysToBeExercised.includes(parlayMarket)) {
-            console.log(
-              "parlay: ",
-              parlayMarket,
-              " already lost! Added for exercise..."
-            );
-            parlaysToBeExercised.push(parlayMarket);
+        if (parlayMarket != "0x0000000000000000000000000000000000000000") {
+          parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(
+            parlayMarket
+          );
+          console.log(
+            "initialized: ",
+            parlayMarketDetails.initialized,
+            "| resolved: ",
+            parlayMarketDetails.resolved,
+            "| alreadyLost: ",
+            parlayMarketDetails.alreadyLost,
+            "| fundsIssued: ",
+            parlayMarketDetails.fundsIssued
+          );
+          if (
+            parlayMarketDetails.initialized &&
+            parlayMarketDetails.alreadyLost &&
+            !parlayMarketDetails.fundsIssued
+          ) {
+            // exercise parlay
+            if (!parlaysToBeExercised.includes(parlayMarket)) {
+              console.log(
+                "parlay: ",
+                parlayMarket,
+                " already lost! Added for exercise..."
+              );
+              parlaysToBeExercised.push(parlayMarket);
+            }
           }
         }
       }
@@ -367,28 +367,42 @@ async function sendInfoMessageToDiscord(
   balanceBefore,
   balanceAfter
 ) {
-  if(tx_batch.length > 0) {
+  if (tx_batch.length > 0) {
     let tx_message;
     let info_message;
     var message = new Discord.MessageEmbed();
-    if(tx_batch.length == 1) {
-      tx_message = "[" + tx_batch[0] + "](https://optimistic.etherscan.io/tx/" + tx_batch[0] + ")";
+    if (tx_batch.length == 1) {
+      tx_message =
+        "[" +
+        tx_batch[0] +
+        "](https://optimistic.etherscan.io/tx/" +
+        tx_batch[0] +
+        ")";
+    } else {
+      tx_message =
+        "[" +
+        tx_batch[0] +
+        "](https://optimistic.etherscan.io/tx/" +
+        tx_batch[0] +
+        ")";
+      tx_message +=
+        "\n[" +
+        tx_batch[tx_batch.length - 1] +
+        "](https://optimistic.etherscan.io/tx/" +
+        tx_batch[tx_batch.length - 1] +
+        ")";
     }
-    else {
-      tx_message = "[" + tx_batch[0] + "](https://optimistic.etherscan.io/tx/" + tx_batch[0] + ")";
-      tx_message += "\n[" + tx_batch[tx_batch.length-1] + "](https://optimistic.etherscan.io/tx/" + tx_batch[tx_batch.length-1] + ")";
-    }
-    if((parseFloat(balanceAfter) - parseFloat(balanceBefore)) > 0){
-      info_message = "before: " +
-            balanceBefore +
-            "\nafter ::: " +
-            balanceAfter +
-            "\nprofit :: " +
-            (parseFloat(balanceAfter) - parseFloat(balanceBefore)) +
-            " sUSD";
-    }
-    else {
-      info_message = "Parlays markets marked as lost: "+ numOfExercisedParlays;
+    if (parseFloat(balanceAfter) - parseFloat(balanceBefore) > 0) {
+      info_message =
+        "before: " +
+        balanceBefore +
+        "\nafter ::: " +
+        balanceAfter +
+        "\nprofit :: " +
+        (parseFloat(balanceAfter) - parseFloat(balanceBefore)) +
+        " sUSD";
+    } else {
+      info_message = "Parlays markets marked as lost: " + numOfExercisedParlays;
     }
     message
       .addFields(
@@ -410,7 +424,9 @@ async function sendInfoMessageToDiscord(
         }
       )
       .setColor("#0037ff");
-    let overtimeCreate = await overtimeBot.channels.fetch("1039869584372662332");
+    let overtimeCreate = await overtimeBot.channels.fetch(
+      "1039869584372662332"
+    );
     await overtimeCreate.send(message);
   }
 }
@@ -469,14 +485,10 @@ async function exerciseHistory(blocksInHistory) {
         console.log("Parlays to be exercised: ", parlaysToBeExercised);
       }
     }
-    console.log("CHILD FILTER CHECK ---> ")
+    console.log("CHILD FILTER CHECK ---> ");
     eventFilter = obtainer.filters.ResolveChildMarket();
-    events = await obtainer.queryFilter(
-      eventFilter,
-      startBlock,
-      latestBlock
-    );
-    console.log("CHILD MARKETS RESOLUTIONS: ", events.length)
+    events = await obtainer.queryFilter(eventFilter, startBlock, latestBlock);
+    console.log("CHILD MARKETS RESOLUTIONS: ", events.length);
     if (events.length > 0) {
       let sportMarketAddress;
       let sportMarketId;
@@ -503,15 +515,15 @@ async function doExercise(exerciseParlays) {
   let tx;
   let tx_batch = [];
   if (exerciseParlays.length > 0) {
-    if(exerciseParlays.length > 20) {
+    if (exerciseParlays.length > 20) {
       let batch = [];
-      for(let i=0; i<exerciseParlays.length; i++ ){
+      for (let i = 0; i < exerciseParlays.length; i++) {
         batch.push(exerciseParlays[i]);
-        if(batch.length == 20) {
+        if (batch.length == 20) {
           tx = await dataParlay.exerciseParlays(batch, {
             gasLimit: process.env.GAS_LIMIT,
           });
-      
+
           await tx.wait().then((e) => {
             console.log("Parlays exercised");
             console.log(batch);
@@ -520,23 +532,22 @@ async function doExercise(exerciseParlays) {
           tx_batch.push(tx.hash);
         }
       }
-      if(batch.length > 0) {
+      if (batch.length > 0) {
         tx = await dataParlay.exerciseParlays(batch, {
           gasLimit: process.env.GAS_LIMIT,
         });
-    
+
         await tx.wait().then((e) => {
           console.log("Parlays exercised");
           console.log(batch);
         });
         tx_batch.push(tx.hash);
       }
-    }
-    else {
+    } else {
       tx = await dataParlay.exerciseParlays(exerciseParlays, {
         gasLimit: process.env.GAS_LIMIT,
       });
-      
+
       await tx.wait().then((e) => {
         console.log("Parlays exercised");
         console.log(exerciseParlays);
