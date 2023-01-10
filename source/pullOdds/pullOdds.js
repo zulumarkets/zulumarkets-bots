@@ -50,7 +50,7 @@ const erc20Instance = new ethers.Contract(
   wallet
 );
 
-async function doPull(numberOfExecution) {
+async function doPull(numberOfExecution, botName) {
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
   console.log("Amount token in wallet: " + parseInt(amountOfToken));
   console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
@@ -97,8 +97,12 @@ async function doPull(numberOfExecution) {
     3: process.env.PRICE_AMOUNT_CHANGE_DEFAULT,
   };
 
-  const LINE_CHANGE_BY_SPORT = {
-    4: process.env.LINE_CHANGE_DEFAULT,
+  const LINE_CHANGE_BY_SPORT_SPREAD = {
+    4: process.env.LINE_CHANGE_DEFAULT_SPREAD,
+  };
+
+  const LINE_CHANGE_BY_SPORT_TOTAL = {
+    4: process.env.LINE_CHANGE_DEFAULT_TOTAL,
   };
 
   let americanSports = [1, 2, 3, 4, 6, 10];
@@ -130,10 +134,15 @@ async function doPull(numberOfExecution) {
           ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]]
           : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
 
-      let lineChangePerSport =
-        LINE_CHANGE_BY_SPORT[sportIds[j]] !== undefined
-          ? LINE_CHANGE_BY_SPORT[sportIds[j]]
-          : process.env.LINE_CHANGE_DEFAULT;
+      let lineChangePerSportSpread =
+        LINE_CHANGE_BY_SPORT_SPREAD[sportIds] !== undefined
+          ? LINE_CHANGE_BY_SPORT_SPREAD[sportIds]
+          : process.env.LINE_CHANGE_DEFAULT_SPREAD;
+
+      let lineChangePerSportTotal =
+        LINE_CHANGE_BY_SPORT_TOTAL[sportIds] !== undefined
+          ? LINE_CHANGE_BY_SPORT_TOTAL[sportIds]
+          : process.env.LINE_CHANGE_DEFAULT_TOTAL;
 
       let priceChangePerSport =
         PRICE_AMOUNT_CHANGE_BY_SPORT[sportIds] !== undefined
@@ -165,7 +174,8 @@ async function doPull(numberOfExecution) {
       for (let i = 0; i <= daysInFront; i++) {
         console.log("------------------------");
         console.log("CHANGE ODDS % : " + percentageChangePerSport);
-        console.log("CHANGE LINE AMOUNT: " + lineChangePerSport);
+        console.log("CHANGE LINE SPREAD AMOUNT: " + lineChangePerSportSpread);
+        console.log("CHANGE LINE TOTAL AMOUNT: " + lineChangePerSportTotal);
         console.log("PRICE ODDS CHANGING (cents) : " + priceChangePerSport);
         console.log("Processing: TODAY +  " + i);
 
@@ -534,7 +544,8 @@ async function doPull(numberOfExecution) {
                         spreadAwayOddsPinnacle,
                         totalOverOddsPinnacle,
                         totalUnderOddsPinnacle,
-                        lineChangePerSport,
+                        lineChangePerSportSpread,
+                        lineChangePerSportTotal,
                         priceChangePerSport
                       )) ||
                       isPercentageOrPriceChanged(
@@ -662,7 +673,8 @@ async function doPull(numberOfExecution) {
                         totalOverPinnacle,
                         totalLinesForGames[m * 2 + 1],
                         totalUnderPinnacle,
-                        lineChangePerSport,
+                        lineChangePerSportSpread,
+                        lineChangePerSportTotal,
                         gameStart,
                         "1054737348170092644"
                       );
@@ -788,7 +800,7 @@ async function doPull(numberOfExecution) {
                   } catch (e) {
                     console.log(e);
                     await sendErrorMessageToDiscordStatusCancel(
-                      "Request to CL odds-bot went wrong, can not pause game by cancel status! Please check LINK amount on bot, or kill and debug!",
+                      "Request to CL odds-bot went wrong, see: " + botName,
                       sportIds[j],
                       gameStart,
                       gamesListResponse[n].id
@@ -872,7 +884,7 @@ async function doPull(numberOfExecution) {
             } catch (e) {
               console.log(e);
               await sendErrorMessageToDiscordRequestOddsfromCL(
-                "Request to CL odds-bot went wrong, can not pull odds! Please check LINK amount on bot, or kill and debug!",
+                "Request to CL odds-bot went wrong, see: " + botName,
                 sportIds[j],
                 unixDate
               );
@@ -908,7 +920,8 @@ function checkSpreadAndTotal(
   spreadAwayOddsPinnacle,
   totalOverOddsPinnacle,
   totalUnderOddsPinnacle,
-  lineChangePerSport,
+  lineChangePerSportSpread,
+  lineChangePerSportTotal,
   priceChangePerSport
 ) {
   return (
@@ -916,22 +929,22 @@ function checkSpreadAndTotal(
     (checkSpreadAndTotalThreshold(
       spreadLinesForGames[m * 2],
       spreadHomePinnacle,
-      lineChangePerSport
+      lineChangePerSportSpread
     ) ||
       checkSpreadAndTotalThreshold(
         spreadLinesForGames[m * 2 + 1],
         spreadAwayPinnacle,
-        lineChangePerSport
+        lineChangePerSportSpread
       ) ||
       checkSpreadAndTotalThreshold(
         totalLinesForGames[m * 2],
         totalOverPinnacle,
-        lineChangePerSport
+        lineChangePerSportTotal
       ) ||
       checkSpreadAndTotalThreshold(
         totalLinesForGames[m * 2 + 1],
         totalUnderPinnacle,
-        lineChangePerSport
+        lineChangePerSportTotal
       ) ||
       isPercentageOrPriceChanged(
         spreadTotalsOddsForGames[m * 4],
@@ -960,6 +973,8 @@ function checkSpreadAndTotal(
 }
 
 async function doIndefinitely() {
+  var botName = process.env.BOT_NAME;
+  console.log("Bot name: " + botName);
   await allowances.checkAllowanceAndAllow(
     process.env.LINK_CONTRACT,
     process.env.WRAPPER_CONTRACT
@@ -970,14 +985,16 @@ async function doIndefinitely() {
       console.log("---------START ODDS EXECUTION---------");
       console.log("Execution time: " + new Date());
       console.log("Execution number: " + numberOfExecution);
-      await doPull(numberOfExecution);
+      await doPull(numberOfExecution, botName);
       numberOfExecution++;
       console.log("---------END ODDS EXECUTION---------");
       await delay(process.env.ODDS_FREQUENCY);
     } catch (e) {
       console.log(e);
       sendErrorMessageToDiscord(
-        "Please check odds-bot, error on execution: " +
+        "Please check " +
+          botName +
+          ", error on execution: " +
           numberOfExecution +
           ", date: " +
           new Date()
@@ -1152,7 +1169,8 @@ async function sendMessageSpreadTotalChangedDiscord(
   totalOverAPI,
   totalUnderContract,
   totalUnderAPI,
-  linechange,
+  lineChangePerSportSpread,
+  lineChangePerSportTotal,
   gameTime,
   discordID
 ) {
@@ -1183,7 +1201,11 @@ async function sendMessageSpreadTotalChangedDiscord(
         },
         {
           name: ":abacus: Value of threshold: ",
-          value: linechange / 100,
+          value:
+            "Spread line threshold: " +
+            lineChangePerSportSpread / 100 +
+            ", Total line threshold: " +
+            lineChangePerSportTotal / 100,
         },
         {
           name: ":stadium: Overtime game:",

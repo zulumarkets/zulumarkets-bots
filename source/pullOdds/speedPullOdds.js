@@ -43,7 +43,7 @@ const obtainer = new ethers.Contract(
   wallet
 );
 
-async function doPull(numberOfExecution, lastStartDate) {
+async function doPull(numberOfExecution, lastStartDate, botName) {
   const jobId = bytes32({ input: process.env.JOB_ID_ODDS });
   const jobIdResolve = bytes32({ input: process.env.JOB_ID_RESOLVE });
 
@@ -73,8 +73,12 @@ async function doPull(numberOfExecution, lastStartDate) {
     3: process.env.PRICE_AMOUNT_CHANGE_DEFAULT,
   };
 
-  const LINE_CHANGE_BY_SPORT = {
-    4: process.env.LINE_CHANGE_DEFAULT,
+  const LINE_CHANGE_BY_SPORT_SPREAD = {
+    4: process.env.LINE_CHANGE_DEFAULT_SPREAD,
+  };
+
+  const LINE_CHANGE_BY_SPORT_TOTAL = {
+    4: process.env.LINE_CHANGE_DEFAULT_TOTAL,
   };
 
   let americanSports = [1, 2, 3, 4, 6, 10];
@@ -116,17 +120,23 @@ async function doPull(numberOfExecution, lastStartDate) {
         ? PRICE_AMOUNT_CHANGE_BY_SPORT[sportIds]
         : process.env.PRICE_AMOUNT_CHANGE_DEFAULT;
 
-    let lineChangePerSport =
-      LINE_CHANGE_BY_SPORT[sportIds] !== undefined
-        ? LINE_CHANGE_BY_SPORT[sportIds]
-        : process.env.LINE_CHANGE_DEFAULT;
+    let lineChangePerSportSpread =
+      LINE_CHANGE_BY_SPORT_SPREAD[sportIds] !== undefined
+        ? LINE_CHANGE_BY_SPORT_SPREAD[sportIds]
+        : process.env.LINE_CHANGE_DEFAULT_SPREAD;
+
+    let lineChangePerSportTotal =
+      LINE_CHANGE_BY_SPORT_TOTAL[sportIds] !== undefined
+        ? LINE_CHANGE_BY_SPORT_TOTAL[sportIds]
+        : process.env.LINE_CHANGE_DEFAULT_TOTAL;
 
     // from today!!! maybe some games still running
     for (let i = 0; i <= daysInFront; i++) {
       console.log("------------------------");
       console.log("CHANGE ODDS % : " + percentageChangePerSport);
       console.log("PRICE ODDS CHANGING (in cents) : " + priceChangePerSport);
-      console.log("CHANGE LINE AMOUNT: " + lineChangePerSport);
+      console.log("CHANGE LINE SPREAD AMOUNT: " + lineChangePerSportSpread);
+      console.log("CHANGE LINE TOTAL AMOUNT: " + lineChangePerSportTotal);
       console.log("Processing: TODAY +  " + i);
 
       let unixDate = getSecondsToDate(i);
@@ -521,7 +531,8 @@ async function doPull(numberOfExecution, lastStartDate) {
                       spreadAwayOddsPinnacle,
                       totalOverOddsPinnacle,
                       totalUnderOddsPinnacle,
-                      lineChangePerSport,
+                      lineChangePerSportSpread,
+                      lineChangePerSportTotal,
                       priceChangePerSport
                     )) ||
                     isPercentageOrPriceChanged(
@@ -645,7 +656,8 @@ async function doPull(numberOfExecution, lastStartDate) {
                       totalOverPinnacle,
                       totalLinesForGames[m * 2 + 1],
                       totalUnderPinnacle,
-                      lineChangePerSport,
+                      lineChangePerSportSpread,
+                      lineChangePerSportTotal,
                       gameStart,
                       "1054737348170092644"
                     );
@@ -772,7 +784,7 @@ async function doPull(numberOfExecution, lastStartDate) {
                 } catch (e) {
                   console.log(e);
                   await sendErrorMessageToDiscordStatusCancel(
-                    "Request to CL odds-bot went wrong, can not pause game by cancel status! Please check LINK amount on bot, or kill and debug!",
+                    "Request to CL odds-bot went wrong, see: " + botName,
                     sportIds,
                     gameStart,
                     gamesListResponse[n].id
@@ -853,7 +865,7 @@ async function doPull(numberOfExecution, lastStartDate) {
           } catch (e) {
             console.log(e);
             await sendErrorMessageToDiscordRequestOddsfromCL(
-              "Request to CL odds-bot went wrong, can not pull odds! Please check LINK amount on bot, or kill and debug!",
+              "Request to CL odds-bot went wrong, see: " + botName,
               sportIds,
               unixDate
             );
@@ -874,6 +886,8 @@ async function doPull(numberOfExecution, lastStartDate) {
 }
 
 async function doIndefinitely() {
+  var botName = process.env.BOT_NAME;
+  console.log("Bot name: " + botName);
   await allowances.checkAllowanceAndAllow(
     process.env.LINK_CONTRACT,
     process.env.WRAPPER_CONTRACT
@@ -885,14 +899,16 @@ async function doIndefinitely() {
       console.log("---------START ODDS EXECUTION---------");
       console.log("Execution time: " + new Date());
       console.log("Execution number: " + numberOfExecution);
-      await doPull(numberOfExecution, lastStartDate);
+      await doPull(numberOfExecution, lastStartDate, botName);
       numberOfExecution++;
       console.log("---------END ODDS EXECUTION---------");
       await delay(process.env.ODDS_FREQUENCY);
     } catch (e) {
       console.log(e);
       sendErrorMessageToDiscord(
-        "Please check odds-bot, error on execution: " +
+        "Please check " +
+          botName +
+          ", error on execution: " +
           numberOfExecution +
           ", date: " +
           new Date()
@@ -1068,7 +1084,8 @@ async function sendMessageSpreadTotalChangedDiscord(
   totalOverAPI,
   totalUnderContract,
   totalUnderAPI,
-  linechange,
+  lineChangePerSportSpread,
+  lineChangePerSportTotal,
   gameTime,
   discordID
 ) {
@@ -1099,7 +1116,11 @@ async function sendMessageSpreadTotalChangedDiscord(
         },
         {
           name: ":abacus: Value of threshold: ",
-          value: linechange / 100,
+          value:
+            "Spread line threshold: " +
+            lineChangePerSportSpread / 100 +
+            ", Total line threshold: " +
+            lineChangePerSportTotal / 100,
         },
         {
           name: ":stadium: Overtime game:",
@@ -1569,7 +1590,8 @@ function checkSpreadAndTotal(
   spreadAwayOddsPinnacle,
   totalOverOddsPinnacle,
   totalUnderOddsPinnacle,
-  lineChangePerSport,
+  lineChangePerSportSpread,
+  lineChangePerSportTotal,
   priceChangePerSport
 ) {
   return (
@@ -1577,22 +1599,22 @@ function checkSpreadAndTotal(
     (checkSpreadAndTotalThreshold(
       spreadLinesForGames[m * 2],
       spreadHomePinnacle,
-      lineChangePerSport
+      lineChangePerSportSpread
     ) ||
       checkSpreadAndTotalThreshold(
         spreadLinesForGames[m * 2 + 1],
         spreadAwayPinnacle,
-        lineChangePerSport
+        lineChangePerSportSpread
       ) ||
       checkSpreadAndTotalThreshold(
         totalLinesForGames[m * 2],
         totalOverPinnacle,
-        lineChangePerSport
+        lineChangePerSportTotal
       ) ||
       checkSpreadAndTotalThreshold(
         totalLinesForGames[m * 2 + 1],
         totalUnderPinnacle,
-        lineChangePerSport
+        lineChangePerSportTotal
       ) ||
       isPercentageOrPriceChanged(
         spreadTotalsOddsForGames[m * 4],
