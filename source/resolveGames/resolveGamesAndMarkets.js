@@ -349,7 +349,9 @@ async function doResolve() {
             } catch (e) {
               console.log(e);
               await sendErrorMessageToDiscordRequestToCL(
-                "Request to CL from resolver-bot went wrong! Please check LINK amount on bot, or kill and debug!",
+                "Request to CL from resolver-bot went wrong! Please check LINK amount on bot, or kill and debug!" +
+                  " EXCEPTION MESSAGE: " +
+                  e.message.slice(0, 200),
                 sportIds[j],
                 unixDate,
                 gameIds
@@ -418,7 +420,9 @@ async function doResolve() {
         } catch (e) {
           console.log(e);
           await sendErrorMessageToDiscordMarketResolve(
-            "Market resolve went wrong! Please check ETH on bot, or kill and debug!",
+            "Market resolve went wrong! Please check ETH on bot, or kill and debug!" +
+              " EXCEPTION MESSAGE: " +
+              e.message.slice(0, 200),
             gameIds
           );
           failedCounter++;
@@ -465,8 +469,8 @@ async function doIndefinitely() {
       sendErrorMessageToDiscord(
         "Please check resolve-bot, error on execution: " +
           numberOfExecution +
-          ", date: " +
-          new Date()
+          ", EXCEPTION MESSAGE: " +
+          e.message.slice(0, 200)
       );
       // wait next process
       await delay(process.env.RESOLVE_FREQUENCY);

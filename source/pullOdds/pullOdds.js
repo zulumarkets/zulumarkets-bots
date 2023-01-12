@@ -816,7 +816,10 @@ async function doPull(numberOfExecution, botName) {
                   } catch (e) {
                     console.log(e);
                     await sendErrorMessageToDiscordStatusCancel(
-                      "Request to CL odds-bot went wrong, see: " + botName,
+                      "Request to CL odds-bot went wrong, see: " +
+                        botName +
+                        ", EXCEPTION MESSAGE: " +
+                        e.message.slice(0, 200),
                       sportIds[j],
                       gameStart,
                       gamesListResponse[n].id
@@ -900,7 +903,10 @@ async function doPull(numberOfExecution, botName) {
             } catch (e) {
               console.log(e);
               await sendErrorMessageToDiscordRequestOddsfromCL(
-                "Request to CL odds-bot went wrong, see: " + botName,
+                "Request to CL odds-bot went wrong, see: " +
+                  botName +
+                  ", EXCEPTION MESSAGE: " +
+                  e.message.slice(0, 200),
                 sportIds[j],
                 unixDate
               );
@@ -1012,8 +1018,8 @@ async function doIndefinitely() {
           botName +
           ", error on execution: " +
           numberOfExecution +
-          ", date: " +
-          new Date()
+          ", EXCEPTION MESSAGE: " +
+          e.message.slice(0, 200)
       );
       // wait next process
       await delay(process.env.ODDS_FREQUENCY);
