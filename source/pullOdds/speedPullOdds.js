@@ -161,7 +161,7 @@ async function doPull(numberOfExecution, lastStartDate, botName) {
       console.log("Having sport on a date:  " + isSportOnADate);
 
       let gamesOnContract = sportProps[2];
-      console.log("Count games on a date: " + gamesOnContract);
+      console.log("Count games on a date: " + gamesOnContract.length);
 
       let isSportTwoPositionsSport = sportProps[1];
 
@@ -1482,30 +1482,36 @@ function getSpreadAndTotalLines(
         )
       : 0;
   } else if (oddNumber == 1) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].spread.point_spread_home === 0.0001
-    ) {
+    let spreadLineHome = isSportTwoPositionsSport
+      ? oddPrimary[0].spread.point_spread_home
+      : getSpreadLineAndOddsForFootball(
+          oddPrimary[0].spread.extended_spreads,
+          1
+        );
+    if (useBackupBookmaker && spreadLineHome === 0.0001) {
       return getSpreadAndTotalLinesFromBackupBookmaker(
         oddBackup,
         oddNumber,
         isSportTwoPositionsSport
       );
     } else {
-      return oddPrimary[0].spread.point_spread_home * 100;
+      return spreadLineHome * 100;
     }
   } else if (oddNumber == 2) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].spread.point_spread_away === 0.0001
-    ) {
+    let spreadLineAway = isSportTwoPositionsSport
+      ? oddPrimary[0].spread.point_spread_away
+      : getSpreadLineAndOddsForFootball(
+          oddPrimary[0].spread.extended_spreads,
+          2
+        );
+    if (useBackupBookmaker && spreadLineAway === 0.0001) {
       return getSpreadAndTotalLinesFromBackupBookmaker(
         oddBackup,
         oddNumber,
         isSportTwoPositionsSport
       );
     } else {
-      return oddPrimary[0].spread.point_spread_away * 100;
+      return spreadLineAway * 100;
     }
   } else if (oddNumber == 3) {
     let totalOverLine = isSportTwoPositionsSport
@@ -1546,9 +1552,21 @@ function getSpreadAndTotalLinesFromBackupBookmaker(
   if (oddBackup.length == 0) {
     return 0;
   } else if (oddNumber == 1) {
-    return oddBackup[0].spread.point_spread_home * 100;
+    let spreadLineHome = isSportTwoPositionsSport
+      ? oddBackup[0].spread.point_spread_home
+      : getSpreadLineAndOddsForFootball(
+          oddBackup[0].spread.extended_spreads,
+          1
+        );
+    return spreadLineHome * 100;
   } else if (oddNumber == 2) {
-    return oddBackup[0].spread.point_spread_away * 100;
+    let spreadLineAway = isSportTwoPositionsSport
+      ? oddBackup[0].spread.point_spread_away
+      : getSpreadLineAndOddsForFootball(
+          oddBackup[0].spread.extended_spreads,
+          2
+        );
+    return spreadLineAway * 100;
   } else if (oddNumber == 3) {
     let totalOverLine = isSportTwoPositionsSport
       ? oddBackup[0].total.total_over
@@ -1592,30 +1610,36 @@ function getSpreadAndTotalOdds(
         )
       : 0;
   } else if (oddNumber == 1) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].spread.point_spread_home_money === 0.0001
-    ) {
+    let oddsSpreadHome = isSportTwoPositionsSport
+      ? oddPrimary[0].spread.point_spread_home_money
+      : getSpreadLineAndOddsForFootball(
+          oddPrimary[0].spread.extended_spreads,
+          3
+        );
+    if (useBackupBookmaker && oddsSpreadHome === 0.0001) {
       return getSpreadAndTotalOddsFromBackupBookmaker(
         oddBackup,
         oddNumber,
         isSportTwoPositionsSport
       );
     } else {
-      return oddPrimary[0].spread.point_spread_home_money * 100;
+      return oddsSpreadHome * 100;
     }
   } else if (oddNumber == 2) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].spread.point_spread_away_money === 0.0001
-    ) {
+    let oddsSpreadAway = isSportTwoPositionsSport
+      ? oddPrimary[0].spread.point_spread_away_money
+      : getSpreadLineAndOddsForFootball(
+          oddPrimary[0].spread.extended_spreads,
+          4
+        );
+    if (useBackupBookmaker && oddsSpreadAway === 0.0001) {
       return getSpreadAndTotalOddsFromBackupBookmaker(
         oddBackup,
         oddNumber,
         isSportTwoPositionsSport
       );
     } else {
-      return oddPrimary[0].spread.point_spread_away_money * 100;
+      return oddsSpreadAway * 100;
     }
   } else if (oddNumber == 3) {
     let oddsTotalOver = isSportTwoPositionsSport
@@ -1656,9 +1680,21 @@ function getSpreadAndTotalOddsFromBackupBookmaker(
   if (oddBackup.length == 0) {
     return 0;
   } else if (oddNumber == 1) {
-    return oddBackup[0].spread.point_spread_home_money * 100;
+    let oddsSpreadHome = isSportTwoPositionsSport
+      ? oddBackup[0].spread.point_spread_home_money
+      : getSpreadLineAndOddsForFootball(
+          oddBackup[0].spread.extended_spreads,
+          3
+        );
+    return oddsSpreadHome * 100;
   } else if (oddNumber == 2) {
-    return oddBackup[0].spread.point_spread_away_money * 100;
+    let oddsSpreadAway = isSportTwoPositionsSport
+      ? oddBackup[0].spread.point_spread_away_money
+      : getSpreadLineAndOddsForFootball(
+          oddBackup[0].spread.extended_spreads,
+          4
+        );
+    return oddsSpreadAway * 100;
   } else if (oddNumber == 3) {
     let oddsTotalOver = isSportTwoPositionsSport
       ? oddBackup[0].total.total_over_money
@@ -1690,6 +1726,39 @@ function getTotalLineAndOddsForFootball(extendedTotals, type) {
         return filteredExtendedTotalsObj.total_over_money;
       } else {
         return filteredExtendedTotalsObj.total_under_money;
+      }
+    } else {
+      return 0;
+    }
+  }
+  return 0; // no odds no line
+}
+
+function getSpreadLineAndOddsForFootball(extendedSpread, type) {
+  if (typeof extendedSpread != "undefined" && extendedSpread.length > 1) {
+    var filteredExtendedSpread = extendedSpread.filter(
+      (x) => x.point_spread_home === 1 // only filter out 1 over/under
+    );
+
+    if (filteredExtendedSpread.length === 0) {
+      filteredExtendedSpread = extendedSpread.filter(
+        (x) => x.point_spread_home === -1 // only filter out -1 over/under IF no total_over === 1
+      );
+    }
+
+    console.log("---- extended spread object ------");
+    console.log(filteredExtendedSpread);
+    console.log("---- extended spread object ------");
+    if (filteredExtendedSpread.length > 0) {
+      const filteredExtendedSpreadObj = filteredExtendedSpread[0];
+      if (type == 1) {
+        return filteredExtendedSpreadObj.point_spread_home;
+      } else if (type == 2) {
+        return filteredExtendedSpreadObj.point_spread_away;
+      } else if (type == 3) {
+        return filteredExtendedSpreadObj.point_spread_home_money;
+      } else {
+        return filteredExtendedSpreadObj.point_spread_away_money;
       }
     } else {
       return 0;
