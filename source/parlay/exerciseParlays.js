@@ -454,11 +454,15 @@ async function sendErrorMessageToDiscord(messageForPrint) {
   await overtimeCreate.send(message);
 }
 
-async function exerciseHistory(blocksInHistory) {
+async function exerciseHistory(blocksInHistory, backwardsFromLatestBlock) {
   console.log("Go back ", blocksInHistory, " blocks");
   let latestBlock = await constants.etherprovider.getBlockNumber();
+  if(backwardsFromLatestBlock != 0) {
+    latestBlock = latestBlock - backwardsFromLatestBlock;
+  }
   console.log("Latest block:", parseInt(latestBlock));
   let startBlock = latestBlock - blocksInHistory;
+  console.log("Start block:", parseInt(startBlock));
   if (blocksInHistory != 0) {
     let eventFilter = consumer.filters.ResolveSportsMarket();
     let events = await consumer.queryFilter(
@@ -528,6 +532,7 @@ async function doExercise(exerciseParlays) {
             console.log("Parlays exercised");
             console.log(batch);
           });
+          await delay(5000);
           batch = [];
           tx_batch.push(tx.hash);
         }
@@ -536,11 +541,11 @@ async function doExercise(exerciseParlays) {
         tx = await dataParlay.exerciseParlays(batch, {
           gasLimit: process.env.GAS_LIMIT,
         });
-
         await tx.wait().then((e) => {
           console.log("Parlays exercised");
           console.log(batch);
         });
+        await delay(5000);
         tx_batch.push(tx.hash);
       }
     } else {
@@ -552,6 +557,7 @@ async function doExercise(exerciseParlays) {
         console.log("Parlays exercised");
         console.log(exerciseParlays);
       });
+      await delay(5000);
       tx_batch.push(tx.hash);
     }
   }
@@ -594,7 +600,7 @@ async function doIndefinitely() {
           );
         }
       }
-      if (timeNow >= exerciseDate && parlaysToBeExercised.length > 0) {
+      if (parlaysToBeExercised.length > 0) {
         console.log(
           "\x1b[33m:::::::::::::: Exercise parlays ::::::::::::::\x1b[0m"
         );
@@ -628,14 +634,14 @@ async function doIndefinitely() {
           parseFloat(balance)
         );
         numberOfExecution++;
-      } else if (timeNow >= exerciseHistoryTime || firstRun) {
+      } else if ( firstRun) {
         console.log("Exercising history....");
         let currentTime = new Date();
         exerciseHistoryTime.setMilliseconds(
           currentTime.getMilliseconds() +
             parseInt(process.env.EXERCISE_PARLAY_HISTORY)
         );
-        await exerciseHistory(process.env.BLOCKS_BACK_IN_HISTORY);
+        await exerciseHistory(process.env.BLOCKS_BACK_IN_HISTORY, process.env.BACKWARDS_FROM_LATEST_BLOCK);
       } else if (timeNow >= exerciseDate) {
         console.log("[       Nothing to exercise       ]");
         exerciseDate.setMilliseconds(
@@ -667,6 +673,7 @@ async function doIndefinitely() {
 
 //MAIN __________________________________________________________________________________
 
+firstRun = true;
 // if (parseInt(process.env.BLOCKS_BACK_IN_HISTORY) > 0 && historyUnprocessed) {
 //   firstRun = true;
 //   historyUnprocessed = false;
@@ -678,6 +685,7 @@ async function doIndefinitely() {
 //       parseInt(process.env.EXERCISE_PARLAY_HISTORY)
 //   );
 // }
+
 exerciseDate = new Date();
 exerciseDate.setMilliseconds(
   exerciseDate.getMilliseconds() +
