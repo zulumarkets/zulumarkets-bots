@@ -524,41 +524,59 @@ async function doExercise(exerciseParlays) {
       for (let i = 0; i < exerciseParlays.length; i++) {
         batch.push(exerciseParlays[i]);
         if (batch.length == 20) {
+          try {
+            tx = await dataParlay.exerciseParlays(batch, {
+              gasLimit: process.env.GAS_LIMIT,
+            });
+  
+            await tx.wait().then((e) => {
+              console.log("Parlays exercised");
+              console.log(batch);
+            });
+            await delay(5000);
+            batch = [];
+            tx_batch.push(tx.hash);
+
+          }
+          catch(e) {
+            console.log("ERROR IN 20 BATCH EXERCISE!\n\n");
+            batch = [];
+          }
+        }
+      }
+      if (batch.length > 0) {
+        try {
           tx = await dataParlay.exerciseParlays(batch, {
             gasLimit: process.env.GAS_LIMIT,
           });
-
           await tx.wait().then((e) => {
             console.log("Parlays exercised");
             console.log(batch);
           });
           await delay(5000);
-          batch = [];
           tx_batch.push(tx.hash);
         }
+        catch(e) {
+          console.log("ERROR IN BATCH (<20 tx) EXERCISE!\n\n");
+          batch = [];
+        }
       }
-      if (batch.length > 0) {
-        tx = await dataParlay.exerciseParlays(batch, {
+    } else {
+      try {
+        tx = await dataParlay.exerciseParlays(exerciseParlays, {
           gasLimit: process.env.GAS_LIMIT,
         });
+  
         await tx.wait().then((e) => {
           console.log("Parlays exercised");
-          console.log(batch);
+          console.log(exerciseParlays);
         });
         await delay(5000);
         tx_batch.push(tx.hash);
       }
-    } else {
-      tx = await dataParlay.exerciseParlays(exerciseParlays, {
-        gasLimit: process.env.GAS_LIMIT,
-      });
-
-      await tx.wait().then((e) => {
-        console.log("Parlays exercised");
-        console.log(exerciseParlays);
-      });
-      await delay(5000);
-      tx_batch.push(tx.hash);
+      catch(e) {
+        console.log("ERROR IN EXERCISE!\n\n");
+      }
     }
   }
   await delay(5000);
@@ -655,7 +673,7 @@ async function doIndefinitely() {
         await delay(5000);
       } else {
         await delay(process.env.EXERCISE_FREQUENCY);
-        await exerciseHistory(process.env.REGULAR_BLOCKS_BACK);
+        await exerciseHistory(process.env.REGULAR_BLOCKS_BACK, 0);
       }
     } catch (e) {
       console.log(e);
