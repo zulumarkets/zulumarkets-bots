@@ -1710,9 +1710,22 @@ function getSpreadAndTotalOddsFromBackupBookmaker(
 
 function getTotalLineAndOddsForFootball(extendedTotals, type) {
   if (typeof extendedTotals != "undefined" && extendedTotals.length > 1) {
-    const filteredExtendedTotals = extendedTotals.filter(
+    var filteredExtendedTotals = extendedTotals.filter(
       (x) => x.total_over === 2.5 // only filter out 2.5 over/under
     );
+
+    if (filteredExtendedTotals.length === 0) {
+      filteredExtendedTotals = extendedTotals.filter(
+        (x) => x.total_over === 3.5 // only filter out 3.5 total IF no total_over === 2.5
+      );
+    }
+
+    if (filteredExtendedTotals.length === 0) {
+      filteredExtendedTotals = extendedTotals.filter(
+        (x) => x.total_over === 1.5 // only filter out 1.5 total IF no total_over === 2.5 or 3.5
+      );
+    }
+
     console.log("---- extended totals object ------");
     console.log(filteredExtendedTotals);
     console.log("---- extended totals object ------");
