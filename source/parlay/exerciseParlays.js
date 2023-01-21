@@ -457,7 +457,7 @@ async function sendErrorMessageToDiscord(messageForPrint) {
 async function exerciseHistory(blocksInHistory, backwardsFromLatestBlock) {
   console.log("Go back ", blocksInHistory, " blocks");
   let latestBlock = await constants.etherprovider.getBlockNumber();
-  if(backwardsFromLatestBlock != 0) {
+  if (backwardsFromLatestBlock != 0) {
     latestBlock = latestBlock - backwardsFromLatestBlock;
   }
   console.log("Latest block:", parseInt(latestBlock));
@@ -528,7 +528,7 @@ async function doExercise(exerciseParlays) {
             tx = await dataParlay.exerciseParlays(batch, {
               gasLimit: process.env.GAS_LIMIT,
             });
-  
+
             await tx.wait().then((e) => {
               console.log("Parlays exercised");
               console.log(batch);
@@ -536,9 +536,7 @@ async function doExercise(exerciseParlays) {
             await delay(5000);
             batch = [];
             tx_batch.push(tx.hash);
-
-          }
-          catch(e) {
+          } catch (e) {
             console.log("ERROR IN 20 BATCH EXERCISE!\n\n");
             batch = [];
           }
@@ -555,8 +553,7 @@ async function doExercise(exerciseParlays) {
           });
           await delay(5000);
           tx_batch.push(tx.hash);
-        }
-        catch(e) {
+        } catch (e) {
           console.log("ERROR IN BATCH (<20 tx) EXERCISE!\n\n");
           batch = [];
         }
@@ -566,15 +563,14 @@ async function doExercise(exerciseParlays) {
         tx = await dataParlay.exerciseParlays(exerciseParlays, {
           gasLimit: process.env.GAS_LIMIT,
         });
-  
+
         await tx.wait().then((e) => {
           console.log("Parlays exercised");
           console.log(exerciseParlays);
         });
         await delay(5000);
         tx_batch.push(tx.hash);
-      }
-      catch(e) {
+      } catch (e) {
         console.log("ERROR IN EXERCISE!\n\n");
       }
     }
@@ -652,14 +648,17 @@ async function doIndefinitely() {
           parseFloat(balance)
         );
         numberOfExecution++;
-      } else if ( firstRun) {
+      } else if (timeNow >= exerciseHistoryTime || firstRun) {
         console.log("Exercising history....");
         let currentTime = new Date();
         exerciseHistoryTime.setMilliseconds(
           currentTime.getMilliseconds() +
             parseInt(process.env.EXERCISE_PARLAY_HISTORY)
         );
-        await exerciseHistory(process.env.BLOCKS_BACK_IN_HISTORY, process.env.BACKWARDS_FROM_LATEST_BLOCK);
+        await exerciseHistory(
+          process.env.BLOCKS_BACK_IN_HISTORY,
+          process.env.BACKWARDS_FROM_LATEST_BLOCK
+        );
       } else if (timeNow >= exerciseDate) {
         console.log("[       Nothing to exercise       ]");
         exerciseDate.setMilliseconds(
