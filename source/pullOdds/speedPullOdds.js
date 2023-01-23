@@ -16,6 +16,7 @@ const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesVerifier = require("../../contracts/RundownVerifier.js");
 const gamesOddsObtainer = require("../../contracts/GamesOddsObtainer.js");
 const allowances = require("../allowances.js");
+const linkToken = require("../../contracts/LinkToken.js");
 
 const oddslib = require("oddslib");
 
@@ -37,6 +38,12 @@ const verifier = new ethers.Contract(
   wallet
 );
 
+const erc20Instance = new ethers.Contract(
+  process.env.LINK_CONTRACT,
+  linkToken.linkTokenContract.abi,
+  wallet
+);
+
 const obtainer = new ethers.Contract(
   process.env.ODDS_OBTAINER_CONTRACT,
   gamesOddsObtainer.gamesOddsObtainerContract.abi,
@@ -44,6 +51,21 @@ const obtainer = new ethers.Contract(
 );
 
 async function doPull(numberOfExecution, lastStartDate, botName) {
+  // check every 10th execution if LINK is enough
+  if (numberOfExecution % 10 == 0) {
+    let amountOfToken = await erc20Instance.balanceOf(wallet.address);
+    console.log("Amount token in wallet: " + parseInt(amountOfToken));
+    console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
+
+    if (parseInt(amountOfToken) < parseInt(process.env.LINK_THRESHOLD)) {
+      await sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
+        "Amount of LINK in a " + botName + " is: " + amountOfToken,
+        process.env.LINK_THRESHOLD,
+        wallet.address
+      );
+    }
+  }
+
   const jobId = bytes32({ input: process.env.JOB_ID_ODDS });
   const jobIdResolve = bytes32({ input: process.env.JOB_ID_RESOLVE });
 
