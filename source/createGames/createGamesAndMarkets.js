@@ -160,9 +160,7 @@ async function doCreate() {
           const urlBuildSchedule =
             baseUrl + "/sports/" + sportIds[j] + "/schedule";
           let responseSchedule = await axios.get(urlBuildSchedule, {
-            headers: {
-              "X-RapidAPI-Key": process.env.REQUEST_KEY,
-            },
+            params: { key: process.env.REQUEST_KEY },
           });
 
           responseSchedule.data.schedules.forEach((schedule) => {

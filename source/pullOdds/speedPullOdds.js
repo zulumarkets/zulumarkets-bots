@@ -91,6 +91,8 @@ async function doPull(numberOfExecution, lastStartDate, botName) {
     10: process.env.ODDS_PERCENTAGE_CHANGE_MLS,
   };
 
+  const ODDS_PERCENTAGE_CHANGE_BY_SPORT_SPREAD_TOTAL = {};
+
   const PRICE_AMOUNT_CHANGE_BY_SPORT = {
     3: process.env.PRICE_AMOUNT_CHANGE_DEFAULT,
   };
@@ -137,6 +139,11 @@ async function doPull(numberOfExecution, lastStartDate, botName) {
         ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds]
         : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
 
+    let percentageChangePerSportSpreadTotal =
+      ODDS_PERCENTAGE_CHANGE_BY_SPORT_SPREAD_TOTAL[sportIds] !== undefined
+        ? ODDS_PERCENTAGE_CHANGE_BY_SPORT_SPREAD_TOTAL[sportIds]
+        : process.env.ODDS_PERCENTAGE_CHANGE_SPREAD_TOTAL_DEFAULT;
+
     let priceChangePerSport =
       PRICE_AMOUNT_CHANGE_BY_SPORT[sportIds] !== undefined
         ? PRICE_AMOUNT_CHANGE_BY_SPORT[sportIds]
@@ -156,6 +163,7 @@ async function doPull(numberOfExecution, lastStartDate, botName) {
     for (let i = 0; i <= daysInFront; i++) {
       console.log("------------------------");
       console.log("CHANGE ODDS % : " + percentageChangePerSport);
+      console.log("CHANGE ODDS t/s % : " + percentageChangePerSportSpreadTotal);
       console.log("PRICE ODDS CHANGING (in cents) : " + priceChangePerSport);
       console.log("CHANGE LINE SPREAD AMOUNT: " + lineChangePerSportSpread);
       console.log("CHANGE LINE TOTAL AMOUNT: " + lineChangePerSportTotal);
@@ -175,7 +183,7 @@ async function doPull(numberOfExecution, lastStartDate, botName) {
       console.log("Having sport on a date:  " + isSportOnADate);
 
       let gamesOnContract = sportProps[2];
-      console.log("Count games on a date: " + gamesOnContract);
+      console.log("Count games on a date: " + gamesOnContract.length);
 
       let isSportTwoPositionsSport = sportProps[1];
 
@@ -286,56 +294,64 @@ async function doPull(numberOfExecution, lastStartDate, botName) {
                 1,
                 primaryBookmaker,
                 useBackupBookmaker,
-                backupBookmaker
+                backupBookmaker,
+                isSportTwoPositionsSport
               ),
               spreadAway: getSpreadAndTotalLines(
                 event.lines,
                 2,
                 primaryBookmaker,
                 useBackupBookmaker,
-                backupBookmaker
+                backupBookmaker,
+                isSportTwoPositionsSport
               ),
               spreadHomeOdds: getSpreadAndTotalOdds(
                 event.lines,
                 1,
                 primaryBookmaker,
                 useBackupBookmaker,
-                backupBookmaker
+                backupBookmaker,
+                isSportTwoPositionsSport
               ),
               spreadAwayOdds: getSpreadAndTotalOdds(
                 event.lines,
                 2,
                 primaryBookmaker,
                 useBackupBookmaker,
-                backupBookmaker
+                backupBookmaker,
+                isSportTwoPositionsSport
               ),
               totalOver: getSpreadAndTotalLines(
                 event.lines,
                 3,
                 primaryBookmaker,
                 useBackupBookmaker,
-                backupBookmaker
+                backupBookmaker,
+                isSportTwoPositionsSport
               ),
               totalUnder: getSpreadAndTotalLines(
                 event.lines,
                 4,
                 primaryBookmaker,
                 useBackupBookmaker,
-                backupBookmaker
+                backupBookmaker,
+                isSportTwoPositionsSport
               ),
               totalOverOdds: getSpreadAndTotalOdds(
                 event.lines,
                 3,
                 primaryBookmaker,
                 useBackupBookmaker,
-                backupBookmaker
+                backupBookmaker,
+                isSportTwoPositionsSport
               ),
               totalUnderOdds: getSpreadAndTotalOdds(
                 event.lines,
                 4,
                 primaryBookmaker,
                 useBackupBookmaker,
-                backupBookmaker
+                backupBookmaker,
+                isSportTwoPositionsSport
               ),
             });
           }
@@ -549,7 +565,7 @@ async function doPull(numberOfExecution, lastStartDate, botName) {
                       totalUnderPinnacle,
                       spreadTotalsOddsForGames,
                       spreadHomeOddsPinnacle,
-                      percentageChangePerSport,
+                      percentageChangePerSportSpreadTotal,
                       spreadAwayOddsPinnacle,
                       totalOverOddsPinnacle,
                       totalUnderOddsPinnacle,
@@ -606,28 +622,28 @@ async function doPull(numberOfExecution, lastStartDate, botName) {
                     let percentageChangeSpreadHome = getPercentageOrPriceChange(
                       spreadTotalsOddsForGames[m * 4],
                       spreadHomeOddsPinnacle,
-                      percentageChangePerSport,
+                      percentageChangePerSportSpreadTotal,
                       1
                     );
 
                     let percentageChangeSpreadAway = getPercentageOrPriceChange(
                       spreadTotalsOddsForGames[m * 4 + 1],
                       spreadAwayOddsPinnacle,
-                      percentageChangePerSport,
+                      percentageChangePerSportSpreadTotal,
                       1
                     );
 
                     let percentageChangeTotalOver = getPercentageOrPriceChange(
                       spreadTotalsOddsForGames[m * 4 + 2],
                       totalOverOddsPinnacle,
-                      percentageChangePerSport,
+                      percentageChangePerSportSpreadTotal,
                       1
                     );
 
                     let percentageChangeTotalUnder = getPercentageOrPriceChange(
                       spreadTotalsOddsForGames[m * 4 + 3],
                       totalUnderOddsPinnacle,
-                      percentageChangePerSport,
+                      percentageChangePerSportSpreadTotal,
                       1
                     );
                     console.log(
@@ -1463,7 +1479,8 @@ function getSpreadAndTotalLines(
   oddNumber,
   primaryBookmaker,
   useBackupBookmaker,
-  backupBookmaker
+  backupBookmaker,
+  isSportTwoPositionsSport
 ) {
   var linesResult = [];
   for (key in lines) {
@@ -1480,52 +1497,108 @@ function getSpreadAndTotalLines(
 
   if (oddPrimary.length == 0) {
     return useBackupBookmaker
-      ? getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber)
+      ? getSpreadAndTotalLinesFromBackupBookmaker(
+          oddBackup,
+          oddNumber,
+          isSportTwoPositionsSport
+        )
       : 0;
   } else if (oddNumber == 1) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].spread.point_spread_home === 0.0001
-    ) {
-      return getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber);
+    let spreadLineHome = isSportTwoPositionsSport
+      ? oddPrimary[0].spread.point_spread_home
+      : getSpreadLineAndOddsForFootball(
+          oddPrimary[0].spread.extended_spreads,
+          1
+        );
+    if (useBackupBookmaker && spreadLineHome === 0.0001) {
+      return getSpreadAndTotalLinesFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
     } else {
-      return oddPrimary[0].spread.point_spread_home * 100;
+      return spreadLineHome * 100;
     }
   } else if (oddNumber == 2) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].spread.point_spread_away === 0.0001
-    ) {
-      return getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber);
+    let spreadLineAway = isSportTwoPositionsSport
+      ? oddPrimary[0].spread.point_spread_away
+      : getSpreadLineAndOddsForFootball(
+          oddPrimary[0].spread.extended_spreads,
+          2
+        );
+    if (useBackupBookmaker && spreadLineAway === 0.0001) {
+      return getSpreadAndTotalLinesFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
     } else {
-      return oddPrimary[0].spread.point_spread_away * 100;
+      return spreadLineAway * 100;
     }
   } else if (oddNumber == 3) {
-    if (useBackupBookmaker && oddPrimary[0].total.total_over === 0.0001) {
-      return getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber);
+    let totalOverLine = isSportTwoPositionsSport
+      ? oddPrimary[0].total.total_over
+      : getTotalLineAndOddsForFootball(oddPrimary[0].total.extended_totals, 1);
+
+    if (useBackupBookmaker && totalOverLine === 0.0001) {
+      return getSpreadAndTotalLinesFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
     } else {
-      return oddPrimary[0].total.total_over * 100;
+      return totalOverLine * 100;
     }
   } else if (oddNumber == 4) {
-    if (useBackupBookmaker && oddPrimary[0].total.total_under === 0.0001) {
-      return getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber);
+    let totalUnderLine = isSportTwoPositionsSport
+      ? oddPrimary[0].total.total_under
+      : getTotalLineAndOddsForFootball(oddPrimary[0].total.extended_totals, 2);
+
+    if (useBackupBookmaker && totalUnderLine === 0.0001) {
+      return getSpreadAndTotalLinesFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
     } else {
-      return oddPrimary[0].total.total_under * 100;
+      return totalUnderLine * 100;
     }
   }
 }
 
-function getSpreadAndTotalLinesFromBackupBookmaker(oddBackup, oddNumber) {
+function getSpreadAndTotalLinesFromBackupBookmaker(
+  oddBackup,
+  oddNumber,
+  isSportTwoPositionsSport
+) {
   if (oddBackup.length == 0) {
     return 0;
   } else if (oddNumber == 1) {
-    return oddBackup[0].spread.point_spread_home * 100;
+    let spreadLineHome = isSportTwoPositionsSport
+      ? oddBackup[0].spread.point_spread_home
+      : getSpreadLineAndOddsForFootball(
+          oddBackup[0].spread.extended_spreads,
+          1
+        );
+    return spreadLineHome * 100;
   } else if (oddNumber == 2) {
-    return oddBackup[0].spread.point_spread_away * 100;
+    let spreadLineAway = isSportTwoPositionsSport
+      ? oddBackup[0].spread.point_spread_away
+      : getSpreadLineAndOddsForFootball(
+          oddBackup[0].spread.extended_spreads,
+          2
+        );
+    return spreadLineAway * 100;
   } else if (oddNumber == 3) {
-    return oddBackup[0].total.total_over * 100;
+    let totalOverLine = isSportTwoPositionsSport
+      ? oddBackup[0].total.total_over
+      : getTotalLineAndOddsForFootball(oddBackup[0].total.extended_totals, 1);
+    return totalOverLine * 100;
   } else if (oddNumber == 4) {
-    return oddBackup[0].total.total_under * 100;
+    let totalUnderLine = isSportTwoPositionsSport
+      ? oddBackup[0].total.total_under
+      : getTotalLineAndOddsForFootball(oddBackup[0].total.extended_totals, 2);
+    return totalUnderLine * 100;
   }
 }
 
@@ -1534,7 +1607,8 @@ function getSpreadAndTotalOdds(
   oddNumber,
   primaryBookmaker,
   useBackupBookmaker,
-  backupBookmaker
+  backupBookmaker,
+  isSportTwoPositionsSport
 ) {
   var odds = [];
   for (key in lines) {
@@ -1551,56 +1625,181 @@ function getSpreadAndTotalOdds(
 
   if (oddPrimary.length == 0) {
     return useBackupBookmaker
-      ? getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber)
+      ? getSpreadAndTotalOddsFromBackupBookmaker(
+          oddBackup,
+          oddNumber,
+          isSportTwoPositionsSport
+        )
       : 0;
   } else if (oddNumber == 1) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].spread.point_spread_home_money === 0.0001
-    ) {
-      return getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber);
+    let oddsSpreadHome = isSportTwoPositionsSport
+      ? oddPrimary[0].spread.point_spread_home_money
+      : getSpreadLineAndOddsForFootball(
+          oddPrimary[0].spread.extended_spreads,
+          3
+        );
+    if (useBackupBookmaker && oddsSpreadHome === 0.0001) {
+      return getSpreadAndTotalOddsFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
     } else {
-      return oddPrimary[0].spread.point_spread_home_money * 100;
+      return oddsSpreadHome * 100;
     }
   } else if (oddNumber == 2) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].spread.point_spread_away_money === 0.0001
-    ) {
-      return getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber);
+    let oddsSpreadAway = isSportTwoPositionsSport
+      ? oddPrimary[0].spread.point_spread_away_money
+      : getSpreadLineAndOddsForFootball(
+          oddPrimary[0].spread.extended_spreads,
+          4
+        );
+    if (useBackupBookmaker && oddsSpreadAway === 0.0001) {
+      return getSpreadAndTotalOddsFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
     } else {
-      return oddPrimary[0].spread.point_spread_away_money * 100;
+      return oddsSpreadAway * 100;
     }
   } else if (oddNumber == 3) {
-    if (useBackupBookmaker && oddPrimary[0].total.total_over_money === 0.0001) {
-      return getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber);
+    let oddsTotalOver = isSportTwoPositionsSport
+      ? oddPrimary[0].total.total_over_money
+      : getTotalLineAndOddsForFootball(oddPrimary[0].total.extended_totals, 3);
+
+    if (useBackupBookmaker && oddsTotalOver === 0.0001) {
+      return getSpreadAndTotalOddsFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
     } else {
-      return oddPrimary[0].total.total_over_money * 100;
+      return oddsTotalOver * 100;
     }
   } else if (oddNumber == 4) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].total.total_under_money === 0.0001
-    ) {
-      return getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber);
+    let oddsTotalUnder = isSportTwoPositionsSport
+      ? oddPrimary[0].total.total_under_money
+      : getTotalLineAndOddsForFootball(oddPrimary[0].total.extended_totals, 4);
+
+    if (useBackupBookmaker && oddsTotalUnder === 0.0001) {
+      return getSpreadAndTotalOddsFromBackupBookmaker(
+        oddBackup,
+        oddNumber,
+        isSportTwoPositionsSport
+      );
     } else {
-      return oddPrimary[0].total.total_under_money * 100;
+      return oddsTotalUnder * 100;
     }
   }
 }
 
-function getSpreadAndTotalOddsFromBackupBookmaker(oddBackup, oddNumber) {
+function getSpreadAndTotalOddsFromBackupBookmaker(
+  oddBackup,
+  oddNumber,
+  isSportTwoPositionsSport
+) {
   if (oddBackup.length == 0) {
     return 0;
   } else if (oddNumber == 1) {
-    return oddBackup[0].spread.point_spread_home_money * 100;
+    let oddsSpreadHome = isSportTwoPositionsSport
+      ? oddBackup[0].spread.point_spread_home_money
+      : getSpreadLineAndOddsForFootball(
+          oddBackup[0].spread.extended_spreads,
+          3
+        );
+    return oddsSpreadHome * 100;
   } else if (oddNumber == 2) {
-    return oddBackup[0].spread.point_spread_away_money * 100;
+    let oddsSpreadAway = isSportTwoPositionsSport
+      ? oddBackup[0].spread.point_spread_away_money
+      : getSpreadLineAndOddsForFootball(
+          oddBackup[0].spread.extended_spreads,
+          4
+        );
+    return oddsSpreadAway * 100;
   } else if (oddNumber == 3) {
-    return oddBackup[0].total.total_over_money * 100;
+    let oddsTotalOver = isSportTwoPositionsSport
+      ? oddBackup[0].total.total_over_money
+      : getTotalLineAndOddsForFootball(oddBackup[0].total.extended_totals, 3);
+    return oddsTotalOver * 100;
   } else if (oddNumber == 4) {
-    return oddBackup[0].total.total_under_money * 100;
+    let oddsTotalUnder = isSportTwoPositionsSport
+      ? oddBackup[0].total.total_under_money
+      : getTotalLineAndOddsForFootball(oddBackup[0].total.extended_totals, 4);
+    return oddsTotalUnder * 100;
   }
+}
+
+function getTotalLineAndOddsForFootball(extendedTotals, type) {
+  if (typeof extendedTotals != "undefined" && extendedTotals.length > 1) {
+    var filteredExtendedTotals = extendedTotals.filter(
+      (x) => x.total_over === 2.5 // only filter out 2.5 over/under
+    );
+
+    if (filteredExtendedTotals.length === 0) {
+      filteredExtendedTotals = extendedTotals.filter(
+        (x) => x.total_over === 3.5 // only filter out 3.5 total IF no total_over === 2.5
+      );
+    }
+
+    if (filteredExtendedTotals.length === 0) {
+      filteredExtendedTotals = extendedTotals.filter(
+        (x) => x.total_over === 1.5 // only filter out 1.5 total IF no total_over === 2.5 or 3.5
+      );
+    }
+
+    console.log("---- extended totals object ------");
+    console.log(filteredExtendedTotals);
+    console.log("---- extended totals object ------");
+    if (filteredExtendedTotals.length > 0) {
+      const filteredExtendedTotalsObj = filteredExtendedTotals[0];
+      if (type == 1) {
+        return filteredExtendedTotalsObj.total_over;
+      } else if (type == 2) {
+        return filteredExtendedTotalsObj.total_under;
+      } else if (type == 3) {
+        return filteredExtendedTotalsObj.total_over_money;
+      } else {
+        return filteredExtendedTotalsObj.total_under_money;
+      }
+    } else {
+      return 0;
+    }
+  }
+  return 0; // no odds no line
+}
+
+function getSpreadLineAndOddsForFootball(extendedSpread, type) {
+  if (typeof extendedSpread != "undefined" && extendedSpread.length > 1) {
+    var filteredExtendedSpread = extendedSpread.filter(
+      (x) => x.point_spread_home === 1 // only filter out 1 over/under
+    );
+
+    if (filteredExtendedSpread.length === 0) {
+      filteredExtendedSpread = extendedSpread.filter(
+        (x) => x.point_spread_home === -1 // only filter out -1 over/under IF no total_over === 1
+      );
+    }
+
+    console.log("---- extended spread object ------");
+    console.log(filteredExtendedSpread);
+    console.log("---- extended spread object ------");
+    if (filteredExtendedSpread.length > 0) {
+      const filteredExtendedSpreadObj = filteredExtendedSpread[0];
+      if (type == 1) {
+        return filteredExtendedSpreadObj.point_spread_home;
+      } else if (type == 2) {
+        return filteredExtendedSpreadObj.point_spread_away;
+      } else if (type == 3) {
+        return filteredExtendedSpreadObj.point_spread_home_money;
+      } else {
+        return filteredExtendedSpreadObj.point_spread_away_money;
+      }
+    } else {
+      return 0;
+    }
+  }
+  return 0; // no odds no line
 }
 
 function checkSpreadAndTotal(
@@ -1614,7 +1813,7 @@ function checkSpreadAndTotal(
   totalUnderPinnacle,
   spreadTotalsOddsForGames,
   spreadHomeOddsPinnacle,
-  percentageChangePerSport,
+  percentageChangePerSportSpreadTotal,
   spreadAwayOddsPinnacle,
   totalOverOddsPinnacle,
   totalUnderOddsPinnacle,
@@ -1647,24 +1846,24 @@ function checkSpreadAndTotal(
       isPercentageOrPriceChanged(
         spreadTotalsOddsForGames[m * 4],
         spreadHomeOddsPinnacle,
-        percentageChangePerSport,
+        percentageChangePerSportSpreadTotal,
         priceChangePerSport
       ) ||
       isPercentageOrPriceChanged(
         spreadTotalsOddsForGames[m * 4 + 1],
         spreadAwayOddsPinnacle,
-        percentageChangePerSport
+        percentageChangePerSportSpreadTotal
       ) ||
       isPercentageOrPriceChanged(
         spreadTotalsOddsForGames[m * 4 + 2],
         totalOverOddsPinnacle,
-        percentageChangePerSport,
+        percentageChangePerSportSpreadTotal,
         priceChangePerSport
       ) ||
       isPercentageOrPriceChanged(
         spreadTotalsOddsForGames[m * 4 + 3],
         totalUnderOddsPinnacle,
-        percentageChangePerSport,
+        percentageChangePerSportSpreadTotal,
         priceChangePerSport
       ))
   );
