@@ -538,6 +538,7 @@ async function doExercise(exerciseParlays) {
             tx_batch.push(tx.hash);
           } catch (e) {
             console.log("ERROR IN 20 BATCH EXERCISE!\n\n");
+            console.log(batch);
             batch = [];
           }
         }
@@ -555,6 +556,7 @@ async function doExercise(exerciseParlays) {
           tx_batch.push(tx.hash);
         } catch (e) {
           console.log("ERROR IN BATCH (<20 tx) EXERCISE!\n\n");
+          console.log(batch);
           batch = [];
         }
       }
