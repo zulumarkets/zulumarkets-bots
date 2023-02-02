@@ -280,7 +280,9 @@ async function doCheck() {
           } catch (e) {
             console.log(e);
             await sendErrorMessageToDiscordRequestCL(
-              "Request to CL data-checker-bot went wrong! Please check LINK amount on bot, or kill and debug!",
+              "Request to CL data-checker-bot went wrong! Please check LINK amount on bot, or kill and debug!" +
+                " EXCEPTION MESSAGE: " +
+                e.message.slice(0, 200),
               sportIds[j],
               unixDate,
               gamesToBeProcessed
@@ -340,7 +342,9 @@ async function doCheck() {
           } catch (e) {
             console.log(e);
             await sendErrorMessageToDiscordCreateMarkets(
-              "Market creation went wrong, on data-checker bot! Please check ETH on bot, or kill and debug!",
+              "Market creation went wrong, on data-checker bot! Please check ETH on bot, or kill and debug!" +
+                " EXCEPTION MESSAGE: " +
+                e.message.slice(0, 200),
               gameIds
             );
             failedCounter++;
@@ -386,10 +390,10 @@ async function doIndefinitely() {
       sendErrorMessageToDiscord(
         "Please check data-checker-bot, error on execution: " +
           numberOfExecution +
-          ", date: " +
-          new Date() +
           ", sports: " +
-          process.env.SPORT_IDS
+          process.env.SPORT_IDS +
+          ", EXCEPTION MESSAGE: " +
+          e.message.slice(0, 200)
       );
       // wait next process
       await delay(process.env.DATA_CHECKER_FREQUENCY);

@@ -37,6 +37,25 @@ const parlayDataContract = {
       "inputs": [
         {
           "indexed": false,
+          "internalType": "uint256",
+          "name": "profit",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address[]",
+          "name": "parlays",
+          "type": "address[]"
+        }
+      ],
+      "name": "ParlaysExercised",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
           "internalType": "bool",
           "name": "isPaused",
           "type": "bool"
@@ -219,6 +238,30 @@ const parlayDataContract = {
           "internalType": "address[]",
           "name": "",
           "type": "address[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address[]",
+          "name": "_sportMarket",
+          "type": "address[]"
+        }
+      ],
+      "name": "getAllParlaysForGames",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "parlays",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256",
+          "name": "numOfParlays",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",

@@ -160,9 +160,7 @@ async function doCreate() {
           const urlBuildSchedule =
             baseUrl + "/sports/" + sportIds[j] + "/schedule";
           let responseSchedule = await axios.get(urlBuildSchedule, {
-            headers: {
-              "X-RapidAPI-Key": process.env.REQUEST_KEY,
-            },
+            params: { key: process.env.REQUEST_KEY },
           });
 
           responseSchedule.data.schedules.forEach((schedule) => {
@@ -383,7 +381,9 @@ async function doCreate() {
           } catch (e) {
             console.log(e);
             await sendErrorMessageToDiscordRequestCL(
-              "Request to CL creator-bot went wrong! Please check LINK amount on bot, or kill and debug!",
+              "Request to CL creator-bot went wrong! Please check LINK amount on bot, or kill and debug!" +
+                " EXCEPTION MESSAGE: " +
+                e.message.slice(0, 200),
               sportIds[j],
               unixDate
             );
@@ -441,7 +441,9 @@ async function doCreate() {
         } catch (e) {
           console.log(e);
           await sendErrorMessageToDiscordCreateMarkets(
-            "Market creation went wrong! Please check ETH on bot, or kill and debug!",
+            "Market creation went wrong! Please check ETH on bot, or kill and debug!" +
+              " EXCEPTION MESSAGE: " +
+              e.message.slice(0, 200),
             gameIds
           );
           failedCounter++;
@@ -488,8 +490,8 @@ async function doIndefinitely() {
       sendErrorMessageToDiscord(
         "Please check creation-bot, error on execution: " +
           numberOfExecution +
-          ", date: " +
-          new Date()
+          ", EXCEPTION MESSAGE: " +
+          e.message.slice(0, 200)
       );
       // wait next process
       await delay(process.env.CREATION_FREQUENCY);

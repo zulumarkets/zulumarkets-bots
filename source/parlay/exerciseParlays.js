@@ -44,321 +44,22 @@ const obtainer = new ethers.Contract(
   wallet
 );
 
-async function collectExercisableParlays(
-  number,
-  sportMarketAddress,
-  sportMarketId,
-  sportMarketOutcome
-) {
-  let sportMarketOptionsCount;
-  let isChild = false;
-  if (sportMarketId == "child") {
-    sportMarketOptionsCount = 2;
-    isChild = true;
-  } else {
-    sportMarketOptionsCount = (await consumer.isSportTwoPositionsSport(
-      sportMarketId
-    ))
-      ? 2
-      : 3;
-  }
-  console.log(
-    "\n",
-    number,
-    " market: ",
-    sportMarketAddress,
-    " | optionsCount: ",
-    sportMarketOptionsCount,
-    " | outcome: ",
-    sportMarketOutcome,
-    " | isChild: ",
-    isChild
-  );
-  let cancelOutcome = false;
-  let numOfParlaysPerGamePosition;
-  let numOfParlaysPerGamePositionArray;
-  // check to exercise the already lost with the outcome or cancelled
-  if (sportMarketOutcome == 0) {
-    console.log("merket cancelled!");
-    numOfParlaysPerGamePositionArray = [];
-    cancelOutcome = true;
-    let singleOutcomeNumOfParlaysPerGame;
-    for (let i = 0; i < sportMarketOptionsCount; i++) {
-      singleOutcomeNumOfParlaysPerGame =
-        await dataParlay.numOfParlaysInGamePosition(sportMarketAddress, i);
-      numOfParlaysPerGamePositionArray.push(singleOutcomeNumOfParlaysPerGame);
+async function filterParlays(allParlays, filteredParlays) {
+  console.log("Already filtered parlays: ", filteredParlays.length);
+  let initialLength = filteredParlays.length;
+  console.log("Total obtained parlays from contract: ", allParlays.length);
+  // console.log(allParlays);
+  allParlays.forEach((c) => {
+    if (
+      !filteredParlays.includes(c) &&
+      c !== "0x0000000000000000000000000000000000000000"
+    ) {
+      filteredParlays.push(c);
     }
-  } else {
-    sportMarketOutcome = sportMarketOutcome - 1;
-    numOfParlaysPerGamePosition = await dataParlay.numOfParlaysInGamePosition(
-      sportMarketAddress,
-      sportMarketOutcome
-    );
-    console.log(
-      "# of parlays with outcome",
-      sportMarketOutcome + 1,
-      " : ",
-      parseInt(numOfParlaysPerGamePosition)
-    );
-  }
-
-  if (!cancelOutcome && parseInt(numOfParlaysPerGamePosition) > 0) {
-    let parlayMarket;
-    let parlayMarketDetails;
-    for (let j = 0; j < parseInt(numOfParlaysPerGamePosition); j++) {
-      parlayMarket = await dataParlay.gameAddressPositionParlay(
-        sportMarketAddress,
-        sportMarketOutcome,
-        j
-      );
-      console.log("--> ", j, " checking parlay ", parlayMarket);
-      parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(
-        parlayMarket
-      );
-      console.log(
-        "initialized: ",
-        parlayMarketDetails.initialized,
-        "| resolved: ",
-        parlayMarketDetails.resolved,
-        "| alreadyLost: ",
-        parlayMarketDetails.alreadyLost,
-        "| fundsIssued: ",
-        parlayMarketDetails.fundsIssued
-      );
-      if (
-        parlayMarketDetails.initialized &&
-        parlayMarketDetails.alreadyLost &&
-        !parlayMarketDetails.fundsIssued
-      ) {
-        // exercise parlay
-        if (!parlaysToBeExercised.includes(parlayMarket)) {
-          console.log(
-            "parlay: ",
-            parlayMarket,
-            " already lost! Added for exercise..."
-          );
-          parlaysToBeExercised.push(parlayMarket);
-        }
-      }
-    }
-  } else if (cancelOutcome) {
-    for (let n = 0; n < numOfParlaysPerGamePositionArray.length; n++) {
-      console.log(
-        "cancelled market has parlays with outcome",
-        n + 1,
-        ": ",
-        parseInt(numOfParlaysPerGamePositionArray[n])
-      );
-      for (let j = 0; j < numOfParlaysPerGamePositionArray[n]; j++) {
-        parlayMarket = await dataParlay.gameAddressPositionParlay(
-          sportMarketAddress,
-          n + 1,
-          j
-        );
-        console.log("--> ", j, " checking parlay ", parlayMarket);
-        if (parlayMarket != "0x0000000000000000000000000000000000000000") {
-          parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(
-            parlayMarket
-          );
-          console.log(
-            "initialized: ",
-            parlayMarketDetails.initialized,
-            "| resolved: ",
-            parlayMarketDetails.resolved,
-            "| alreadyLost: ",
-            parlayMarketDetails.alreadyLost,
-            "| fundsIssued: ",
-            parlayMarketDetails.fundsIssued
-          );
-          if (
-            parlayMarketDetails.initialized &&
-            parlayMarketDetails.alreadyLost &&
-            !parlayMarketDetails.fundsIssued
-          ) {
-            // exercise parlay
-            if (!parlaysToBeExercised.includes(parlayMarket)) {
-              console.log(
-                "parlay: ",
-                parlayMarket,
-                " already lost! Added for exercise..."
-              );
-              parlaysToBeExercised.push(parlayMarket);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  if (!cancelOutcome && sportMarketOptionsCount > 2) {
-    console.log("CHECKING DIFFERENT OUTCOMES --->");
-    console.log("--> three option sport");
-    let differentOutcome;
-    if (sportMarketOutcome == 0) {
-      sportMarketOutcome = 1;
-      differentOutcome = 2;
-    } else if (sportMarketOutcome == 1) {
-      sportMarketOutcome = 0;
-      differentOutcome = 2;
-    } else if (sportMarketOutcome == 2) {
-      sportMarketOutcome = 0;
-      differentOutcome = 1;
-    } else {
-      differentOutcome = 0;
-    }
-
-    numOfParlaysPerGamePosition = await dataParlay.numOfParlaysInGamePosition(
-      sportMarketAddress,
-      sportMarketOutcome
-    );
-    console.log(
-      "# of parlays with diffrent outcome",
-      sportMarketOutcome + 1,
-      " : ",
-      parseInt(numOfParlaysPerGamePosition)
-    );
-    if (parseInt(numOfParlaysPerGamePosition) > 0) {
-      let parlayMarket;
-      let parlayMarketDetails;
-      for (let j = 0; j < parseInt(numOfParlaysPerGamePosition); j++) {
-        parlayMarket = await dataParlay.gameAddressPositionParlay(
-          sportMarketAddress,
-          sportMarketOutcome,
-          j
-        );
-        console.log("--> ", j, " checking parlay ", parlayMarket);
-        parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(
-          parlayMarket
-        );
-        console.log(
-          "initialized: ",
-          parlayMarketDetails.initialized,
-          "| resolved: ",
-          parlayMarketDetails.resolved,
-          "| alreadyLost: ",
-          parlayMarketDetails.alreadyLost,
-          "| fundsIssued: ",
-          parlayMarketDetails.fundsIssued
-        );
-        if (
-          parlayMarketDetails.initialized &&
-          !parlayMarketDetails.resolved &&
-          !parlayMarketDetails.alreadyLost
-        ) {
-          if (!parlaysToBeExercised.includes(parlayMarket)) {
-            console.log(
-              "parlay: ",
-              parlayMarket,
-              " has not lost yet! Added for exercise..."
-            );
-            parlaysToBeExercised.push(parlayMarket);
-          }
-        }
-      }
-    }
-    sportMarketOutcome = differentOutcome;
-    numOfParlaysPerGamePosition = await dataParlay.numOfParlaysInGamePosition(
-      sportMarketAddress,
-      sportMarketOutcome
-    );
-    console.log(
-      "# of parlays with diffrent outcome",
-      sportMarketOutcome + 1,
-      " : ",
-      parseInt(numOfParlaysPerGamePosition)
-    );
-    if (parseInt(numOfParlaysPerGamePosition) > 0) {
-      let parlayMarket;
-      let parlayMarketDetails;
-      for (let j = 0; j < parseInt(numOfParlaysPerGamePosition); j++) {
-        parlayMarket = await dataParlay.gameAddressPositionParlay(
-          sportMarketAddress,
-          sportMarketOutcome,
-          j
-        );
-        console.log("--> ", j, " checking parlay ", parlayMarket);
-        parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(
-          parlayMarket
-        );
-        console.log(
-          "initialized: ",
-          parlayMarketDetails.initialized,
-          "| resolved: ",
-          parlayMarketDetails.resolved,
-          "| alreadyLost: ",
-          parlayMarketDetails.alreadyLost,
-          "| fundsIssued: ",
-          parlayMarketDetails.fundsIssued
-        );
-        if (
-          parlayMarketDetails.initialized &&
-          !parlayMarketDetails.resolved &&
-          !parlayMarketDetails.alreadyLost
-        ) {
-          if (!parlaysToBeExercised.includes(parlayMarket)) {
-            console.log(
-              "parlay: ",
-              parlayMarket,
-              " has not lost yet! Added for exercise..."
-            );
-            parlaysToBeExercised.push(parlayMarket);
-          }
-        }
-      }
-    }
-  } else if (!cancelOutcome) {
-    console.log("CHECKING DIFFERENT OUTCOMES --->");
-    if (sportMarketOutcome == 0) {
-      sportMarketOutcome = 1;
-    } else if (sportMarketOutcome == 1) {
-      sportMarketOutcome = 0;
-    }
-    numOfParlaysPerGamePosition = await dataParlay.numOfParlaysInGamePosition(
-      sportMarketAddress,
-      sportMarketOutcome
-    );
-    console.log(
-      "# of parlays with diffrent outcome",
-      sportMarketOutcome + 1,
-      " : ",
-      parseInt(numOfParlaysPerGamePosition)
-    );
-    if (parseInt(numOfParlaysPerGamePosition) > 0) {
-      let parlayMarket;
-      let parlayMarketDetails;
-      for (let j = 0; j < parseInt(numOfParlaysPerGamePosition); j++) {
-        parlayMarket = await dataParlay.gameAddressPositionParlay(
-          sportMarketAddress,
-          sportMarketOutcome,
-          j
-        );
-        console.log("--> ", j, " checking parlay ", parlayMarket);
-        parlayMarketDetails = await dataParlay.getParlayOutcomeDetails(
-          parlayMarket
-        );
-        console.log(
-          "initialized: ",
-          parlayMarketDetails.initialized,
-          "| resolved: ",
-          parlayMarketDetails.resolved,
-          "| alreadyLost: ",
-          parlayMarketDetails.alreadyLost,
-          "| fundsIssued: ",
-          parlayMarketDetails.fundsIssued
-        );
-        if (
-          parlayMarketDetails.initialized &&
-          !parlayMarketDetails.resolved &&
-          !parlayMarketDetails.alreadyLost
-        ) {
-          if (!parlaysToBeExercised.includes(parlayMarket)) {
-            parlaysToBeExercised.push(parlayMarket);
-          }
-          // exercise parlay
-        }
-      }
-    }
-  }
+  });
+  console.log("Added parlays: ", filteredParlays.length - initialLength);
+  console.log("Total filtered parlays: ", filteredParlays.length);
+  return filteredParlays;
 }
 
 async function sendInfoMessageToDiscord(
@@ -479,11 +180,7 @@ async function exerciseHistory(blocksInHistory, backwardsFromLatestBlock) {
         sportMarketAddress = events[i].args._marketAddress;
         sportMarketId = events[i].args._id;
         sportMarketOutcome = parseInt(events[i].args._outcome);
-        newResolved.push({
-          address: sportMarketAddress,
-          id: sportMarketId,
-          outcome: sportMarketOutcome,
-        });
+        newResolved.push(sportMarketAddress);
       }
       if (parlaysToBeExercised.length > 0) {
         console.log("Parlays to be exercised: ", parlaysToBeExercised);
@@ -501,11 +198,12 @@ async function exerciseHistory(blocksInHistory, backwardsFromLatestBlock) {
       for (let i = 0; i < events.length; i++) {
         sportMarketAddress = events[i].args._child;
         sportMarketOutcome = parseInt(events[i].args._outcome);
-        newResolved.push({
-          address: sportMarketAddress,
-          id: "child",
-          outcome: sportMarketOutcome,
-        });
+        newResolved.push(sportMarketAddress);
+        // newResolved.push({
+        //   address: sportMarketAddress,
+        //   id: "child",
+        //   outcome: sportMarketOutcome,
+        // });
       }
       if (parlaysToBeExercised.length > 0) {
         console.log("Parlays to be exercised: ", parlaysToBeExercised);
@@ -601,13 +299,36 @@ async function doIndefinitely() {
           checkResolved.length,
           " \x1b[32m::::::::::::::\x1b[0m"
         );
-        for (let i = 0; i < checkResolved.length; i++) {
-          await collectExercisableParlays(
-            i,
-            checkResolved[i].address,
-            checkResolved[i].id,
-            checkResolved[i].outcome
+        let allParlays = [];
+        let checkSlice = [];
+        let numOfMarkets = process.env.CHUNKS_OF_MARKETS_TO_CHECK;
+        for (let i = 0; i <= checkResolved.length / numOfMarkets; i++) {
+          console.log(
+            "Checking markets [",
+            i * numOfMarkets,
+            ", ",
+            (i + 1) * numOfMarkets,
+            "]"
           );
+          checkSlice = [];
+          allParlays = [];
+          if (i == checkResolved.length / numOfMarkets) {
+            checkSlice = checkResolved.slice(
+              i * numOfMarkets,
+              checkResolved.length
+            );
+          } else {
+            checkSlice = checkResolved.slice(
+              i * numOfMarkets,
+              (i + 1) * numOfMarkets
+            );
+          }
+          allParlays = await dataParlay.getAllParlaysForGames(checkSlice);
+          parlaysToBeExercised = await filterParlays(
+            allParlays[0],
+            parlaysToBeExercised
+          );
+          await delay(2000);
         }
         if (parlaysToBeExercised.length > 0) {
           console.log(
@@ -693,60 +414,12 @@ async function doIndefinitely() {
 //MAIN __________________________________________________________________________________
 
 firstRun = true;
-// if (parseInt(process.env.BLOCKS_BACK_IN_HISTORY) > 0 && historyUnprocessed) {
-//   firstRun = true;
-//   historyUnprocessed = false;
-//   console.log("EXERCISING HISTORY......");
-//   exerciseHistory(process.env.BLOCKS_BACK_IN_HISTORY);
-//   let currentTime = new Date();
-//   exerciseHistoryTime.setMilliseconds(
-//     currentTime.getMilliseconds() +
-//       parseInt(process.env.EXERCISE_PARLAY_HISTORY)
-//   );
-// }
-
 exerciseDate = new Date();
 exerciseDate.setMilliseconds(
   exerciseDate.getMilliseconds() +
     parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY)
 );
-// consumer.on("ResolveSportsMarket", (_marketAddress, _id, _outcome) => {
-//   console.log(
-//     "\x1b[37m=========> New Market resolved =========> \x1b[0m\n",
-//     _marketAddress,
-//     "\nid: ",
-//     _id,
-//     "\noutcome: ",
-//     parseInt(_outcome)
-//   );
-//   newResolved.push({
-//     address: _marketAddress,
-//     id: _id,
-//     outcome: parseInt(_outcome),
-//   });
-// });
-// console.log("Resolve listener started");
 
-// obtainer.on("ResolveChildMarket", (_child, _outcome, _main, _homeScore, _awayScore) => {
-//   console.log(
-//     "\x1b[37m=========> New CHILD Market resolved =========> \x1b[0m\n",
-//     _child,
-//     "\noutcome: ",
-//     parseInt(_outcome),
-//     "\nmainMarket: ",
-//     _main,
-//     "\nhomeScore: ",
-//     parseInt(_homeScore),
-//     "\nawayScore: ",
-//     parseInt(_awayScore)
-//   );
-//   newResolved.push({
-//     address: _child,
-//     id: "child",
-//     outcome: parseInt(_outcome),
-//   });
-// });
-// console.log(" Child Resolve listener started");
 doIndefinitely();
 
 //end MAIN __________________________________________________________________________________
