@@ -1731,7 +1731,7 @@ function getSpreadAndTotalOddsFromBackupBookmaker(
 }
 
 function getTotalLineAndOddsForFootball(extendedTotals, type) {
-  if (typeof extendedTotals != "undefined" && extendedTotals.length > 1) {
+  if (typeof extendedTotals != "undefined" && extendedTotals.length > 0) {
     var filteredExtendedTotals = extendedTotals.filter(
       (x) => x.total_over === 2.5 // only filter out 2.5 over/under
     );
@@ -1770,7 +1770,7 @@ function getTotalLineAndOddsForFootball(extendedTotals, type) {
 }
 
 function getSpreadLineAndOddsForFootball(extendedSpread, type) {
-  if (typeof extendedSpread != "undefined" && extendedSpread.length > 1) {
+  if (typeof extendedSpread != "undefined" && extendedSpread.length > 0) {
     var filteredExtendedSpread = extendedSpread.filter(
       (x) => x.point_spread_home === 1 // only filter out 1 over/under
     );
