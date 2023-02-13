@@ -43,16 +43,17 @@ const erc20Instance = new ethers.Contract(
   wallet
 );
 
-async function doCreate() {
+async function doCreate(network, botName) {
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
   console.log("Amount token in wallet: " + parseInt(amountOfToken));
   console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
 
   if (parseInt(amountOfToken) < parseInt(process.env.LINK_THRESHOLD)) {
     await sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
-      "Amount of LINK in a creator-bot is: " + amountOfToken,
+      "Amount of LINK in a " + botName + " is: " + amountOfToken,
       process.env.LINK_THRESHOLD,
-      wallet.address
+      wallet.address,
+      network
     );
   }
 
@@ -381,11 +382,15 @@ async function doCreate() {
           } catch (e) {
             console.log(e);
             await sendErrorMessageToDiscordRequestCL(
-              "Request to CL creator-bot went wrong! Please check LINK amount on bot, or kill and debug!" +
+              "Request to CL " +
+                botName +
+                " went wrong! Please check LINK amount on bot, or kill and debug!" +
                 " EXCEPTION MESSAGE: " +
-                e.message.slice(0, 200),
+                e.message.slice(0, 180),
               sportIds[j],
-              unixDate
+              unixDate,
+              network,
+              botName
             );
             failedCounter++;
             await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -443,8 +448,10 @@ async function doCreate() {
           await sendErrorMessageToDiscordCreateMarkets(
             "Market creation went wrong! Please check ETH on bot, or kill and debug!" +
               " EXCEPTION MESSAGE: " +
-              e.message.slice(0, 200),
-            gameIds
+              e.message.slice(0, 180),
+            gameIds,
+            network,
+            botName
           );
           failedCounter++;
           await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -458,7 +465,9 @@ async function doCreate() {
     if (requestWasSend) {
       console.log("Nothing but request is send!!!!");
       await sendErrorMessageToDiscord(
-        "Request was send, but no games created, please check and debug! Stoping bot is mandatory!"
+        "Request was send, but no games created, please check and debug! Stoping bot is mandatory!",
+        network,
+        botName
       );
       failedCounter++;
       await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -475,23 +484,30 @@ async function doIndefinitely() {
     process.env.LINK_CONTRACT,
     process.env.WRAPPER_CONTRACT
   );
+  let network = process.env.NETWORK;
+  let botName = process.env.BOT_NAME;
+  console.log("Bot name: " + botName);
   var numberOfExecution = 0;
   while (true) {
     try {
       console.log("---------START CREATION EXECUTION---------");
       console.log("Execution time: " + new Date());
       console.log("Execution number: " + numberOfExecution);
-      await doCreate();
+      await doCreate(network, botName);
       numberOfExecution++;
       console.log("---------END CREATION EXECUTION---------");
       await delay(process.env.CREATION_FREQUENCY);
     } catch (e) {
       console.log(e);
-      sendErrorMessageToDiscord(
-        "Please check creation-bot, error on execution: " +
+      await sendErrorMessageToDiscord(
+        "Please check " +
+          botName +
+          ", error on execution: " +
           numberOfExecution +
           ", EXCEPTION MESSAGE: " +
-          e.message.slice(0, 200)
+          e.message.slice(0, 200),
+        network,
+        botName
       );
       // wait next process
       await delay(process.env.CREATION_FREQUENCY);
@@ -646,13 +662,23 @@ function getOddsFromBackupBookmaker(
 async function sendErrorMessageToDiscordRequestCL(
   messageForPrint,
   sportId,
-  dateTimestamp
+  dateTimestamp,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on creation bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -674,13 +700,23 @@ async function sendErrorMessageToDiscordRequestCL(
 
 async function sendErrorMessageToDiscordCreateMarkets(
   messageForPrint,
-  gameIds
+  gameIds,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on creation bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -700,12 +736,20 @@ async function sendErrorMessageToDiscordCreateMarkets(
   overtimeCreate.send(message);
 }
 
-async function sendErrorMessageToDiscord(messageForPrint) {
+async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on creation bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -724,7 +768,8 @@ async function sendErrorMessageToDiscord(messageForPrint) {
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
   messageForPrint,
   threshold,
-  wallet
+  wallet,
+  network
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
@@ -735,6 +780,10 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
       {
         name: ":coin: Threshold:",
         value: threshold,
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
       },
       {
         name: ":credit_card: Bot wallet address:",

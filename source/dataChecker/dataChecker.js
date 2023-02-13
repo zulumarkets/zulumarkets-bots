@@ -41,16 +41,17 @@ const erc20Instance = new ethers.Contract(
   wallet
 );
 
-async function doCheck() {
+async function doCheck(network, botName) {
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
   console.log("Amount token in wallet: " + parseInt(amountOfToken));
   console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
 
   if (parseInt(amountOfToken) < parseInt(process.env.LINK_THRESHOLD)) {
     await sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
-      "Amount of LINK in a data-checker-bot is: " + amountOfToken,
+      "Amount of LINK in a " + botName + " is: " + amountOfToken,
       process.env.LINK_THRESHOLD,
-      wallet.address
+      wallet.address,
+      network
     );
   }
 
@@ -195,7 +196,8 @@ async function doCheck() {
                   gamesListResponse[n].homeTeam,
                   gameCreatedOnContract[6],
                   gamesListResponse[n].awayTeam,
-                  parseInt(gameStartContract)
+                  parseInt(gameStartContract),
+                  network
                 );
                 // need to know if some other sport is having this issue so only print to discord
               } else {
@@ -207,7 +209,8 @@ async function doCheck() {
                   gamesListResponse[n].homeTeam,
                   gameCreatedOnContract[6],
                   gamesListResponse[n].awayTeam,
-                  parseInt(gameStartContract)
+                  parseInt(gameStartContract),
+                  network
                 );
               }
 
@@ -227,7 +230,8 @@ async function doCheck() {
                   gameCreatedOnContract[5],
                   gameCreatedOnContract[6],
                   parseInt(gameStartContract),
-                  parseInt(gamesListResponse[n].gameStartTime)
+                  parseInt(gamesListResponse[n].gameStartTime),
+                  network
                 );
               } else {
                 await sendMessageToDiscordTimeOfAGameHasChanged(
@@ -237,7 +241,8 @@ async function doCheck() {
                   gameCreatedOnContract[5],
                   gameCreatedOnContract[6],
                   parseInt(gameStartContract),
-                  parseInt(gamesListResponse[n].gameStartTime)
+                  parseInt(gamesListResponse[n].gameStartTime),
+                  network
                 );
               }
             }
@@ -280,12 +285,16 @@ async function doCheck() {
           } catch (e) {
             console.log(e);
             await sendErrorMessageToDiscordRequestCL(
-              "Request to CL data-checker-bot went wrong! Please check LINK amount on bot, or kill and debug!" +
+              "Request to CL from " +
+                botName +
+                " went wrong! Please check LINK amount on bot, or kill and debug!" +
                 " EXCEPTION MESSAGE: " +
-                e.message.slice(0, 200),
+                e.message.slice(0, 180),
               sportIds[j],
               unixDate,
-              gamesToBeProcessed
+              gamesToBeProcessed,
+              network,
+              botName
             );
             failedCounter++;
             await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -342,10 +351,14 @@ async function doCheck() {
           } catch (e) {
             console.log(e);
             await sendErrorMessageToDiscordCreateMarkets(
-              "Market creation went wrong, on data-checker bot! Please check ETH on bot, or kill and debug!" +
+              "Market creation went wrong, on " +
+                botName +
+                " bot! Please check ETH on bot, or kill and debug!" +
                 " EXCEPTION MESSAGE: " +
-                e.message.slice(0, 200),
-              gameIds
+                e.message.slice(0, 180),
+              gameIds,
+              network,
+              botName
             );
             failedCounter++;
             await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -358,7 +371,9 @@ async function doCheck() {
     } else {
       console.log("Nothing but request is send!!!!");
       await sendErrorMessageToDiscord(
-        "Request was send, team names was changed, but no games created, please check and debug! Stoping bot is mandatory!"
+        "Request was send, team names was changed, but no games created, please check and debug! Stoping bot is mandatory!",
+        network,
+        botName
       );
       failedCounter++;
       await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -375,25 +390,32 @@ async function doIndefinitely() {
     process.env.LINK_CONTRACT,
     process.env.WRAPPER_CONTRACT
   );
+  let network = process.env.NETWORK;
+  let botName = process.env.BOT_NAME;
+  console.log("Bot name: " + botName);
   var numberOfExecution = 0;
   while (true) {
     try {
       console.log("---------START CHECK EXECUTION---------");
       console.log("Execution time: " + new Date());
       console.log("Execution number: " + numberOfExecution);
-      await doCheck();
+      await doCheck(network, botName);
       numberOfExecution++;
       console.log("---------END CHECK EXECUTION---------");
       await delay(process.env.DATA_CHECKER_FREQUENCY);
     } catch (e) {
       console.log(e);
-      sendErrorMessageToDiscord(
-        "Please check data-checker-bot, error on execution: " +
+      await sendErrorMessageToDiscord(
+        "Please check " +
+          botName +
+          ", error on execution: " +
           numberOfExecution +
           ", sports: " +
           process.env.SPORT_IDS +
           ", EXCEPTION MESSAGE: " +
-          e.message.slice(0, 200)
+          e.message.slice(0, 200),
+        network,
+        botName
       );
       // wait next process
       await delay(process.env.DATA_CHECKER_FREQUENCY);
@@ -461,12 +483,20 @@ function delay(time) {
   });
 }
 
-async function sendErrorMessageToDiscord(messageForPrint) {
+async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on checker bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -485,7 +515,8 @@ async function sendErrorMessageToDiscord(messageForPrint) {
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
   messageForPrint,
   threshold,
-  wallet
+  wallet,
+  network
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
@@ -496,6 +527,10 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
       {
         name: ":coin: Threshold:",
         value: threshold,
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
       },
       {
         name: ":credit_card: Bot wallet address:",
@@ -517,13 +552,23 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
 
 async function sendErrorMessageToDiscordCreateMarkets(
   messageForPrint,
-  gameIds
+  gameIds,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on data-checker bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -550,13 +595,18 @@ async function sendMessageToDiscordTimeOfAGameHasChanged(
   homeTeam,
   awayTeam,
   gameTimeContract,
-  gameTimeAPI
+  gameTimeAPI,
+  network
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Warning! New Time on a game!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
       },
       {
         name: ":warning: Warning message:",
@@ -592,13 +642,18 @@ async function sendMessageToDiscordTeamsNotTheSame(
   homeTeamAPI,
   awayTeamContract,
   awayTeamAPI,
-  gameTime
+  gameTime,
+  network
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Warning! Changing team/fighter names!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
       },
       {
         name: ":warning: Warning message:",
@@ -630,13 +685,23 @@ async function sendErrorMessageToDiscordRequestCL(
   messageForPrint,
   sportId,
   dateTimestamp,
-  games
+  games,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on data-checker bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",

@@ -50,16 +50,17 @@ const erc20Instance = new ethers.Contract(
   wallet
 );
 
-async function doPull(numberOfExecution, botName) {
+async function doPull(numberOfExecution, botName, network) {
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
   console.log("Amount token in wallet: " + parseInt(amountOfToken));
   console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
 
   if (parseInt(amountOfToken) < parseInt(process.env.LINK_THRESHOLD)) {
     await sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
-      "Amount of LINK in a odds-bot is: " + amountOfToken,
+      "Amount of LINK in a " + botName + " is: " + amountOfToken,
       process.env.LINK_THRESHOLD,
-      wallet.address
+      wallet.address,
+      network
     );
   }
 
@@ -692,7 +693,8 @@ async function doPull(numberOfExecution, botName) {
                         lineChangePerSportSpread,
                         lineChangePerSportTotal,
                         gameStart,
-                        "1054737348170092644"
+                        "1054737348170092644",
+                        network
                       );
                     }
 
@@ -715,7 +717,8 @@ async function doPull(numberOfExecution, botName) {
                       percentageChangeAway,
                       percentageChangeDraw,
                       percentageChangePerSport,
-                      "1002145721543311370"
+                      "1002145721543311370",
+                      network
                     );
                   } else if (
                     // odds appear and game was paused by invalid odds or cancel status send request
@@ -746,7 +749,8 @@ async function doPull(numberOfExecution, botName) {
                       100,
                       isSportTwoPositionsSport ? 0 : 100,
                       percentageChangePerSport,
-                      "1002145721543311370"
+                      "1002145721543311370",
+                      network
                     );
                   }
                 } else {
@@ -811,18 +815,23 @@ async function doPull(numberOfExecution, botName) {
                     await sendMessageToDiscordGameCanceled(
                       gamesListResponse[n].homeTeam,
                       gamesListResponse[n].awayTeam,
-                      gameStart
+                      gameStart,
+                      network
                     );
                   } catch (e) {
                     console.log(e);
                     await sendErrorMessageToDiscordStatusCancel(
-                      "Request to CL odds-bot went wrong, see: " +
+                      "Request to CL from " +
+                        botName +
+                        " went wrong, see: " +
                         botName +
                         ", EXCEPTION MESSAGE: " +
-                        e.message.slice(0, 200),
+                        e.message.slice(0, 180),
                       sportIds[j],
                       gameStart,
-                      gamesListResponse[n].id
+                      gamesListResponse[n].id,
+                      network,
+                      botName
                     );
                     failedCounter++;
                     await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) 10min for admin
@@ -903,12 +912,16 @@ async function doPull(numberOfExecution, botName) {
             } catch (e) {
               console.log(e);
               await sendErrorMessageToDiscordRequestOddsfromCL(
-                "Request to CL odds-bot went wrong, see: " +
+                "Request to CL from " +
+                  botName +
+                  " went wrong, see: " +
                   botName +
                   ", EXCEPTION MESSAGE: " +
-                  e.message.slice(0, 200),
+                  e.message.slice(0, 180),
                 sportIds[j],
-                unixDate
+                unixDate,
+                network,
+                botName
               );
               failedCounter++;
               await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) 10min for admin
@@ -996,6 +1009,7 @@ function checkSpreadAndTotal(
 
 async function doIndefinitely() {
   var botName = process.env.BOT_NAME;
+  let network = process.env.NETWORK;
   console.log("Bot name: " + botName);
   await allowances.checkAllowanceAndAllow(
     process.env.LINK_CONTRACT,
@@ -1007,19 +1021,21 @@ async function doIndefinitely() {
       console.log("---------START ODDS EXECUTION---------");
       console.log("Execution time: " + new Date());
       console.log("Execution number: " + numberOfExecution);
-      await doPull(numberOfExecution, botName);
+      await doPull(numberOfExecution, botName, network);
       numberOfExecution++;
       console.log("---------END ODDS EXECUTION---------");
       await delay(process.env.ODDS_FREQUENCY);
     } catch (e) {
       console.log(e);
-      sendErrorMessageToDiscord(
+      await sendErrorMessageToDiscord(
         "Please check " +
           botName +
           ", error on execution: " +
           numberOfExecution +
           ", EXCEPTION MESSAGE: " +
-          e.message.slice(0, 200)
+          e.message.slice(0, 200),
+        network,
+        botName
       );
       // wait next process
       await delay(process.env.ODDS_FREQUENCY);
@@ -1041,7 +1057,8 @@ async function sendMessageToDiscordOddsChanged(
   percentageChangeAway,
   percentageChangeDraw,
   percentageChangePerSport,
-  discordID
+  discordID,
+  network
 ) {
   if (
     percentageChangeHome === 0 &&
@@ -1150,6 +1167,10 @@ async function sendMessageToDiscordOddsChanged(
           value: "\u200b",
         },
         {
+          name: ":chains: Network:",
+          value: network,
+        },
+        {
           name: ":abacus: Value of threshold: ",
           value: percentageChangePerSport + "%",
         },
@@ -1194,7 +1215,8 @@ async function sendMessageSpreadTotalChangedDiscord(
   lineChangePerSportSpread,
   lineChangePerSportTotal,
   gameTime,
-  discordID
+  discordID,
+  network
 ) {
   if (
     spreadHomeContract == 0 &&
@@ -1220,6 +1242,10 @@ async function sendMessageSpreadTotalChangedDiscord(
         {
           name: "Spread/Total changed more than threshold!",
           value: "\u200b",
+        },
+        {
+          name: ":chains: Network:",
+          value: network,
         },
         {
           name: ":abacus: Value of threshold: ",
@@ -1276,12 +1302,21 @@ async function sendMessageSpreadTotalChangedDiscord(
   }
 }
 
-async function sendMessageToDiscordGameCanceled(homeTeam, awayTeam, gameTime) {
+async function sendMessageToDiscordGameCanceled(
+  homeTeam,
+  awayTeam,
+  gameTime,
+  network
+) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Game paused by cancel status!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
       },
       {
         name: ":classical_building: Overtime game:",
@@ -1301,13 +1336,23 @@ async function sendErrorMessageToDiscordStatusCancel(
   messageForPrint,
   sportId,
   dateTimestamp,
-  gameId
+  gameId,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on odds bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -1336,13 +1381,23 @@ async function sendErrorMessageToDiscordStatusCancel(
 async function sendErrorMessageToDiscordRequestOddsfromCL(
   messageForPrint,
   sportId,
-  dateTimestamp
+  dateTimestamp,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on odds bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -1370,6 +1425,14 @@ async function sendErrorMessageToDiscord(messageForPrint) {
         value: "\u200b",
       },
       {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
+      },
+      {
         name: ":exclamation: Error message:",
         value: messageForPrint,
       },
@@ -1386,7 +1449,8 @@ async function sendErrorMessageToDiscord(messageForPrint) {
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
   messageForPrint,
   threshold,
-  wallet
+  wallet,
+  network
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
@@ -1397,6 +1461,10 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
       {
         name: ":coin: Threshold:",
         value: threshold,
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
       },
       {
         name: ":credit_card: Bot wallet address:",

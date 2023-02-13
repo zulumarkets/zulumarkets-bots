@@ -42,7 +42,7 @@ const erc20Instance = new ethers.Contract(
   wallet
 );
 
-async function doResolve() {
+async function doResolve(network, botName) {
   const EXPECTED_GAME_DURATIN = {
     1: process.env.EXPECTED_GAME_NFL,
     2: process.env.EXPECTED_GAME_NFL,
@@ -70,9 +70,10 @@ async function doResolve() {
 
   if (parseInt(amountOfToken) < parseInt(process.env.LINK_THRESHOLD)) {
     await sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
-      "Amount of LINK in a resolver-bot is: " + amountOfToken,
+      "Amount of LINK in a " + botName + " is: " + amountOfToken,
       process.env.LINK_THRESHOLD,
-      wallet.address
+      wallet.address,
+      network
     );
   }
 
@@ -349,12 +350,16 @@ async function doResolve() {
             } catch (e) {
               console.log(e);
               await sendErrorMessageToDiscordRequestToCL(
-                "Request to CL from resolver-bot went wrong! Please check LINK amount on bot, or kill and debug!" +
+                "Request to CL from " +
+                  botName +
+                  " went wrong! Please check LINK amount on bot, or kill and debug!" +
                   " EXCEPTION MESSAGE: " +
-                  e.message.slice(0, 200),
+                  e.message.slice(0, 180),
                 sportIds[j],
                 unixDate,
-                gameIds
+                gameIds,
+                network,
+                botName
               );
               failedCounter++;
               await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -422,8 +427,10 @@ async function doResolve() {
           await sendErrorMessageToDiscordMarketResolve(
             "Market resolve went wrong! Please check ETH on bot, or kill and debug!" +
               " EXCEPTION MESSAGE: " +
-              e.message.slice(0, 200),
-            gameIds
+              e.message.slice(0, 180),
+            gameIds,
+            network,
+            botName
           );
           failedCounter++;
           await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -437,7 +444,9 @@ async function doResolve() {
     if (requestWasSend) {
       console.log("Nothing but request is send!!!!");
       await sendErrorMessageToDiscord(
-        "Request was send, but no games resolved, please check and debug! Stoping bot is mandatory!"
+        "Request was send, but no games resolved, please check and debug! Stoping bot is mandatory!",
+        network,
+        botName
       );
       failedCounter++;
       await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -455,22 +464,29 @@ async function doIndefinitely() {
     process.env.WRAPPER_CONTRACT
   );
   var numberOfExecution = 0;
+  let network = process.env.NETWORK;
+  let botName = process.env.BOT_NAME;
+  console.log("Bot name: " + botName);
   while (true) {
     try {
       console.log("---------START RESOLVE EXECUTION---------");
       console.log("Execution time: " + new Date());
       console.log("Execution number: " + numberOfExecution);
-      await doResolve();
+      await doResolve(network, botName);
       numberOfExecution++;
       console.log("---------END RESOLVE EXECUTION---------");
       await delay(process.env.RESOLVE_FREQUENCY);
     } catch (e) {
       console.log(e);
-      sendErrorMessageToDiscord(
-        "Please check resolve-bot, error on execution: " +
+      await sendErrorMessageToDiscord(
+        "Please check " +
+          botName +
+          ", error on execution: " +
           numberOfExecution +
           ", EXCEPTION MESSAGE: " +
-          e.message.slice(0, 200)
+          e.message.slice(0, 200),
+        network,
+        botName
       );
       // wait next process
       await delay(process.env.RESOLVE_FREQUENCY);
@@ -482,13 +498,23 @@ async function sendErrorMessageToDiscordRequestToCL(
   messageForPrint,
   sportId,
   timestamp,
-  gameId
+  gameId,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on resolve bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -518,13 +544,23 @@ async function sendErrorMessageToDiscordRequestToCL(
 
 async function sendErrorMessageToDiscordMarketResolve(
   messageForPrint,
-  gameIds
+  gameIds,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on resolve bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -546,12 +582,20 @@ async function sendErrorMessageToDiscordMarketResolve(
   overtimeResolver.send(message);
 }
 
-async function sendErrorMessageToDiscord(messageForPrint) {
+async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on resolve bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -570,7 +614,8 @@ async function sendErrorMessageToDiscord(messageForPrint) {
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
   messageForPrint,
   threshold,
-  wallet
+  wallet,
+  network
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
@@ -581,6 +626,10 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
       {
         name: ":coin: Threshold:",
         value: threshold,
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
       },
       {
         name: ":credit_card: Bot wallet address:",
