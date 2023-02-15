@@ -48,7 +48,6 @@ async function filterParlays(allParlays, filteredParlays) {
   console.log("Already filtered parlays: ", filteredParlays.length);
   let initialLength = filteredParlays.length;
   console.log("Total obtained parlays from contract: ", allParlays.length);
-  // console.log(allParlays);
   allParlays.forEach((c) => {
     if (
       !filteredParlays.includes(c) &&
@@ -73,35 +72,62 @@ async function sendInfoMessageToDiscord(
     let info_message;
     var message = new Discord.MessageEmbed();
     if (tx_batch.length == 1) {
-      tx_message =
-        "[" +
-        tx_batch[0] +
-        "](https://optimistic.etherscan.io/tx/" +
-        tx_batch[0] +
-        ")";
+      if (process.env.NETWORK == "arbitrum") {
+        tx_message =
+          "[" + tx_batch[0] + "](https://arbiscan.io/tx/" + tx_batch[0] + ")";
+      } else {
+        tx_message =
+          "[" +
+          tx_batch[0] +
+          "](https://optimistic.etherscan.io/tx/" +
+          tx_batch[0] +
+          ")";
+      }
     } else {
-      tx_message =
-        "[" +
-        tx_batch[0] +
-        "](https://optimistic.etherscan.io/tx/" +
-        tx_batch[0] +
-        ")";
-      tx_message +=
-        "\n[" +
-        tx_batch[tx_batch.length - 1] +
-        "](https://optimistic.etherscan.io/tx/" +
-        tx_batch[tx_batch.length - 1] +
-        ")";
+      if (process.env.NETWORK == "arbitrum") {
+        tx_message =
+          "[" + tx_batch[0] + "](https://arbiscan.io/tx/" + tx_batch[0] + ")";
+        tx_message +=
+          "\n[" +
+          tx_batch[tx_batch.length - 1] +
+          "](https://arbiscan.io/tx/" +
+          tx_batch[tx_batch.length - 1] +
+          ")";
+      } else {
+        tx_message =
+          "[" +
+          tx_batch[0] +
+          "](https://optimistic.etherscan.io/tx/" +
+          tx_batch[0] +
+          ")";
+        tx_message +=
+          "\n[" +
+          tx_batch[tx_batch.length - 1] +
+          "](https://optimistic.etherscan.io/tx/" +
+          tx_batch[tx_batch.length - 1] +
+          ")";
+      }
     }
     if (parseFloat(balanceAfter) - parseFloat(balanceBefore) > 0) {
-      info_message =
-        "before: " +
-        balanceBefore +
-        "\nafter ::: " +
-        balanceAfter +
-        "\nprofit :: " +
-        (parseFloat(balanceAfter) - parseFloat(balanceBefore)) +
-        " sUSD";
+      if (process.env.NETWORK == "arbitrum") {
+        info_message =
+          "before: " +
+          balanceBefore +
+          "\nafter ::: " +
+          balanceAfter +
+          "\nprofit :: " +
+          (parseFloat(balanceAfter) - parseFloat(balanceBefore)) +
+          " USDC";
+      } else {
+        info_message =
+          "before: " +
+          balanceBefore +
+          "\nafter ::: " +
+          balanceAfter +
+          "\nprofit :: " +
+          (parseFloat(balanceAfter) - parseFloat(balanceBefore)) +
+          " sUSD";
+      }
     } else {
       info_message = "Parlays markets marked as lost: " + numOfExercisedParlays;
     }
@@ -126,7 +152,8 @@ async function sendInfoMessageToDiscord(
       )
       .setColor("#0037ff");
     let overtimeCreate = await overtimeBot.channels.fetch(
-      "1039869584372662332"
+      // "1039869584372662332"
+      process.env.DISCORD_CHANNEL
     );
     await overtimeCreate.send(message);
   }
@@ -151,7 +178,9 @@ async function sendErrorMessageToDiscord(messageForPrint) {
       }
     )
     .setColor("#0037ff");
-  let overtimeCreate = await overtimeBot.channels.fetch("1040194485436563486");
+  let overtimeCreate = await overtimeBot.channels.fetch(
+    process.env.DISCORD_CHANNEL_ERROR
+  );
   await overtimeCreate.send(message);
 }
 
@@ -235,7 +264,9 @@ async function doExercise(exerciseParlays) {
             batch = [];
             tx_batch.push(tx.hash);
           } catch (e) {
-            console.log("ERROR IN 20 BATCH EXERCISE!\n\n");
+            console.log(
+              "ERROR IN 20 BATCH EXERCISE!\n\n>>>>>>> exercise manually:"
+            );
             console.log(batch);
             batch = [];
           }
@@ -285,6 +316,7 @@ async function doIndefinitely() {
     try {
       console.log("\x1b[35m--------- START PARLAYS CHECK ---------\x1b[0m");
       let timeNow = new Date();
+      console.log("NETWORK: " + process.env.NETWORK);
       console.log("Time: " + timeNow);
       console.log("Exercise after: " + exerciseDate);
       console.log("History after: " + exerciseHistoryTime);
@@ -346,7 +378,11 @@ async function doIndefinitely() {
         let init_balance = await sUSDContract.balanceOf(
           process.env.PARLAY_AMM_CONTRACT
         );
-        init_balance = ethers.utils.formatEther(init_balance);
+        if (process.env.NETWORK === "arbitrum") {
+          init_balance = parseFloat(init_balance.toString()) / 1e6;
+        } else {
+          init_balance = ethers.utils.formatEther(init_balance);
+        }
         console.log("AMM balance: ", parseFloat(init_balance));
         let exerciseParlays = parlaysToBeExercised;
         parlaysToBeExercised = [];
@@ -358,7 +394,11 @@ async function doIndefinitely() {
         let balance = await sUSDContract.balanceOf(
           process.env.PARLAY_AMM_CONTRACT
         );
-        balance = ethers.utils.formatEther(balance);
+        if (process.env.NETWORK === "arbitrum") {
+          balance = parseFloat(balance.toString()) / 1e6;
+        } else {
+          balance = ethers.utils.formatEther(balance);
+        }
         console.log("AMM balance after: ", parseFloat(balance));
         console.log(
           "AMM retrieved: ",
@@ -419,7 +459,10 @@ exerciseDate.setMilliseconds(
   exerciseDate.getMilliseconds() +
     parseInt(process.env.EXERCISE_PARLAYS_FREQUENCY)
 );
-
+console.log("Start:\n");
+console.log("Conumer contract: ", consumer.address);
+console.log("GameOdds contract: ", obtainer.address);
+console.log("ParlayData contract: ", dataParlay.address);
 doIndefinitely();
 
 //end MAIN __________________________________________________________________________________
