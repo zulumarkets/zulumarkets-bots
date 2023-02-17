@@ -50,14 +50,6 @@ async function doResolve(network, botName) {
     4: process.env.EXPECTED_GAME_NBA,
     6: process.env.EXPECTED_GAME_NHL,
     7: process.env.EXPECTED_GAME_UFC,
-    10: process.env.EXPECTED_GAME_FOOTBAL,
-    11: process.env.EXPECTED_GAME_FOOTBAL,
-    12: process.env.EXPECTED_GAME_FOOTBAL,
-    13: process.env.EXPECTED_GAME_FOOTBAL,
-    14: process.env.EXPECTED_GAME_FOOTBAL,
-    15: process.env.EXPECTED_GAME_FOOTBAL,
-    16: process.env.EXPECTED_GAME_FOOTBAL,
-    18: process.env.EXPECTED_GAME_FOOTBAL,
   };
 
   const WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT = {
@@ -151,9 +143,14 @@ async function doResolve(network, botName) {
           let gameStart = await queues.gameStartPerGameId(gamesOnContract[z]);
           console.log("GAME start: " + gameStart);
 
+          let expectedGameTime =
+            EXPECTED_GAME_DURATIN[parseInt(sportIds[j])] !== undefined
+              ? EXPECTED_GAME_DURATIN[parseInt(sportIds[j])]
+              : process.env.EXPECTED_GAME_FOOTBAL;
+          console.log("Expected game duration: " + expectedGameTime);
+
           let expectedTimeToProcess =
-            parseInt(gameStart) +
-            parseInt(EXPECTED_GAME_DURATIN[parseInt(sportIds[j])]); // add hours  .env
+            parseInt(gameStart) + parseInt(expectedGameTime); // add hours  .env
           let expectedTimeToProcessInMiliseconds =
             parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
           console.log(
