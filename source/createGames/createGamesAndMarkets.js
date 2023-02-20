@@ -17,6 +17,7 @@ const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
 let ncaaSupportedTeams = require("./ncaaSupportedTeams.json");
+let ncaabSupportedTeams = require("./ncaabSupportedTeams.json");
 let fifaWCSupportedTeams = require("./fifaWCSupportedTeams.json");
 
 const queues = new ethers.Contract(
@@ -69,7 +70,7 @@ async function doCreate(network, botName) {
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
 
-  let americanSports = [1, 2, 3, 4, 6, 10];
+  let americanSports = [1, 2, 3, 4, 5, 6, 10];
   let invalidNames = process.env.INVALID_NAMES.split(",");
 
   console.log("Number of invalid names" + invalidNames.length);
@@ -149,6 +150,17 @@ async function doCreate(network, botName) {
               if (
                 ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
                 ncaaSupportedTeams.includes(o.teams_normalized[1].name)
+              ) {
+                filteredResponse.push(o);
+              }
+            }
+          });
+        } else if (sportIds[j] == 5) {
+          response.data.events.forEach((o) => {
+            if (o.teams_normalized != undefined) {
+              if (
+                ncaabSupportedTeams.includes(o.teams_normalized[0].name) &&
+                ncaabSupportedTeams.includes(o.teams_normalized[1].name)
               ) {
                 filteredResponse.push(o);
               }
@@ -314,7 +326,12 @@ async function doCreate(network, botName) {
 
         if (sendRequestForCreate) {
           let gamesInBatch = [];
-          if (sportIds[j] == 1 || sportIds[j] == 7 || sportIds[j] == 18) {
+          if (
+            sportIds[j] == 1 ||
+            sportIds[j] == 7 ||
+            sportIds[j] == 18 ||
+            sportIds[j] == 5
+          ) {
             filteredResponse.forEach((o) => {
               gamesInBatch.push(o.event_id);
             });

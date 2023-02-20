@@ -1490,6 +1490,24 @@ const gamesOddsObtainerContract = {
     {
       inputs: [
         {
+          internalType: "bytes32",
+          name: "gameId",
+          type: "bytes32",
+        },
+        {
+          internalType: "address",
+          name: "market",
+          type: "address",
+        },
+      ],
+      name: "setChildMarketGameId",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "address",
           name: "_consumer",
           type: "address",

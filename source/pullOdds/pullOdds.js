@@ -108,7 +108,7 @@ async function doPull(numberOfExecution, botName, network) {
     4: process.env.LINE_CHANGE_DEFAULT_TOTAL,
   };
 
-  let americanSports = [1, 2, 3, 4, 6, 10];
+  let americanSports = [1, 2, 3, 4, 5, 6, 10];
   let failedCounter = 0;
 
   console.log("Pulling Odds...");
