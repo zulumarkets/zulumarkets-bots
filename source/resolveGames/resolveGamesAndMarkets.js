@@ -17,6 +17,7 @@ const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
 let ncaaSupportedTeams = require("../createGames/ncaaSupportedTeams.json");
+let ncaabSupportedTeams = require("../createGames/ncaabSupportedTeams.json");
 
 const queues = new ethers.Contract(
   process.env.GAME_QUEUE_CONTRACT,
@@ -209,6 +210,17 @@ async function doResolve(network, botName) {
                 if (
                   ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
                   ncaaSupportedTeams.includes(o.teams_normalized[1].name)
+                ) {
+                  filteredResponse.push(o);
+                }
+              }
+            });
+          } else if (sportIds[j] == 5) {
+            response.data.events.forEach((o) => {
+              if (o.teams != undefined) {
+                if (
+                  ncaabSupportedTeams.includes(o.teams_normalized[0].name) &&
+                  ncaabSupportedTeams.includes(o.teams_normalized[1].name)
                 ) {
                   filteredResponse.push(o);
                 }
