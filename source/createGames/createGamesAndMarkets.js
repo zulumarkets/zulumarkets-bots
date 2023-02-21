@@ -326,7 +326,12 @@ async function doCreate(network, botName) {
 
         if (sendRequestForCreate) {
           let gamesInBatch = [];
-          if (sportIds[j] == 1 || sportIds[j] == 7 || sportIds[j] == 18) {
+          if (
+            sportIds[j] == 1 ||
+            sportIds[j] == 7 ||
+            sportIds[j] == 18 ||
+            sportIds[j] == 5
+          ) {
             filteredResponse.forEach((o) => {
               gamesInBatch.push(o.event_id);
             });
