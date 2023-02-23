@@ -282,8 +282,6 @@ async function doCreate(network, botName) {
           mapDaysAndEvents.set(dateAsUnixFormat, arrayOfGames); // to set the value using key
         });
 
-        // endpoint -> daily doubles!!!
-
         // do for next X days in front
         for (let i = 0; i <= daysInFront; i++) {
           console.log("------------------------");

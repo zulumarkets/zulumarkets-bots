@@ -184,6 +184,12 @@ async function doResolve(network, botName) {
         let timeInMiliseconds = new Date().getTime(); // miliseconds
         console.log("Time for proocessing:  " + timeInMiliseconds);
 
+        let expectedGameTime =
+          EXPECTED_GAME_DURATIN[parseInt(tournamentType[z].id)] !== undefined
+            ? EXPECTED_GAME_DURATIN[parseInt(tournamentType[z].id)]
+            : process.env.EXPECTED_GAME_FOOTBAL;
+        console.log("Expected game duration: " + expectedGameTime);
+
         var tournaments = [];
         // don't use API request if all games are already resolved
         for (let z = 0; z < gamesOnContract.length; z++) {
@@ -194,12 +200,6 @@ async function doResolve(network, botName) {
 
           let gameStart = await queues.gameStartPerGameId(gamesOnContract[z]);
           console.log("GAME start: " + gameStart);
-
-          let expectedGameTime =
-            EXPECTED_GAME_DURATIN[parseInt(tournamentType[z].id)] !== undefined
-              ? EXPECTED_GAME_DURATIN[parseInt(tournamentType[z].id)]
-              : process.env.EXPECTED_GAME_FOOTBAL;
-          console.log("Expected game duration: " + expectedGameTime);
 
           let expectedTimeToProcess =
             parseInt(gameStart) + parseInt(expectedGameTime); // add hours  .env
