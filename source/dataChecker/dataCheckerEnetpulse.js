@@ -84,6 +84,7 @@ async function doCheck(network, botName) {
 
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
+  let yearOfCalculation = process.env.YEAR_OF_CALCULATION.split(",");
 
   console.log("Checking Games...");
 
@@ -169,8 +170,8 @@ async function doCheck(network, botName) {
         console.log("Tournaments count: " + tournaments.length);
 
         // filter out only current year
-        tournaments = tournaments.filter(
-          (item) => item.name === process.env.YEAR_OF_CALCULATION
+        tournaments = tournaments.filter((item) =>
+          isNameInYear(item.name, yearOfCalculation)
         );
         console.log("Tournaments count (filtered): " + tournaments.length);
 
@@ -518,6 +519,16 @@ function getSecondsToDate(dateFrom) {
   const date = new Date(Date.now() + dateFrom * 3600 * 1000 * 24);
   date.setUTCHours(0, 0, 0, 0);
   return Math.floor(date.getTime() / 1000);
+}
+
+function isNameInYear(itemName, yearsOfCalculation) {
+  for (let j = 0; j < yearsOfCalculation.length; j++) {
+    if (yearsOfCalculation[j] == itemName) {
+      console.log("Year: " + itemName);
+      return true;
+    }
+  }
+  return false;
 }
 
 function getUnixDateFromString(stringDate) {

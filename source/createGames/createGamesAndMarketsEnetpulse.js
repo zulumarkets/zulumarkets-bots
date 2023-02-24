@@ -85,6 +85,7 @@ async function doCreate(network, botName) {
 
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
+  let yearOfCalculation = process.env.YEAR_OF_CALCULATION.split(",");
 
   let primaryBookmaker;
   let useBackupBookmaker;
@@ -151,9 +152,9 @@ async function doCreate(network, botName) {
       );
       console.log("Tournament type count (filtered): " + tournamentType.length);
 
-      var tournaments = [];
       // get tournamet by tournament types
       for (let z = 0; z < tournamentType.length; z++) {
+        var tournaments = [];
         console.log("Tournament type: " + tournamentType[z].id);
 
         let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(
@@ -188,8 +189,8 @@ async function doCreate(network, botName) {
         console.log("Tournaments count: " + tournaments.length);
 
         // filter out only current year
-        tournaments = tournaments.filter(
-          (item) => item.name === process.env.YEAR_OF_CALCULATION
+        tournaments = tournaments.filter((item) =>
+          isNameInYear(item.name, yearOfCalculation)
         );
         console.log("Tournaments count (filtered): " + tournaments.length);
 
@@ -323,7 +324,8 @@ async function doCreate(network, botName) {
                     token: process.env.REQUEST_KEY_ENETPULS,
                     objectFK: gamesOnADate[n],
                     odds_providerFK: primaryBookmaker,
-                    outcome_typeFK: process.env.OUTCOME_FK,
+                    outcome_typeFK: process.env.OUTCOME_TYPE_FK,
+                    outcome_scopeFK: process.env.OUTCOME_SCOPE_FK,
                   },
                 });
 
@@ -462,7 +464,7 @@ async function doCreate(network, botName) {
   }
 
   console.log("waiting for queue to populate before Create Markets...");
-  await delay(1000 * 60); // wait to be populated
+  await delay(1000 * 10); // wait to be populated
   console.log("Create Markets...");
 
   let firstCreated = await queues.firstCreated();
@@ -578,99 +580,14 @@ async function doIndefinitely() {
 
 doIndefinitely();
 
-function getOdds(
-  lines,
-  oddNumber,
-  primaryBookmaker,
-  useBackupBookmaker,
-  backupBookmaker,
-  isSportTwoPositionsSport
-) {
-  var odds = [];
-  for (key in lines) {
-    odds.push(Object.assign(lines[key], { name: key }));
-  }
-
-  let oddPrimary = odds.filter(function (bookmaker) {
-    return bookmaker.name == primaryBookmaker; // primary example 3 - Pinnacle
-  });
-
-  let oddBackup = odds.filter(function (bookmaker) {
-    return bookmaker.name == backupBookmaker; // bck example 11 - Luwvig
-  });
-
-  if (oddPrimary.length == 0) {
-    return useBackupBookmaker
-      ? getOddsFromBackupBookmaker(
-          oddBackup,
-          oddNumber,
-          isSportTwoPositionsSport
-        )
-      : 0;
-  } else if (oddNumber == 1) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].moneyline.moneyline_home === 0.0001
-    ) {
-      return getOddsFromBackupBookmaker(
-        oddBackup,
-        oddNumber,
-        isSportTwoPositionsSport
-      );
-    } else {
-      return oddPrimary[0].moneyline.moneyline_home * 100;
-    }
-  } else if (oddNumber == 2) {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].moneyline.moneyline_away === 0.0001
-    ) {
-      return getOddsFromBackupBookmaker(
-        oddBackup,
-        oddNumber,
-        isSportTwoPositionsSport
-      );
-    } else {
-      return oddPrimary[0].moneyline.moneyline_away * 100;
-    }
-  } else {
-    if (
-      useBackupBookmaker &&
-      oddPrimary[0].moneyline.moneyline_draw === 0.0001 &&
-      !isSportTwoPositionsSport
-    ) {
-      return getOddsFromBackupBookmaker(
-        oddBackup,
-        oddNumber,
-        isSportTwoPositionsSport
-      );
-    } else {
-      if (isSportTwoPositionsSport) {
-        return 0.01; // default
-      }
-      return oddPrimary[0].moneyline.moneyline_draw * 100;
+function isNameInYear(itemName, yearsOfCalculation) {
+  for (let j = 0; j < yearsOfCalculation.length; j++) {
+    if (yearsOfCalculation[j] == itemName) {
+      console.log("Year: " + itemName);
+      return true;
     }
   }
-}
-
-function getOddsFromBackupBookmaker(
-  oddBackup,
-  oddNumber,
-  isSportTwoPositionsSport
-) {
-  if (oddBackup.length == 0) {
-    return 0;
-  } else if (oddNumber == 1) {
-    return oddBackup[0].moneyline.moneyline_home * 100;
-  } else if (oddNumber == 2) {
-    return oddBackup[0].moneyline.moneyline_away * 100;
-  } else {
-    console.log("Sport is two positional: " + isSportTwoPositionsSport);
-    if (isSportTwoPositionsSport) {
-      return 0.01; // default
-    }
-    return oddBackup[0].moneyline.moneyline_draw * 100;
-  }
+  return false;
 }
 
 async function sendErrorMessageToDiscordRequestCL(

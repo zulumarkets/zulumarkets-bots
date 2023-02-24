@@ -78,6 +78,8 @@ async function doResolve(network, botName) {
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
 
+  let yearOfCalculation = process.env.YEAR_OF_CALCULATION.split(",");
+
   // how many days in back (day before and today is perfect because of timezone)
   const daysInBack = process.env.RESOLVE_DAYS_INBACK * -1;
 
@@ -261,8 +263,8 @@ async function doResolve(network, botName) {
           console.log("Tournaments count: " + tournaments.length);
 
           // filter out only current year
-          tournaments = tournaments.filter(
-            (item) => item.name === process.env.YEAR_OF_CALCULATION
+          tournaments = tournaments.filter((item) =>
+            isNameInYear(item.name, yearOfCalculation)
           );
           console.log("Tournaments count (filtered): " + tournaments.length);
 
@@ -790,6 +792,16 @@ function getUnixDateFromString(stringDate) {
   const date = new Date(stringDate);
   date.setUTCHours(0, 0, 0, 0);
   return Math.floor(date.getTime() / 1000);
+}
+
+function isNameInYear(itemName, yearsOfCalculation) {
+  for (let j = 0; j < yearsOfCalculation.length; j++) {
+    if (yearsOfCalculation[j] == itemName) {
+      console.log("Year: " + itemName);
+      return true;
+    }
+  }
+  return false;
 }
 
 doIndefinitely();
