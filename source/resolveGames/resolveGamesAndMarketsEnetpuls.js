@@ -766,7 +766,7 @@ function dateConverter(UNIXTimestamp) {
     "-" +
     month.toString().padStart(2, "0") +
     "-" +
-    date.getUTCDate()
+    date.getUTCDate().toString().padStart(2, "0")
   );
 }
 
