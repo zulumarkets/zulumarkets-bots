@@ -138,6 +138,25 @@ const gamesQueueContract = {
       inputs: [
         {
           indexed: false,
+          internalType: "bytes32",
+          name: "_gameId",
+          type: "bytes32",
+        },
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "_date",
+          type: "uint256",
+        },
+      ],
+      name: "NewStartDateOnGame",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
           internalType: "address",
           name: "oldOwner",
           type: "address",
@@ -617,6 +636,24 @@ const gamesQueueContract = {
         },
       ],
       stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "_gameId",
+          type: "bytes32",
+        },
+        {
+          internalType: "uint256",
+          name: "_date",
+          type: "uint256",
+        },
+      ],
+      name: "updateGameStartDate",
+      outputs: [],
+      stateMutability: "nonpayable",
       type: "function",
     },
     {

@@ -1721,6 +1721,19 @@ const gamesConsumerContract = {
       inputs: [
         {
           internalType: "bytes32",
+          name: "gameId",
+          type: "bytes32",
+        },
+      ],
+      name: "reopenGameForCreationProcessing",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
           name: "",
           type: "bytes32",
         },

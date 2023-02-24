@@ -70,7 +70,7 @@ async function doCreate(network, botName) {
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
 
-  let americanSports = [1, 2, 3, 4, 6, 10];
+  let americanSports = [1, 2, 3, 4, 5, 6, 10];
   let invalidNames = process.env.INVALID_NAMES.split(",");
 
   console.log("Number of invalid names" + invalidNames.length);

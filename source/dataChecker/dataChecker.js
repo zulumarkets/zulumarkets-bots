@@ -67,7 +67,7 @@ async function doCheck(network, botName) {
 
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
-  let americanSports = [1, 2, 3, 4, 6, 10];
+  let americanSports = [1, 2, 3, 4, 5, 6, 10];
 
   console.log("Checking Games...");
 
