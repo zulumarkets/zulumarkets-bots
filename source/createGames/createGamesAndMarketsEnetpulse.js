@@ -348,7 +348,10 @@ async function doCreate(network, botName) {
                 console.log("Odds count (filtered): " + odds.length);
 
                 // there is odds for both participant
-                if (odds.length > 1) {
+                if (
+                  odds.length > 2 ||
+                  (isSportTwoPositionsSport && odds.length > 1)
+                ) {
                   sendRequestForCreate = true;
                   break;
                 }
