@@ -110,6 +110,7 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
   let failedCounter = 0;
 
   console.log("Pulling Odds...");
+  const ZERO_ADDRESS = "0x" + "0".repeat(40);
 
   for (let j = 0; j < sportIdsArray.length; j++) {
     let sportIds = sportIdsArray[j];
@@ -421,7 +422,12 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
               );
 
               // only ongoing games not resolved or already canceled
-              if (!isMarketResolved && !isMarketCanceled) {
+              // and market exists
+              if (
+                !isMarketResolved &&
+                !isMarketCanceled &&
+                marketAddress != ZERO_ADDRESS
+              ) {
                 let homeOddPinnacle = gamesListResponse[n].homeOdd;
                 console.log("Contract ID: " + gamesOnContract[m]);
                 console.log("API ID: " + gamesListResponse[n].id);
@@ -758,7 +764,9 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                   );
                 }
               } else {
-                console.log("Market for game already resolved!");
+                console.log(
+                  "Market for game already resolved, or not created!"
+                );
               }
               // game is in cancel/resolved status on API
             } else if (
