@@ -509,7 +509,11 @@ async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019222287699951656");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
@@ -547,7 +551,11 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019222825791397908");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordCreateMarkets(
@@ -585,7 +593,11 @@ async function sendErrorMessageToDiscordCreateMarkets(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019222287699951656");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendMessageToDiscordTimeOfAGameHasChanged(
@@ -631,7 +643,11 @@ async function sendMessageToDiscordTimeOfAGameHasChanged(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019223296736239745");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendMessageToDiscordTeamsNotTheSame(
@@ -678,7 +694,11 @@ async function sendMessageToDiscordTeamsNotTheSame(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019223647958880377");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordRequestCL(
@@ -724,5 +744,9 @@ async function sendErrorMessageToDiscordRequestCL(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019222287699951656");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }

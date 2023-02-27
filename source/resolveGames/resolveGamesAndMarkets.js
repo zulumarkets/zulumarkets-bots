@@ -548,7 +548,11 @@ async function sendErrorMessageToDiscordRequestToCL(
   let overtimeResolver = await overtimeBot.channels.fetch(
     "1004360121540956200"
   );
-  overtimeResolver.send(message);
+  if (overtimeResolver) {
+    overtimeResolver.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordMarketResolve(
@@ -588,7 +592,11 @@ async function sendErrorMessageToDiscordMarketResolve(
   let overtimeResolver = await overtimeBot.channels.fetch(
     "1004360121540956200"
   );
-  overtimeResolver.send(message);
+  if (overtimeResolver) {
+    overtimeResolver.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
@@ -617,7 +625,11 @@ async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004360121540956200");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
@@ -655,7 +667,11 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004756643977900062");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 function dateConverter(UNIXTimestamp) {
