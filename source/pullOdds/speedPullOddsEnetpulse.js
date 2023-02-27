@@ -95,6 +95,7 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
   // sportId
   let sportIdsArray = process.env.SPORT_IDS.split(",");
   let cancelStatuses = process.env.CANCEL_STATUSES.split(",");
+  let yearOfCalculation = process.env.YEAR_OF_CALCULATION.split(",");
 
   // resolve market
   const market = process.env.MARKET_RESOLVE;
@@ -252,8 +253,8 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
       console.log("Tournaments count: " + tournaments.length);
 
       // filter out only current year
-      tournaments = tournaments.filter(
-        (item) => item.name === process.env.YEAR_OF_CALCULATION
+      tournaments = tournaments.filter((item) =>
+        isNameInYear(item.name, yearOfCalculation)
       );
       console.log("Tournaments count (filtered): " + tournaments.length);
 
@@ -1821,6 +1822,16 @@ function dateConverter(UNIXTimestamp) {
     "-" +
     date.getUTCDate().toString().padStart(2, "0")
   );
+}
+
+function isNameInYear(itemName, yearsOfCalculation) {
+  for (let j = 0; j < yearsOfCalculation.length; j++) {
+    if (yearsOfCalculation[j] == itemName) {
+      console.log("Year: " + itemName);
+      return true;
+    }
+  }
+  return false;
 }
 
 function getUnixDateFromString(stringDate) {
