@@ -72,7 +72,7 @@ async function doCreate(network, botName) {
 
   const jobId = bytes32({ input: process.env.JOB_ID_CREATION });
 
-  const baseUrl_temlate = process.env.TOURNAMENT_TAMPLATE_BASE_URL;
+  const baseUrl_template = process.env.TOURNAMENT_TAMPLATE_BASE_URL;
   const baseURL_tournament = process.env.TOURNAMENT_BASE_URL;
   const baseURL_stage = process.env.TOURNAMENT_STAGE_BASE_URL;
   const baseUrl_events = process.env.TOURNAMENT_EVENTS_BASE_URL;
@@ -127,7 +127,7 @@ async function doCreate(network, botName) {
       console.log("Tournaments count: " + tournamentsbySport.length);
 
       // get turnament types (Example GS, ATP event etc.) for given sport
-      let responseTournament = await axios.get(baseUrl_temlate, {
+      let responseTournament = await axios.get(baseUrl_template, {
         params: {
           username: process.env.USERNAME_ENETPULS,
           token: process.env.REQUEST_KEY_ENETPULS,
@@ -288,12 +288,10 @@ async function doCreate(network, botName) {
           console.log("------------------------");
           console.log("SPORT ID =  " + sportIds[j]);
           console.log("TODAY +  " + i);
+          let gamesForCreation = [];
 
           let unixDate = getSecondsToDate(i);
           console.log("Unix date in seconds: " + unixDate);
-
-          let sendRequestForCreate = false;
-
           let isSportTwoPositionsSport =
             await consumer.isSportTwoPositionsSport(sportIds[j]);
 
@@ -354,8 +352,7 @@ async function doCreate(network, botName) {
                   odds.length > 2 ||
                   (isSportTwoPositionsSport && odds.length > 1)
                 ) {
-                  sendRequestForCreate = true;
-                  break;
+                  gamesForCreation.push(gamesOnADate[n]);
                 }
               }
             }
@@ -363,16 +360,16 @@ async function doCreate(network, botName) {
             console.log(
               "For date " +
                 unixDate +
-                ", request is sending: " +
-                sendRequestForCreate +
+                ", request is sending games count: " +
+                gamesForCreation.length +
                 ", sport id: " +
                 tournamentType[z].id
             );
 
-            if (sendRequestForCreate) {
+            if (gamesForCreation.length > 0) {
               let gamesInBatch = []; // only collect ID's
 
-              gamesOnADate.forEach((o) => {
+              gamesForCreation.forEach((o) => {
                 gamesInBatch.push(o);
               });
 
@@ -398,7 +395,7 @@ async function doCreate(network, botName) {
                       let tx = await wrapper.requestGamesResolveWithFilters(
                         jobId,
                         market,
-                        tournamentType[z].id, // todo add 100000
+                        tournamentType[z].id,
                         unixDate,
                         [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
                         gamesInBatchforCL,
@@ -423,7 +420,7 @@ async function doCreate(network, botName) {
                   let tx = await wrapper.requestGamesResolveWithFilters(
                     jobId,
                     market,
-                    tournamentType[z].id, // todo add 100000
+                    tournamentType[z].id,
                     unixDate,
                     [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
                     gamesInBatch,
@@ -626,7 +623,11 @@ async function sendErrorMessageToDiscordRequestCL(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordCreateMarkets(
@@ -664,7 +665,11 @@ async function sendErrorMessageToDiscordCreateMarkets(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
@@ -693,7 +698,11 @@ async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
@@ -731,7 +740,11 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004753662859550790");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 function getSecondsToDate(dateFrom) {

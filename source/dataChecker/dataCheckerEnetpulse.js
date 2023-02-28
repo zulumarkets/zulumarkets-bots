@@ -71,7 +71,7 @@ async function doCheck(network, botName) {
 
   const jobId = bytes32({ input: process.env.JOB_ID_CREATION });
 
-  const baseUrl_temlate = process.env.TOURNAMENT_TAMPLATE_BASE_URL;
+  const baseUrl_template = process.env.TOURNAMENT_TAMPLATE_BASE_URL;
   const baseURL_tournament = process.env.TOURNAMENT_BASE_URL;
   const baseURL_stage = process.env.TOURNAMENT_STAGE_BASE_URL;
   const baseUrl_events = process.env.TOURNAMENT_EVENTS_BASE_URL;
@@ -122,7 +122,7 @@ async function doCheck(network, botName) {
       console.log("Tournaments count: " + tournamentsbySport.length);
 
       // get turnament types (Example GS, ATP event etc.) for given sport
-      let responseTournament = await axios.get(baseUrl_temlate, {
+      let responseTournament = await axios.get(baseUrl_template, {
         params: {
           username: process.env.USERNAME_ENETPULS,
           token: process.env.REQUEST_KEY_ENETPULS,
@@ -569,7 +569,11 @@ async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019222287699951656");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
@@ -607,7 +611,11 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019222825791397908");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordCreateMarkets(
@@ -645,7 +653,11 @@ async function sendErrorMessageToDiscordCreateMarkets(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019222287699951656");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendMessageToDiscordTimeOfAGameHasChanged(
@@ -691,7 +703,11 @@ async function sendMessageToDiscordTimeOfAGameHasChanged(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019223296736239745");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordRequestCL(
@@ -737,5 +753,9 @@ async function sendErrorMessageToDiscordRequestCL(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1019222287699951656");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
