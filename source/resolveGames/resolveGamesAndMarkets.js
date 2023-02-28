@@ -387,7 +387,7 @@ async function doResolve(network, botName) {
     }
   }
 
-  await delay(10000); // wait to be populated
+  await delay(20 * 1000); // wait to be populated
   console.log("Resolving Markets...");
 
   let firstResolved = await queues.firstResolved();
