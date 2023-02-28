@@ -461,7 +461,7 @@ async function doCreate(network, botName) {
   }
 
   console.log("waiting for queue to populate before Create Markets...");
-  await delay(1000 * 10); // wait to be populated
+  await delay(1000 * 30); // wait to be populated
   console.log("Create Markets...");
 
   let firstCreated = await queues.firstCreated();

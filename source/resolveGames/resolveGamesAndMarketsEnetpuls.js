@@ -83,7 +83,7 @@ async function doResolve(network, botName) {
   // how many days in back (day before and today is perfect because of timezone)
   const daysInBack = process.env.RESOLVE_DAYS_INBACK * -1;
 
-  const baseUrl_temlate = process.env.TOURNAMENT_TAMPLATE_BASE_URL;
+  const baseUrl_template = process.env.TOURNAMENT_TAMPLATE_BASE_URL;
   const baseURL_tournament = process.env.TOURNAMENT_BASE_URL;
   const baseURL_stage = process.env.TOURNAMENT_STAGE_BASE_URL;
   const baseUrl_results = process.env.TOURNAMENT_RESULT_BASE_URL;
@@ -130,7 +130,7 @@ async function doResolve(network, botName) {
     console.log("Tournaments count: " + tournamentsbySport.length);
 
     // get turnament types (Example GS, ATP event etc.) for given sport
-    let responseTournament = await axios.get(baseUrl_temlate, {
+    let responseTournament = await axios.get(baseUrl_template, {
       params: {
         username: process.env.USERNAME_ENETPULS,
         token: process.env.REQUEST_KEY_ENETPULS,
@@ -489,7 +489,7 @@ async function doResolve(network, botName) {
     }
   }
 
-  await delay(10000); // wait to be populated
+  await delay(20 * 1000); // wait to be populated
   console.log("Resolving Markets...");
 
   let firstResolved = await queues.firstResolved();
