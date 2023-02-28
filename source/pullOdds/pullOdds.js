@@ -1140,7 +1140,11 @@ async function sendMessageToDiscordOddsChanged(
       )
       .setColor("#0037ff");
     let overtimeOdds = await overtimeBot.channels.fetch(discordID);
-    overtimeOdds.send(message);
+    if (overtimeOdds) {
+      overtimeOdds.send(message);
+    } else {
+      console.log("channel not found");
+    }
   }
 }
 
@@ -1241,7 +1245,11 @@ async function sendMessageSpreadTotalChangedDiscord(
       )
       .setColor("#0037ff");
     let overtimeOdds = await overtimeBot.channels.fetch(discordID);
-    overtimeOdds.send(message);
+    if (overtimeOdds) {
+      overtimeOdds.send(message);
+    } else {
+      console.log("channel not found");
+    }
   }
 }
 
@@ -1272,7 +1280,11 @@ async function sendMessageToDiscordGameCanceled(
     )
     .setColor("#0037ff");
   let overtimeOdds = await overtimeBot.channels.fetch("1002507873198293012");
-  overtimeOdds.send(message);
+  if (overtimeOdds) {
+    overtimeOdds.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordStatusCancel(
@@ -1318,7 +1330,11 @@ async function sendErrorMessageToDiscordStatusCancel(
     )
     .setColor("#0037ff");
   let overtimeOdds = await overtimeBot.channels.fetch("1004388531319353425");
-  overtimeOdds.send(message);
+  if (overtimeOdds) {
+    overtimeOdds.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordRequestOddsfromCL(
@@ -1357,7 +1373,11 @@ async function sendErrorMessageToDiscordRequestOddsfromCL(
     )
     .setColor("#0037ff");
   let overtimeOdds = await overtimeBot.channels.fetch("1004388531319353425");
-  overtimeOdds.send(message);
+  if (overtimeOdds) {
+    overtimeOdds.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
@@ -1386,7 +1406,11 @@ async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
     )
     .setColor("#0037ff");
   let overtimeOdds = await overtimeBot.channels.fetch("1004388531319353425");
-  overtimeOdds.send(message);
+  if (overtimeOdds) {
+    overtimeOdds.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
@@ -1424,7 +1448,11 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004756729378131998");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 doIndefinitely();
