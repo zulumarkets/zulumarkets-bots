@@ -345,7 +345,8 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
           events = events.filter((event) => {
             console.log(event.id);
             return (
-              event.status_type === "notstarted" &&
+              (event.status_type === "notstarted" ||
+                isGameInRightStatus(cancelStatuses, event.status_type)) &&
               getUnixDateFromString(event.startdate) <=
                 getSecondsToDate(daysInFront) &&
               (isNotTennis ||
