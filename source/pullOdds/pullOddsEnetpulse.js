@@ -1124,7 +1124,7 @@ async function doIndefinitely() {
       await delay(process.env.ODDS_FREQUENCY);
     } catch (e) {
       console.log(e);
-      /*await sendErrorMessageToDiscord(
+      await sendErrorMessageToDiscord(
         "Please check " +
           botName +
           ", error on execution: " +
@@ -1134,7 +1134,7 @@ async function doIndefinitely() {
         network,
         botName
       );
-      numberOfExecution++;*/
+      numberOfExecution++;
       // wait next process
       await delay(process.env.ODDS_FREQUENCY);
     }
