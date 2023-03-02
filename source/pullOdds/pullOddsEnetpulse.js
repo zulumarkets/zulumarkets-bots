@@ -914,8 +914,8 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                   }
                   // game is in cancel/resolved status on API
                 } else if (
-                  gamesListResponse[n].id ==
-                    bytes32({ input: gamesOnContract[m] }) &&
+                  gamesOnContract[m] ==
+                    bytes32({ input: gamesListResponse[n].id }) &&
                   isGameInRightStatus(
                     cancelStatuses,
                     gamesListResponse[n].status
