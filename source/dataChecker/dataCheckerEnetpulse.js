@@ -392,7 +392,7 @@ async function doCheck(network, botName) {
   console.log("End of checking part...");
 
   if (requestWasSend) {
-    await delay(20000); // wait to be populated
+    await delay(30 * 1000); // wait to be populated
 
     console.log("Create New Markets...");
     let firstCreated = await queues.firstCreated();
