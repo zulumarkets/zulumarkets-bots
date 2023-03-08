@@ -492,67 +492,67 @@ async function doResolve(network, botName) {
   await delay(35 * 1000); // wait to be populated
   console.log("Resolving Markets...");
 
-  let firstResolved = await queues.firstResolved();
-  console.log("Start:  " + firstResolved);
-  let lastResolved = await queues.lastResolved();
-  console.log("End:  " + lastResolved);
+  if (requestWasSend) {
+    let firstResolved = await queues.firstResolved();
+    console.log("Start:  " + firstResolved);
+    let lastResolved = await queues.lastResolved();
+    console.log("End:  " + lastResolved);
 
-  // there is new elements in queue
-  if (parseInt(firstResolved) <= parseInt(lastResolved)) {
-    console.log("Processing...");
-    let gameIds = [];
-    for (let i = parseInt(firstResolved); i <= parseInt(lastResolved); i++) {
-      console.log("Process game from queue:  " + i);
+    // there is new elements in queue
+    if (parseInt(firstResolved) <= parseInt(lastResolved)) {
+      console.log("Processing...");
+      let gameIds = [];
+      for (let i = parseInt(firstResolved); i <= parseInt(lastResolved); i++) {
+        console.log("Process game from queue:  " + i);
 
-      let gameId = await queues.gamesResolvedQueue(i);
-      console.log("GameID: " + gameId);
+        let gameId = await queues.gamesResolvedQueue(i);
+        console.log("GameID: " + gameId);
 
-      let marketAddress = await consumer.marketPerGameId(gameId);
-      console.log("Market resolved address: " + marketAddress);
+        let marketAddress = await consumer.marketPerGameId(gameId);
+        console.log("Market resolved address: " + marketAddress);
 
-      gameIds.push(gameId);
+        gameIds.push(gameId);
 
-      if (
-        (gameIds.length > 0 &&
-          gameIds.length % process.env.RESOLVE_BATCH == 0) ||
-        parseInt(lastResolved) == i
-      ) {
-        try {
-          // send all ids
-          let tx = await consumer.resolveAllMarketsForGames(gameIds, {
-            gasLimit: process.env.GAS_LIMIT,
-          });
+        if (
+          (gameIds.length > 0 &&
+            gameIds.length % process.env.RESOLVE_BATCH == 0) ||
+          parseInt(lastResolved) == i
+        ) {
+          try {
+            // send all ids
+            let tx = await consumer.resolveAllMarketsForGames(gameIds, {
+              gasLimit: process.env.GAS_LIMIT,
+            });
 
-          await tx.wait().then((e) => {
-            console.log(
-              "Market resolve for number of games: " + gameIds.length
+            await tx.wait().then((e) => {
+              console.log(
+                "Market resolve for number of games: " + gameIds.length
+              );
+              console.log(gameIds);
+            });
+
+            await delay(1000); // wait to be populated
+
+            gameIds = [];
+          } catch (e) {
+            console.log(e);
+            await sendErrorMessageToDiscordMarketResolve(
+              "Market resolve went wrong! Please check ETH on bot, or kill and debug!" +
+                " EXCEPTION MESSAGE: " +
+                e.message.slice(0, 180),
+              gameIds,
+              network,
+              botName
             );
-            console.log(gameIds);
-          });
-
-          await delay(1000); // wait to be populated
-
-          gameIds = [];
-        } catch (e) {
-          console.log(e);
-          await sendErrorMessageToDiscordMarketResolve(
-            "Market resolve went wrong! Please check ETH on bot, or kill and debug!" +
-              " EXCEPTION MESSAGE: " +
-              e.message.slice(0, 180),
-            gameIds,
-            network,
-            botName
-          );
-          failedCounter++;
-          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
-          break;
+            failedCounter++;
+            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+            break;
+          }
+        } else {
+          continue;
         }
-      } else {
-        continue;
       }
-    }
-  } else {
-    if (requestWasSend) {
+    } else {
       console.log("Nothing but request is send!!!!");
       await sendErrorMessageToDiscord(
         "Request was send, but no games resolved, please check and debug! Stoping bot is mandatory!",
@@ -561,9 +561,9 @@ async function doResolve(network, botName) {
       );
       failedCounter++;
       await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
-    } else {
-      console.log("Nothing to process...");
     }
+  } else {
+    console.log("Nothing to resolve...");
   }
 
   console.log("Ended batch...");
