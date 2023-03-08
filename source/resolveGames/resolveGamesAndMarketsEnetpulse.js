@@ -14,11 +14,13 @@ const axios = require("axios");
 const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
-const allowances = require("../../source/allowances.js");
+const allowances = require("../allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
-let ncaaSupportedTeams = require("../createGames/ncaaSupportedTeams.json");
-let ncaabSupportedTeams = require("../createGames/ncaabSupportedTeams.json");
-
+let supportedGender = require("../createGames/supportedGender.json"); // leagues/tour types etc.
+let supportedLeaguesTennis = require("../createGames/supportedLeaguesTennis.json"); // leagues/tour types etc.
+let supportedLeaguesFootball = require("../createGames/supportedLeaguesFootball.json"); // leagues/tour types etc.
+let tennisTournaments = require("../createGames/tennisSupportTournament.json"); // supported tennis tournamens
+let footballTournament = require("../createGames/footballSupportTournament.json"); // supported tennis tournamens
 const queues = new ethers.Contract(
   process.env.GAME_QUEUE_CONTRACT,
   gamesQueue.gamesQueueContract.abi,
@@ -44,17 +46,18 @@ const erc20Instance = new ethers.Contract(
 );
 
 async function doResolve(network, botName) {
-  const EXPECTED_GAME_DURATIN = {
-    1: process.env.EXPECTED_GAME_NFL,
-    2: process.env.EXPECTED_GAME_NFL,
-    3: process.env.EXPECTED_GAME_MLB,
-    4: process.env.EXPECTED_GAME_NBA,
-    6: process.env.EXPECTED_GAME_NHL,
-    7: process.env.EXPECTED_GAME_UFC,
+  const LEAGUES_BY_SPORT = {
+    1: supportedLeaguesFootball,
+    2: supportedLeaguesTennis,
   };
 
-  const WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT = {
-    7: process.env.WAIT_FOR_RESULTS_TO_BE_UPDATED_UFC,
+  const TOURNAMENTS_BY_SPORT = {
+    1: footballTournament,
+    2: tennisTournaments,
+  };
+  const EXPECTED_GAME_DURATIN = {
+    153: process.env.EXPECTED_GAME_GS,
+    156: process.env.EXPECTED_GAME_MASTERS,
   };
 
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
@@ -75,10 +78,15 @@ async function doResolve(network, botName) {
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
 
+  let yearOfCalculation = process.env.YEAR_OF_CALCULATION.split(",");
+
   // how many days in back (day before and today is perfect because of timezone)
   const daysInBack = process.env.RESOLVE_DAYS_INBACK * -1;
 
-  const baseUrl = process.env.RUNDOWN_BASE_URL;
+  const baseUrl_template = process.env.TOURNAMENT_TAMPLATE_BASE_URL;
+  const baseURL_tournament = process.env.TOURNAMENT_BASE_URL;
+  const baseURL_stage = process.env.TOURNAMENT_STAGE_BASE_URL;
+  const baseUrl_results = process.env.TOURNAMENT_RESULT_BASE_URL;
 
   // resolve market
   const market = process.env.MARKET_RESOLVE;
@@ -97,17 +105,61 @@ async function doResolve(network, botName) {
   let requestWasSend = false;
   let failedCounter = 0;
 
-  // if there is no games no triggering
-  if (unproccessedGames > 0) {
-    // do it for all sports
-    for (let j = 0; j < sportIds.length; j++) {
-      let minutesToWait =
-        WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT[sportIds[j]] !== undefined
-          ? WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT[sportIds[j]]
-          : process.env.WAIT_FOR_RESULTS_TO_BE_UPDATED_DEFAULT;
+  // do it for all sports
+  for (let j = 0; j < sportIds.length; j++) {
+    let leaguesbySport = [];
+    if (LEAGUES_BY_SPORT[sportIds[j]] !== undefined) {
+      leaguesbySport = LEAGUES_BY_SPORT[sportIds[j]];
+    } else {
+      // move to the next!!!
+      console.log("Not supported (league)!");
+      continue;
+    }
+
+    console.log("Leagues count: " + leaguesbySport.length);
+
+    let tournamentsbySport = [];
+    if (TOURNAMENTS_BY_SPORT[sportIds[j]] !== undefined) {
+      tournamentsbySport = TOURNAMENTS_BY_SPORT[sportIds[j]];
+    } else {
+      console.log("Not supported (tournaments)!");
+      // move to the next!!!
+      continue;
+    }
+
+    console.log("Tournaments count: " + tournamentsbySport.length);
+
+    // get turnament types (Example GS, ATP event etc.) for given sport
+    let responseTournament = await axios.get(baseUrl_template, {
+      params: {
+        username: process.env.USERNAME_ENETPULS,
+        token: process.env.REQUEST_KEY_ENETPULS,
+        sportFK: sportIds[j],
+      },
+    });
+
+    var tournamentType = [];
+    for (key in responseTournament.data.tournament_templates) {
+      tournamentType.push(
+        Object.assign(responseTournament.data.tournament_templates[key], {
+          id: key,
+        })
+      );
+    }
+
+    console.log("Tournament type count: " + tournamentType.length);
+
+    // filter only supported turnaments by name
+    tournamentType = tournamentType.filter((tournamnet) =>
+      leaguesbySport.includes(tournamnet.id)
+    );
+    console.log("Tournament type count (filtered): " + tournamentType.length);
+
+    // get tournamet by tournament types
+    for (let z = 0; z < tournamentType.length; z++) {
+      console.log("Tournament type: " + tournamentType[z].id);
       for (let i = daysInBack; i <= 0; i++) {
         console.log("Processing: TODAY " + i);
-        console.log("WAIT FOR RESULT (in minutes): " + minutesToWait);
 
         let unixDate = getSecondsToDate(i);
 
@@ -117,12 +169,12 @@ async function doResolve(network, botName) {
 
         let isSportOnADate = await consumer.isSportOnADate(
           unixDate,
-          sportIds[j]
+          parseInt(tournamentType[z].id)
         );
         console.log("Having sport on a date:  " + isSportOnADate);
 
         let gamesOnContract = await consumer.getGamesPerDatePerSport(
-          sportIds[j],
+          parseInt(tournamentType[z].id),
           unixDate
         );
         console.log("Count games on a date: " + gamesOnContract.length);
@@ -134,6 +186,13 @@ async function doResolve(network, botName) {
         let timeInMiliseconds = new Date().getTime(); // miliseconds
         console.log("Time for proocessing:  " + timeInMiliseconds);
 
+        let expectedGameTime =
+          EXPECTED_GAME_DURATIN[parseInt(tournamentType[z].id)] !== undefined
+            ? EXPECTED_GAME_DURATIN[parseInt(tournamentType[z].id)]
+            : process.env.EXPECTED_GAME_FOOTBAL;
+        console.log("Expected game duration: " + expectedGameTime);
+
+        var tournaments = [];
         // don't use API request if all games are already resolved
         for (let z = 0; z < gamesOnContract.length; z++) {
           if (sendAPIrequest) {
@@ -143,12 +202,6 @@ async function doResolve(network, botName) {
 
           let gameStart = await queues.gameStartPerGameId(gamesOnContract[z]);
           console.log("GAME start: " + gameStart);
-
-          let expectedGameTime =
-            EXPECTED_GAME_DURATIN[parseInt(sportIds[j])] !== undefined
-              ? EXPECTED_GAME_DURATIN[parseInt(sportIds[j])]
-              : process.env.EXPECTED_GAME_FOOTBAL;
-          console.log("Expected game duration: " + expectedGameTime);
 
           let expectedTimeToProcess =
             parseInt(gameStart) + parseInt(expectedGameTime); // add hours  .env
@@ -191,100 +244,149 @@ async function doResolve(network, botName) {
         if (isSportOnADate && gamesOnContract.length > 0 && sendAPIrequest) {
           console.log("Processing sport and date...");
 
-          const urlBuild =
-            baseUrl +
-            "/sports/" +
-            sportIds[j] +
-            "/events/" +
-            dateConverter(unixDateMiliseconds);
-          let response = await axios.get(urlBuild, {
-            params: { key: process.env.REQUEST_KEY },
+          let responseTournaments = await axios.get(baseURL_tournament, {
+            params: {
+              username: process.env.USERNAME_ENETPULS,
+              token: process.env.REQUEST_KEY_ENETPULS,
+              tournament_templateFK: tournamentType[z].id,
+            },
           });
 
-          const gamesListResponse = [];
-
-          let filteredResponse = [];
-          if (sportIds[j] == 1) {
-            response.data.events.forEach((o) => {
-              if (o.teams != undefined) {
-                if (
-                  ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
-                  ncaaSupportedTeams.includes(o.teams_normalized[1].name)
-                ) {
-                  filteredResponse.push(o);
-                }
-              }
-            });
-          } else if (sportIds[j] == 5) {
-            response.data.events.forEach((o) => {
-              if (o.teams != undefined) {
-                if (
-                  ncaabSupportedTeams.includes(o.teams_normalized[0].name) &&
-                  ncaabSupportedTeams.includes(o.teams_normalized[1].name)
-                ) {
-                  filteredResponse.push(o);
-                }
-              }
-            });
-          } else {
-            filteredResponse = response.data.events;
+          for (key in responseTournaments.data.tournaments) {
+            tournaments.push(
+              Object.assign(responseTournaments.data.tournaments[key], {
+                id: key,
+              })
+            );
           }
 
-          filteredResponse.forEach((event) => {
-            gamesListResponse.push({
-              id: event.event_id,
-              status: checkIfUndefined(event.score),
-              updatedAt: checkIfUndefinedDate(event.score),
+          console.log("Tournaments count: " + tournaments.length);
+
+          // filter out only current year
+          tournaments = tournaments.filter((item) =>
+            isNameInYear(item.name, yearOfCalculation)
+          );
+          console.log("Tournaments count (filtered): " + tournaments.length);
+
+          var stages = [];
+          // get tournamet tages by tournament ID's
+          for (let z = 0; z < tournaments.length; z++) {
+            console.log("Tournament ids: " + tournaments[z].id);
+
+            let stagesTournaments = await axios.get(baseURL_stage, {
+              params: {
+                username: process.env.USERNAME_ENETPULS,
+                token: process.env.REQUEST_KEY_ENETPULS,
+                tournamentFK: tournaments[z].id,
+              },
             });
-          });
 
-          // iterate over games on contract and API
-          for (let n = 0; n < gamesListResponse.length; n++) {
-            let gameIdContract = bytes32({ input: gamesListResponse[n].id });
-            console.log("Game id (on contract): -> " + gameIdContract);
-            console.log("Game id API: " + gamesListResponse[n].id);
-            let isGameResultAlreadyFulfilledInner =
-              await consumer.gameFulfilledResolved(gameIdContract);
-            console.log("Status: " + gamesListResponse[n].status);
-            console.log("UpdatedAt: " + gamesListResponse[n].updatedAt);
-            console.log(
-              "Result already fulfilled: " + isGameResultAlreadyFulfilledInner
+            for (key in stagesTournaments.data.tournament_stages) {
+              stages.push(
+                Object.assign(stagesTournaments.data.tournament_stages[key], {
+                  id: key,
+                })
+              );
+            }
+          }
+
+          console.log("Stages count: " + stages.length);
+
+          // filter only supported turnaments by name and date
+          stages = stages.filter(
+            (stage) =>
+              tournamentsbySport.includes(stage.name) &&
+              supportedGender.includes(stage.gender) &&
+              getUnixDateFromString(stage.enddate) >= unixDate &&
+              getUnixDateFromString(stage.startdate) <= unixDate
+          );
+          console.log("Stages count (filtered): " + stages.length);
+
+          for (let l = 0; l < stages.length; l++) {
+            let events = [];
+            let resultsResponse = await axios.get(baseUrl_results, {
+              params: {
+                username: process.env.USERNAME_ENETPULS,
+                token: process.env.REQUEST_KEY_ENETPULS,
+                date: dateConverter(unixDateMiliseconds),
+                tournament_stageFK: stages[l].id,
+              },
+            });
+
+            for (key in resultsResponse.data.events) {
+              events.push(
+                Object.assign(resultsResponse.data.events[key], {
+                  id: key,
+                })
+              );
+            }
+
+            console.log("Events count : " + events.length);
+            var isNotTennis = sportIds[j] == 2 ? false : true;
+            console.log("Is not tennis: " + isNotTennis);
+
+            // filter out finished games
+            events = events.filter(
+              (event) =>
+                isGameInRightStatus(resolvedStatuses, event.status_type) &&
+                (isNotTennis ||
+                  Object.values(event.property).filter(
+                    (props) => props.name === "EventTypeName"
+                  )[0].value === "Male Single")
             );
+            console.log("Events count (filtered): " + events.length);
 
-            let marketId = await consumer.marketPerGameId(gameIdContract);
-            console.log("Market ID: " + marketId);
+            const gamesListResponse = [];
 
-            let isMarketCreated = await consumer.marketCreated(marketId);
-            console.log("is market created: " + isMarketCreated);
+            events.forEach((event) => {
+              gamesListResponse.push({
+                id: event.id,
+                status: event.status_type,
+              });
+            });
 
-            let isMarketResolved = await consumer.marketResolved(marketId);
-            console.log("is market resolved already: " + isMarketResolved);
+            // iterate over games on contract and API
+            for (let n = 0; n < gamesListResponse.length; n++) {
+              let gameIdContract = bytes32({ input: gamesListResponse[n].id });
+              console.log("Game id (on contract): -> " + gameIdContract);
+              console.log("Game id API: " + gamesListResponse[n].id);
+              let isGameResultAlreadyFulfilledInner =
+                await consumer.gameFulfilledResolved(gameIdContract);
+              console.log("Status: " + gamesListResponse[n].status);
+              console.log(
+                "Result already fulfilled: " + isGameResultAlreadyFulfilledInner
+              );
 
-            let isMarketCanceled = await consumer.marketCanceled(marketId);
-            console.log("is market canceled already: " + isMarketCanceled);
+              let marketId = await consumer.marketPerGameId(gameIdContract);
+              console.log("Market ID: " + marketId);
 
-            // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
-            // and result is not set and market for that game exists
-            if (
-              (isGameInRightStatus(
-                cancelStatuses,
-                gamesListResponse[n].status
-              ) ||
-                isGameInRightStatus(
-                  resolvedStatuses,
+              let isMarketCreated = await consumer.marketCreated(marketId);
+              console.log("is market created: " + isMarketCreated);
+
+              let isMarketResolved = await consumer.marketResolved(marketId);
+              console.log("is market resolved already: " + isMarketResolved);
+
+              let isMarketCanceled = await consumer.marketCanceled(marketId);
+              console.log("is market canceled already: " + isMarketCanceled);
+
+              // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
+              // and result is not set and market for that game exists
+              if (
+                (isGameInRightStatus(
+                  cancelStatuses,
                   gamesListResponse[n].status
-                )) &&
-              scoreUpdatedAtCheck(
-                timeInMiliseconds,
-                gamesListResponse[n].updatedAt,
-                minutesToWait
-              ) &&
-              !isGameResultAlreadyFulfilledInner &&
-              isMarketCreated &&
-              !isMarketResolved &&
-              !isMarketCanceled
-            ) {
-              gameIds.push(gamesListResponse[n].id);
+                ) ||
+                  isGameInRightStatus(
+                    resolvedStatuses,
+                    gamesListResponse[n].status
+                  )) &&
+                !isGameResultAlreadyFulfilledInner &&
+                isMarketCreated &&
+                !isMarketResolved &&
+                !isMarketCanceled
+              ) {
+                gameIds.push(gamesListResponse[n].id);
+              }
             }
           }
 
@@ -301,9 +403,9 @@ async function doResolve(network, botName) {
                 let tx = await wrapper.requestGamesResolveWithFilters(
                   jobId,
                   market,
-                  sportIds[j],
+                  tournamentType[z].id,
                   unixDate,
-                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z]
                   gameIds,
                   {
                     gasLimit: process.env.GAS_LIMIT,
@@ -333,9 +435,9 @@ async function doResolve(network, botName) {
                     let tx = await wrapper.requestGamesResolveWithFilters(
                       jobId,
                       market,
-                      sportIds[j],
+                      tournamentType[z].id,
                       unixDate,
-                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z]
                       gamesInBatch,
                       {
                         gasLimit: process.env.GAS_LIMIT,
@@ -364,7 +466,7 @@ async function doResolve(network, botName) {
                   " went wrong! Please check LINK amount on bot, or kill and debug!" +
                   " EXCEPTION MESSAGE: " +
                   e.message.slice(0, 180),
-                sportIds[j],
+                tournamentType[z].id,
                 unixDate,
                 gameIds,
                 network,
@@ -379,7 +481,7 @@ async function doResolve(network, botName) {
             "No games on date: " +
               unixDate +
               " for sport " +
-              sportIds[j] +
+              tournamentType[z].id +
               ", or all are resolved / waiting right time to be resolved!"
           );
         }
@@ -387,10 +489,10 @@ async function doResolve(network, botName) {
     }
   }
 
-  if (requestWasSend) {
-    await delay(35 * 1000); // wait to be populated
-    console.log("Resolving Markets...");
+  await delay(35 * 1000); // wait to be populated
+  console.log("Resolving Markets...");
 
+  if (requestWasSend) {
     let firstResolved = await queues.firstResolved();
     console.log("Start:  " + firstResolved);
     let lastResolved = await queues.lastResolved();
@@ -677,7 +779,13 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
 function dateConverter(UNIXTimestamp) {
   var date = new Date(UNIXTimestamp);
   var month = date.getUTCMonth() + 1; // starts from zero (0) -> January
-  return date.getUTCFullYear() + "-" + month + "-" + date.getUTCDate();
+  return (
+    date.getUTCFullYear() +
+    "-" +
+    month.toString().padStart(2, "0") +
+    "-" +
+    date.getUTCDate().toString().padStart(2, "0")
+  );
 }
 
 function isGameInRightStatus(statuses, status) {
@@ -690,39 +798,26 @@ function isGameInRightStatus(statuses, status) {
   return false;
 }
 
-function scoreUpdatedAtCheck(currentTime, updatedAt, minutesToWait) {
-  console.log(Date.parse(updatedAt));
-  console.log(currentTime);
-  console.log(
-    "Ready for processing " +
-      (parseInt(Date.parse(updatedAt)) + parseInt(minutesToWait * 60 * 1000) <
-        parseInt(currentTime))
-  );
-  return (
-    parseInt(Date.parse(updatedAt)) > 0 &&
-    parseInt(Date.parse(updatedAt)) + parseInt(minutesToWait * 60 * 1000) <
-      parseInt(currentTime)
-  );
-}
-
-function checkIfUndefined(eventScore) {
-  if (eventScore && eventScore.event_status) {
-    return eventScore.event_status;
-  }
-  return "STATUS_UNKNOWN";
-}
-
-function checkIfUndefinedDate(eventUpdatedAt) {
-  if (eventUpdatedAt && eventUpdatedAt.updated_at) {
-    return eventUpdatedAt.updated_at;
-  }
-  return "0001-01-01T00:00:00Z";
-}
-
 function getSecondsToDate(dateFrom) {
   const date = new Date(Date.now() + dateFrom * 3600 * 1000 * 24);
   date.setUTCHours(0, 0, 0, 0);
   return Math.floor(date.getTime() / 1000);
+}
+
+function getUnixDateFromString(stringDate) {
+  const date = new Date(stringDate);
+  date.setUTCHours(0, 0, 0, 0);
+  return Math.floor(date.getTime() / 1000);
+}
+
+function isNameInYear(itemName, yearsOfCalculation) {
+  for (let j = 0; j < yearsOfCalculation.length; j++) {
+    if (yearsOfCalculation[j] == itemName) {
+      console.log("Year: " + itemName);
+      return true;
+    }
+  }
+  return false;
 }
 
 doIndefinitely();
