@@ -13,10 +13,10 @@ const axios = require("axios");
 
 const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
-const allowances = require("../../source/allowances.js");
-const linkToken = require("../../contracts/LinkToken.js");
 const gamesVerifier = require("../../contracts/RundownVerifier.js");
 const gamesOddsObtainer = require("../../contracts/GamesOddsObtainer.js");
+const allowances = require("../allowances.js");
+const linkToken = require("../../contracts/LinkToken.js");
 
 const oddslib = require("oddslib");
 
@@ -32,12 +32,6 @@ const wrapper = new ethers.Contract(
   wallet
 );
 
-const obtainer = new ethers.Contract(
-  process.env.ODDS_OBTAINER_CONTRACT,
-  gamesOddsObtainer.gamesOddsObtainerContract.abi,
-  wallet
-);
-
 const verifier = new ethers.Contract(
   process.env.CONSUMER_VERIFIER_CONTRACT,
   gamesVerifier.rundownVerifier.abi,
@@ -50,17 +44,27 @@ const erc20Instance = new ethers.Contract(
   wallet
 );
 
-async function doPull(numberOfExecution, botName) {
-  let amountOfToken = await erc20Instance.balanceOf(wallet.address);
-  console.log("Amount token in wallet: " + parseInt(amountOfToken));
-  console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
+const obtainer = new ethers.Contract(
+  process.env.ODDS_OBTAINER_CONTRACT,
+  gamesOddsObtainer.gamesOddsObtainerContract.abi,
+  wallet
+);
 
-  if (parseInt(amountOfToken) < parseInt(process.env.LINK_THRESHOLD)) {
-    await sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
-      "Amount of LINK in a odds-bot is: " + amountOfToken,
-      process.env.LINK_THRESHOLD,
-      wallet.address
-    );
+async function doPull(numberOfExecution, lastStartDate, botName, network) {
+  // check every 10th execution if LINK is enough
+  if (numberOfExecution % 10 == 0) {
+    let amountOfToken = await erc20Instance.balanceOf(wallet.address);
+    console.log("Amount token in wallet: " + parseInt(amountOfToken));
+    console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
+
+    if (parseInt(amountOfToken) < parseInt(process.env.LINK_THRESHOLD)) {
+      await sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
+        "Amount of LINK in a " + botName + " is: " + amountOfToken,
+        process.env.LINK_THRESHOLD,
+        wallet.address,
+        network
+      );
+    }
   }
 
   const jobId = bytes32({ input: process.env.JOB_ID_ODDS });
@@ -74,12 +78,7 @@ async function doPull(numberOfExecution, botName) {
   let backupBookmaker;
 
   // sportId
-  let sportIds = process.env.SPORT_IDS.split(",");
-  let riskySports = process.env.RISKY_SPORT_IDS.split(",");
-
-  console.log("sportIds lenght -> " + sportIds.length);
-  console.log("riskySports length -> " + riskySports.length);
-
+  let sportIdsArray = process.env.SPORT_IDS.split(",");
   let cancelStatuses = process.env.CANCEL_STATUSES.split(",");
 
   // resolve market
@@ -107,818 +106,840 @@ async function doPull(numberOfExecution, botName) {
     4: process.env.LINE_CHANGE_DEFAULT_TOTAL,
   };
 
-  let americanSports = [1, 2, 3, 4, 6, 10];
+  let americanSports = [1, 2, 3, 4, 5, 6, 10];
   let failedCounter = 0;
 
   console.log("Pulling Odds...");
+  const ZERO_ADDRESS = "0x" + "0".repeat(40);
 
-  let processed = false;
-  while (!processed) {
-    processed = true;
-
+  for (let j = 0; j < sportIdsArray.length; j++) {
+    let sportIds = sportIdsArray[j];
     console.log("JOB ID =  " + jobId);
+    console.log("sportId: " + sportIds);
+
+    let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(sportIds);
+    useBackupBookmaker = oddsBookmakers.length > 1;
+    primaryBookmaker = oddsBookmakers[0];
+    console.log("Primary bookmaker is (id): " + primaryBookmaker);
+    console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
+
+    if (useBackupBookmaker) {
+      backupBookmaker = oddsBookmakers[1];
+      console.log("Backup bookmaker is (id): " + backupBookmaker);
+    }
+
+    let doesSportSupportSpreadAndTotal =
+      await obtainer.doesSportSupportSpreadAndTotal(sportIds);
+    console.log("Support total and spred: " + doesSportSupportSpreadAndTotal);
 
     // do for all sportIds
-    for (let j = 0; j < sportIds.length; j++) {
-      let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(sportIds[j]);
-      useBackupBookmaker = oddsBookmakers.length > 1;
-      primaryBookmaker = oddsBookmakers[0];
-      console.log("Primary bookmaker is (id): " + primaryBookmaker);
-      console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
 
-      if (useBackupBookmaker) {
-        backupBookmaker = oddsBookmakers[1];
-        console.log("Backup bookmaker is (id): " + backupBookmaker);
-      }
+    let percentageChangePerSport =
+      ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds] !== undefined
+        ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds]
+        : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
 
-      let percentageChangePerSport =
-        ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]] !== undefined
-          ? ODDS_PERCENTAGE_CHANGE_BY_SPORT[sportIds[j]]
-          : process.env.ODDS_PERCENTAGE_CHANGE_DEFAULT;
+    let percentageChangePerSportSpreadTotal =
+      ODDS_PERCENTAGE_CHANGE_BY_SPORT_SPREAD_TOTAL[sportIds] !== undefined
+        ? ODDS_PERCENTAGE_CHANGE_BY_SPORT_SPREAD_TOTAL[sportIds]
+        : process.env.ODDS_PERCENTAGE_CHANGE_SPREAD_TOTAL_DEFAULT;
 
-      let percentageChangePerSportSpreadTotal =
-        ODDS_PERCENTAGE_CHANGE_BY_SPORT_SPREAD_TOTAL[sportIds] !== undefined
-          ? ODDS_PERCENTAGE_CHANGE_BY_SPORT_SPREAD_TOTAL[sportIds]
-          : process.env.ODDS_PERCENTAGE_CHANGE_SPREAD_TOTAL_DEFAULT;
+    let priceChangePerSport =
+      PRICE_AMOUNT_CHANGE_BY_SPORT[sportIds] !== undefined
+        ? PRICE_AMOUNT_CHANGE_BY_SPORT[sportIds]
+        : process.env.PRICE_AMOUNT_CHANGE_DEFAULT;
 
-      let lineChangePerSportSpread =
-        LINE_CHANGE_BY_SPORT_SPREAD[sportIds] !== undefined
-          ? LINE_CHANGE_BY_SPORT_SPREAD[sportIds]
-          : process.env.LINE_CHANGE_DEFAULT_SPREAD;
+    let lineChangePerSportSpread =
+      LINE_CHANGE_BY_SPORT_SPREAD[sportIds] !== undefined
+        ? LINE_CHANGE_BY_SPORT_SPREAD[sportIds]
+        : process.env.LINE_CHANGE_DEFAULT_SPREAD;
 
-      let lineChangePerSportTotal =
-        LINE_CHANGE_BY_SPORT_TOTAL[sportIds] !== undefined
-          ? LINE_CHANGE_BY_SPORT_TOTAL[sportIds]
-          : process.env.LINE_CHANGE_DEFAULT_TOTAL;
+    let lineChangePerSportTotal =
+      LINE_CHANGE_BY_SPORT_TOTAL[sportIds] !== undefined
+        ? LINE_CHANGE_BY_SPORT_TOTAL[sportIds]
+        : process.env.LINE_CHANGE_DEFAULT_TOTAL;
 
-      let priceChangePerSport =
-        PRICE_AMOUNT_CHANGE_BY_SPORT[sportIds] !== undefined
-          ? PRICE_AMOUNT_CHANGE_BY_SPORT[sportIds]
-          : process.env.PRICE_AMOUNT_CHANGE_DEFAULT;
+    // from today!!! maybe some games still running
+    for (let i = 0; i <= daysInFront; i++) {
+      console.log("------------------------");
+      console.log("CHANGE ODDS % : " + percentageChangePerSport);
+      console.log("CHANGE ODDS t/s % : " + percentageChangePerSportSpreadTotal);
+      console.log("PRICE ODDS CHANGING (in cents) : " + priceChangePerSport);
+      console.log("CHANGE LINE SPREAD AMOUNT: " + lineChangePerSportSpread);
+      console.log("CHANGE LINE TOTAL AMOUNT: " + lineChangePerSportTotal);
+      console.log("Processing: TODAY +  " + i);
 
-      // each second execution for non risky sports
+      let unixDate = getSecondsToDate(i);
+      let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
+      console.log("Unix date in miliseconds: " + unixDateMiliseconds);
+      let timeInMiliseconds = new Date().getTime(); // miliseconds
+      console.log("Time for proocessing:  " + timeInMiliseconds);
+
+      let dateSport = unixDate + "_" + sportIds;
+
+      let sportProps = await verifier.getSportProperties(sportIds, unixDate);
+
+      let isSportOnADate = sportProps[0];
+      console.log("Having sport on a date:  " + isSportOnADate);
+
+      let gamesOnContract = sportProps[2];
+      console.log("Count games on a date: " + gamesOnContract.length);
+
+      let isSportTwoPositionsSport = sportProps[1];
+
       if (
-        !isTheSportRisky(riskySports, sportIds[j]) &&
-        numberOfExecution % 2 == 0
+        gamesOnContract.length > 0 &&
+        lastStartDate[dateSport] === undefined
       ) {
-        console.log(
-          "Sport " +
-            sportIds[j] +
-            " is not risky and number of execution was: " +
-            numberOfExecution +
-            ", skiping!"
-        );
-        continue;
+        lastStartDate[dateSport] = 1;
       }
 
-      console.log("SPORT ID =>  " + sportIds[j]);
+      // that day have games inside or in that day all games are in a past
+      if (
+        isSportOnADate &&
+        gamesOnContract.length > 0 &&
+        (numberOfExecution == 0 ||
+          lastGameHasPassed(lastStartDate[dateSport], timeInMiliseconds))
+      ) {
+        console.log("Processing sport and date...");
 
-      let doesSportSupportSpreadAndTotal =
-        await obtainer.doesSportSupportSpreadAndTotal(sportIds[j]);
-      console.log("Support total and spred: " + doesSportSupportSpreadAndTotal);
+        let oddsForGames = await verifier.getOddsForGames(gamesOnContract);
+        console.log("Odds count: " + oddsForGames.length);
 
-      // from today!!! maybe some games still running
-      for (let i = 0; i <= daysInFront; i++) {
-        console.log("------------------------");
-        console.log("CHANGE ODDS % : " + percentageChangePerSport);
-        console.log("CHANGE ODDS t/s% :" + percentageChangePerSportSpreadTotal);
-        console.log("CHANGE LINE SPREAD AMOUNT: " + lineChangePerSportSpread);
-        console.log("CHANGE LINE TOTAL AMOUNT: " + lineChangePerSportTotal);
-        console.log("PRICE ODDS CHANGING (cents) : " + priceChangePerSport);
-        console.log("Processing: TODAY +  " + i);
+        let spreadLinesForGames = [];
+        let totalLinesForGames = [];
+        let spreadTotalsOddsForGames = [];
 
-        let unixDate = getSecondsToDate(i);
-        console.log("Unix date in seconds: " + unixDate);
-        let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
-        console.log("Unix date in miliseconds: " + unixDateMiliseconds);
-
-        let sportProps = await verifier.getSportProperties(
-          sportIds[j],
-          unixDate
+        if (doesSportSupportSpreadAndTotal) {
+          spreadLinesForGames = await verifier.getSpreadLinesForGames(
+            gamesOnContract
+          );
+          totalLinesForGames = await verifier.getTotalLinesForGames(
+            gamesOnContract
+          );
+          spreadTotalsOddsForGames = await verifier.getSpreadTotalsOddsForGames(
+            gamesOnContract
+          );
+        }
+        console.log("spread lines count: " + spreadLinesForGames.length);
+        console.log("total lines count: " + totalLinesForGames.length);
+        console.log(
+          "spread/totals odds count: " + spreadTotalsOddsForGames.length
         );
 
-        let isSportOnADate = sportProps[0];
-        console.log("Having sport on a date:  " + isSportOnADate);
+        let sendRequestForOdds = false;
 
-        let gamesOnContract = sportProps[2];
-        console.log("Count games on a date: " + gamesOnContract.length);
+        const urlBuild =
+          baseUrl +
+          "/sports/" +
+          sportIds +
+          "/events/" +
+          dateConverter(unixDateMiliseconds);
+        let response = await axios.get(urlBuild, {
+          params: { key: process.env.REQUEST_KEY },
+        });
 
-        let isSportTwoPositionsSport = sportProps[1];
-        console.log("isSportTwoPositionsSport: " + isSportTwoPositionsSport);
+        const gamesListResponse = [];
 
-        // that day have games inside
-        if (isSportOnADate && gamesOnContract.length > 0) {
-          console.log("Processing sport and date...");
-
-          let oddsForGames = await verifier.getOddsForGames(gamesOnContract);
-          console.log("Odds count: " + oddsForGames.length);
-
-          let spreadLinesForGames = [];
-          let totalLinesForGames = [];
-          let spreadTotalsOddsForGames = [];
-
-          if (doesSportSupportSpreadAndTotal) {
-            spreadLinesForGames = await verifier.getSpreadLinesForGames(
-              gamesOnContract
-            );
-            totalLinesForGames = await verifier.getTotalLinesForGames(
-              gamesOnContract
-            );
-            spreadTotalsOddsForGames =
-              await verifier.getSpreadTotalsOddsForGames(gamesOnContract);
+        response.data.events.forEach((event) => {
+          let status = checkIfUndefined(event.score);
+          // look only for scheduled or canceled games
+          if (
+            status == "STATUS_SCHEDULED" ||
+            isGameInRightStatus(cancelStatuses, status)
+          ) {
+            gamesListResponse.push({
+              id: event.event_id,
+              homeTeam: getTeam(
+                event.teams,
+                event.teams_normalized,
+                true,
+                americanSports,
+                sportIds
+              ),
+              awayTeam: getTeam(
+                event.teams,
+                event.teams_normalized,
+                false,
+                americanSports,
+                sportIds
+              ),
+              status: status,
+              homeOdd: getOdds(
+                event.lines,
+                1,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              awayOdd: getOdds(
+                event.lines,
+                2,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              drawOdd: getOdds(
+                event.lines,
+                0,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              spreadHome: getSpreadAndTotalLines(
+                event.lines,
+                1,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              spreadAway: getSpreadAndTotalLines(
+                event.lines,
+                2,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              spreadHomeOdds: getSpreadAndTotalOdds(
+                event.lines,
+                1,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              spreadAwayOdds: getSpreadAndTotalOdds(
+                event.lines,
+                2,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              totalOver: getSpreadAndTotalLines(
+                event.lines,
+                3,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              totalUnder: getSpreadAndTotalLines(
+                event.lines,
+                4,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              totalOverOdds: getSpreadAndTotalOdds(
+                event.lines,
+                3,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+              totalUnderOdds: getSpreadAndTotalOdds(
+                event.lines,
+                4,
+                primaryBookmaker,
+                useBackupBookmaker,
+                backupBookmaker,
+                isSportTwoPositionsSport
+              ),
+            });
           }
-          console.log("spread lines count: " + spreadLinesForGames.length);
-          console.log("total lines count: " + totalLinesForGames.length);
+        });
+
+        if (gamesListResponse.length == 0) {
+          lastStartDate[dateSport] = 0;
+        }
+
+        let gamesWhichOddsChanged = [];
+
+        // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
+        for (let n = 0; n < gamesListResponse.length; n++) {
+          /*if (sendRequestForOdds) {
+            break;
+          }*/
+          console.log("Game status -> " + gamesListResponse[n].status);
           console.log(
-            "spread/totals odds count: " + spreadTotalsOddsForGames.length
+            "Obtaining game id (as string): -> " + gamesListResponse[n].id
           );
-
-          let sendRequestForOdds = false;
-
-          const urlBuild =
-            baseUrl +
-            "/sports/" +
-            sportIds[j] +
-            "/events/" +
-            dateConverter(unixDateMiliseconds);
-          let response = await axios.get(urlBuild, {
-            params: { key: process.env.REQUEST_KEY },
-          });
-
-          const gamesListResponse = [];
-
-          response.data.events.forEach((event) => {
-            let status = checkIfUndefined(event.score);
-            // look only for scheduled or canceled games
-            if (
-              status == "STATUS_SCHEDULED" ||
-              isGameInRightStatus(cancelStatuses, status)
-            ) {
-              gamesListResponse.push({
-                id: event.event_id,
-                homeTeam: getTeam(
-                  event.teams,
-                  event.teams_normalized,
-                  true,
-                  americanSports,
-                  sportIds[j]
-                ),
-                awayTeam: getTeam(
-                  event.teams,
-                  event.teams_normalized,
-                  false,
-                  americanSports,
-                  sportIds[j]
-                ),
-                status: checkIfUndefined(event.score),
-                homeOdd: getOdds(
-                  event.lines,
-                  1,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                awayOdd: getOdds(
-                  event.lines,
-                  2,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                drawOdd: getOdds(
-                  event.lines,
-                  0,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                spreadHome: getSpreadAndTotalLines(
-                  event.lines,
-                  1,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                spreadAway: getSpreadAndTotalLines(
-                  event.lines,
-                  2,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                spreadHomeOdds: getSpreadAndTotalOdds(
-                  event.lines,
-                  1,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                spreadAwayOdds: getSpreadAndTotalOdds(
-                  event.lines,
-                  2,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                totalOver: getSpreadAndTotalLines(
-                  event.lines,
-                  3,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                totalUnder: getSpreadAndTotalLines(
-                  event.lines,
-                  4,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                totalOverOdds: getSpreadAndTotalOdds(
-                  event.lines,
-                  3,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-                totalUnderOdds: getSpreadAndTotalOdds(
-                  event.lines,
-                  4,
-                  primaryBookmaker,
-                  useBackupBookmaker,
-                  backupBookmaker,
-                  isSportTwoPositionsSport
-                ),
-              });
-            }
-          });
-
-          let gamesWhichOddsChanged = [];
-
-          // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
-          for (let n = 0; n < gamesListResponse.length; n++) {
+          console.log(
+            "Game: " +
+              gamesListResponse[n].homeTeam +
+              " " +
+              gamesListResponse[n].awayTeam
+          );
+          for (let m = 0; m < gamesOnContract.length; m++) {
             /*if (sendRequestForOdds) {
               break;
             }*/
-            console.log("Game status -> " + gamesListResponse[n].status);
-            console.log(
-              "Obtaining game id (as string): -> " + gamesListResponse[n].id
-            );
-            console.log(
-              "Game: " +
-                gamesListResponse[n].homeTeam +
-                " " +
-                gamesListResponse[n].awayTeam
-            );
-            for (let m = 0; m < gamesOnContract.length; m++) {
-              /*if (sendRequestForOdds) {
-                break;
-                }*/
-              // when game is found and status and status is STATUS_SCHEDULED
+            // when game is found and status and status is STATUS_SCHEDULED
+            if (
+              gamesListResponse[n].id ==
+                bytes32({ input: gamesOnContract[m] }) &&
+              gamesListResponse[n].status == "STATUS_SCHEDULED"
+            ) {
+              console.log("Odds, checking...");
+
+              let gameProps = await verifier.getGameProperties(
+                gamesOnContract[m]
+              );
+
+              let marketAddress = gameProps[0];
+              console.log("Market: " + marketAddress);
+
+              let isMarketResolved = gameProps[1];
+              console.log("Market resolved: " + isMarketResolved);
+
+              let isMarketCanceled = gameProps[2];
+              console.log("Market canceled: " + isMarketCanceled);
+
+              let gameStart = await queues.gameStartPerGameId(
+                gamesOnContract[m]
+              );
+
+              console.log(
+                "Last game on that date is (before): " +
+                  lastStartDate[dateSport]
+              );
+
+              if (lastStartDate[dateSport] < gameStart) {
+                console.log("Last start date changed");
+                lastStartDate[dateSport] = gameStart;
+              }
+
+              console.log(
+                "Last game on that date is (after): " + lastStartDate[dateSport]
+              );
+
+              // only ongoing games not resolved or already canceled
+              // and market exists
               if (
-                gamesListResponse[n].id ==
-                  bytes32({ input: gamesOnContract[m] }) &&
-                gamesListResponse[n].status == "STATUS_SCHEDULED"
+                !isMarketResolved &&
+                !isMarketCanceled &&
+                marketAddress != ZERO_ADDRESS
               ) {
-                console.log("Odds, checking...");
-
-                let gameProps = await verifier.getGameProperties(
-                  gamesOnContract[m]
+                let homeOddPinnacle = gamesListResponse[n].homeOdd;
+                console.log("Contract ID: " + gamesOnContract[m]);
+                console.log("API ID: " + gamesListResponse[n].id);
+                console.log(
+                  "Home Odds API: " +
+                    homeOddPinnacle +
+                    ", Home Odds contract: " +
+                    oddsForGames[m * 3]
                 );
 
-                let marketAddress = gameProps[0];
-                console.log("Market: " + marketAddress);
-
-                let isMarketResolved = gameProps[1];
-                console.log("Market resolved: " + isMarketResolved);
-
-                let isMarketCanceled = gameProps[2];
-                console.log("Market canceled: " + isMarketCanceled);
-
-                let gameStart = await queues.gameStartPerGameId(
-                  gamesOnContract[m]
+                let awayOddPinnacle = gamesListResponse[n].awayOdd;
+                console.log(
+                  "Away Odds API: " +
+                    awayOddPinnacle +
+                    ", Away Odds contract: " +
+                    oddsForGames[m * 3 + 1]
                 );
 
-                // only ongoing games not resolved or already canceled
-                if (!isMarketResolved && !isMarketCanceled) {
-                  let homeOddPinnacle = gamesListResponse[n].homeOdd;
-                  console.log("Contract ID: " + gamesOnContract[m]);
-                  console.log("API ID: " + gamesListResponse[n].id);
+                let drawOddPinnacle = gamesListResponse[n].drawOdd;
+                if (!isSportTwoPositionsSport) {
                   console.log(
-                    "Home Odds API: " +
-                      homeOddPinnacle +
-                      ", Home Odds contract: " +
-                      oddsForGames[m * 3]
+                    "Draw Odds API: " +
+                      drawOddPinnacle +
+                      ", Draw Odds contract: " +
+                      oddsForGames[m * 3 + 2]
                   );
-
-                  let awayOddPinnacle = gamesListResponse[n].awayOdd;
-                  console.log(
-                    "Away Odds API: " +
-                      awayOddPinnacle +
-                      ", Away Odds contract: " +
-                      oddsForGames[m * 3 + 1]
-                  );
-
-                  let drawOddPinnacle = gamesListResponse[n].drawOdd;
-                  if (!isSportTwoPositionsSport) {
-                    console.log(
-                      "Draw Odds API: " +
-                        drawOddPinnacle +
-                        ", Draw Odds contract: " +
-                        oddsForGames[m * 3 + 2]
-                    );
-                  }
-
-                  let spreadHomePinnacle;
-                  let spreadAwayPinnacle;
-                  let totalOverPinnacle;
-                  let totalUnderPinnacle;
-                  let spreadHomeOddsPinnacle;
-                  let spreadAwayOddsPinnacle;
-                  let totalOverOddsPinnacle;
-                  let totalUnderOddsPinnacle;
-
-                  if (doesSportSupportSpreadAndTotal) {
-                    spreadHomePinnacle = gamesListResponse[n].spreadHome;
-                    console.log(
-                      "Spread home LINE API: " +
-                        spreadHomePinnacle +
-                        ", Spread home LINE contract: " +
-                        spreadLinesForGames[m * 2]
-                    );
-                    spreadAwayPinnacle = gamesListResponse[n].spreadAway;
-                    console.log(
-                      "Spread away LINE API: " +
-                        spreadAwayPinnacle +
-                        ", Spread away LINE contract: " +
-                        spreadLinesForGames[m * 2 + 1]
-                    );
-
-                    totalOverPinnacle = gamesListResponse[n].totalOver;
-                    console.log(
-                      "Total over LINE API: " +
-                        totalOverPinnacle +
-                        ", Total over LINE contract: " +
-                        totalLinesForGames[m * 2]
-                    );
-
-                    totalUnderPinnacle = gamesListResponse[n].totalUnder;
-                    console.log(
-                      "Total under LINE API: " +
-                        totalUnderPinnacle +
-                        ", Total under LINE contract: " +
-                        totalLinesForGames[m * 2 + 1]
-                    );
-                    spreadHomeOddsPinnacle =
-                      gamesListResponse[n].spreadHomeOdds;
-                    console.log(
-                      "Spread home ODDS API: " +
-                        spreadHomeOddsPinnacle +
-                        ", Spread home ODDS contract: " +
-                        spreadTotalsOddsForGames[m * 4]
-                    );
-
-                    spreadAwayOddsPinnacle =
-                      gamesListResponse[n].spreadAwayOdds;
-                    console.log(
-                      "Spread away ODDS API: " +
-                        spreadAwayOddsPinnacle +
-                        ", Spread away ODDS contract: " +
-                        spreadTotalsOddsForGames[m * 4 + 1]
-                    );
-
-                    totalOverOddsPinnacle = gamesListResponse[n].totalOverOdds;
-                    console.log(
-                      "Total over ODDS API: " +
-                        totalOverOddsPinnacle +
-                        ", Total over ODDS contract: " +
-                        spreadTotalsOddsForGames[m * 4 + 2]
-                    );
-
-                    totalUnderOddsPinnacle =
-                      gamesListResponse[n].totalUnderOdds;
-                    console.log(
-                      "Total under ODDS API: " +
-                        totalUnderOddsPinnacle +
-                        ", Total under ODDS contract: " +
-                        spreadTotalsOddsForGames[m * 4 + 3]
-                    );
-                  }
-
-                  let invalidOdds = gameProps[3];
-                  console.log("Is game paused by invalid odds: " + invalidOdds);
-                  let isPausedByCanceledStatus = gameProps[4];
-                  console.log(
-                    "Is game paused by status: " + isPausedByCanceledStatus
-                  );
-
-                  let isMarketPaused = gameProps[5];
-                  console.log("Market paused: " + isMarketPaused);
-
-                  if (
-                    oddsForGames[m * 3] === undefined ||
-                    homeOddPinnacle === undefined ||
-                    oddsForGames[m * 3 + 1] === undefined ||
-                    awayOddPinnacle === undefined
-                  ) {
-                    continue;
-                  }
-
-                  console.log("--------------");
-
-                  // percentage change >= percentageChangePerSport send request
-                  // if doesSportSupportSpreadAndTotal is FALSE not check total/spread
-                  if (
-                    ((homeOddPinnacle != 0.01 &&
-                      awayOddPinnacle != 0.01 &&
-                      homeOddPinnacle != 0 &&
-                      awayOddPinnacle != 0 &&
-                      (isSportTwoPositionsSport ||
-                        (drawOddPinnacle != 0.01 && drawOddPinnacle != 0)) &&
-                      checkSpreadAndTotal(
-                        doesSportSupportSpreadAndTotal,
-                        spreadLinesForGames,
-                        m,
-                        spreadHomePinnacle,
-                        spreadAwayPinnacle,
-                        totalLinesForGames,
-                        totalOverPinnacle,
-                        totalUnderPinnacle,
-                        spreadTotalsOddsForGames,
-                        spreadHomeOddsPinnacle,
-                        percentageChangePerSportSpreadTotal,
-                        spreadAwayOddsPinnacle,
-                        totalOverOddsPinnacle,
-                        totalUnderOddsPinnacle,
-                        lineChangePerSportSpread,
-                        lineChangePerSportTotal,
-                        priceChangePerSport
-                      )) ||
-                      isPercentageOrPriceChanged(
-                        oddsForGames[m * 3],
-                        homeOddPinnacle,
-                        percentageChangePerSport,
-                        priceChangePerSport
-                      ) ||
-                      isPercentageOrPriceChanged(
-                        oddsForGames[m * 3 + 1],
-                        awayOddPinnacle,
-                        percentageChangePerSport,
-                        priceChangePerSport
-                      ) ||
-                      isPercentageOrPriceChanged(
-                        oddsForGames[m * 3 + 2],
-                        drawOddPinnacle,
-                        percentageChangePerSport,
-                        priceChangePerSport
-                      )) &&
-                    !invalidOdds &&
-                    !isPausedByCanceledStatus &&
-                    !isMarketPaused
-                  ) {
-                    let percentageChangeHome = getPercentageOrPriceChange(
-                      oddsForGames[m * 3],
-                      homeOddPinnacle,
-                      percentageChangePerSport,
-                      1
-                    );
-                    let percentageChangeAway = getPercentageOrPriceChange(
-                      oddsForGames[m * 3 + 1],
-                      awayOddPinnacle,
-                      percentageChangePerSport,
-                      1
-                    );
-                    let percentageChangeDraw = getPercentageOrPriceChange(
-                      oddsForGames[m * 3 + 2],
-                      drawOddPinnacle,
-                      percentageChangePerSport,
-                      1
-                    );
-
-                    console.log("Home change odd: " + percentageChangeHome);
-                    console.log("Away change odd: " + percentageChangeAway);
-                    console.log("Draw change odd: " + percentageChangeDraw);
-
-                    if (doesSportSupportSpreadAndTotal) {
-                      let percentageChangeSpreadHome =
-                        getPercentageOrPriceChange(
-                          spreadTotalsOddsForGames[m * 4],
-                          spreadHomeOddsPinnacle,
-                          percentageChangePerSportSpreadTotal,
-                          1
-                        );
-
-                      let percentageChangeSpreadAway =
-                        getPercentageOrPriceChange(
-                          spreadTotalsOddsForGames[m * 4 + 1],
-                          spreadAwayOddsPinnacle,
-                          percentageChangePerSportSpreadTotal,
-                          1
-                        );
-
-                      let percentageChangeTotalOver =
-                        getPercentageOrPriceChange(
-                          spreadTotalsOddsForGames[m * 4 + 2],
-                          totalOverOddsPinnacle,
-                          percentageChangePerSportSpreadTotal,
-                          1
-                        );
-
-                      let percentageChangeTotalUnder =
-                        getPercentageOrPriceChange(
-                          spreadTotalsOddsForGames[m * 4 + 3],
-                          totalUnderOddsPinnacle,
-                          percentageChangePerSportSpreadTotal,
-                          1
-                        );
-                      console.log(
-                        "Spread HOME change odd: " + percentageChangeSpreadHome
-                      );
-                      console.log(
-                        "Spread AWAY change odd: " + percentageChangeSpreadAway
-                      );
-                      console.log(
-                        "Total OVER change odd: " + percentageChangeTotalOver
-                      );
-                      console.log(
-                        "Total UNDER change odd: " + percentageChangeTotalUnder
-                      );
-                      console.log(
-                        "Spread HOME before: " +
-                          spreadLinesForGames[m * 2] +
-                          ", spread HOME now: " +
-                          spreadHomePinnacle
-                      );
-                      console.log(
-                        "Spread AWAY before: " +
-                          spreadLinesForGames[m * 2 + 1] +
-                          ", spread AWAY now: " +
-                          spreadAwayPinnacle
-                      );
-                      console.log(
-                        "Total OVER before: " +
-                          totalLinesForGames[m * 2] +
-                          ", total OVER now: " +
-                          totalOverPinnacle
-                      );
-                      console.log(
-                        "Total UNDER before: " +
-                          totalLinesForGames[m * 2 + 1] +
-                          ", total UNDER now: " +
-                          totalUnderPinnacle
-                      );
-
-                      await sendMessageSpreadTotalChangedDiscord(
-                        gamesListResponse[n].homeTeam,
-                        gamesListResponse[n].awayTeam,
-                        spreadLinesForGames[m * 2],
-                        spreadHomePinnacle,
-                        spreadLinesForGames[m * 2 + 1],
-                        spreadAwayPinnacle,
-                        totalLinesForGames[m * 2],
-                        totalOverPinnacle,
-                        totalLinesForGames[m * 2 + 1],
-                        totalUnderPinnacle,
-                        lineChangePerSportSpread,
-                        lineChangePerSportTotal,
-                        gameStart,
-                        "1054737348170092644"
-                      );
-                    }
-
-                    console.log("Setting sendRequestForOdds to true");
-
-                    sendRequestForOdds = true;
-                    gamesWhichOddsChanged.push(gamesListResponse[n].id);
-
-                    await sendMessageToDiscordOddsChanged(
-                      gamesListResponse[n].homeTeam,
-                      gamesListResponse[n].awayTeam,
-                      oddsForGames[m * 3],
-                      homeOddPinnacle,
-                      oddsForGames[m * 3 + 1],
-                      awayOddPinnacle,
-                      oddsForGames[m * 3 + 2],
-                      drawOddPinnacle,
-                      gameStart,
-                      percentageChangeHome,
-                      percentageChangeAway,
-                      percentageChangeDraw,
-                      percentageChangePerSport,
-                      "1002145721543311370"
-                    );
-                  } else if (
-                    // odds appear and game was paused by invalid odds or cancel status send request
-                    homeOddPinnacle != 0.01 &&
-                    awayOddPinnacle != 0.01 &&
-                    homeOddPinnacle != 0 &&
-                    awayOddPinnacle != 0 &&
-                    (isSportTwoPositionsSport ||
-                      (drawOddPinnacle != 0.01 && drawOddPinnacle != 0)) &&
-                    (invalidOdds || isPausedByCanceledStatus)
-                  ) {
-                    console.log(
-                      "Receiving valid odds or unpause by wrong cancel status!"
-                    );
-                    sendRequestForOdds = true;
-                    gamesWhichOddsChanged.push(gamesListResponse[n].id);
-                    await sendMessageToDiscordOddsChanged(
-                      gamesListResponse[n].homeTeam,
-                      gamesListResponse[n].awayTeam,
-                      0,
-                      homeOddPinnacle,
-                      0,
-                      awayOddPinnacle,
-                      0,
-                      drawOddPinnacle,
-                      gameStart,
-                      100,
-                      100,
-                      isSportTwoPositionsSport ? 0 : 100,
-                      percentageChangePerSport,
-                      "1002145721543311370"
-                    );
-                  }
-                } else {
-                  console.log("Market for game already resolved!");
                 }
-                // game is in cancel/resolved status on API
-              } else if (
-                gamesListResponse[n].id ==
-                  bytes32({ input: gamesOnContract[m] }) &&
-                isGameInRightStatus(cancelStatuses, gamesListResponse[n].status)
-              ) {
-                let gameProps = await verifier.getGameProperties(
-                  gamesOnContract[m]
-                );
 
-                let marketAddress = gameProps[0];
-                console.log("Market: " + marketAddress);
+                let spreadHomePinnacle;
+                let spreadAwayPinnacle;
+                let totalOverPinnacle;
+                let totalUnderPinnacle;
+                let spreadHomeOddsPinnacle;
+                let spreadAwayOddsPinnacle;
+                let totalOverOddsPinnacle;
+                let totalUnderOddsPinnacle;
 
+                if (doesSportSupportSpreadAndTotal) {
+                  spreadHomePinnacle = gamesListResponse[n].spreadHome;
+                  console.log(
+                    "Spread home LINE API: " +
+                      spreadHomePinnacle +
+                      ", Spread home LINE contract: " +
+                      spreadLinesForGames[m * 2]
+                  );
+                  spreadAwayPinnacle = gamesListResponse[n].spreadAway;
+                  console.log(
+                    "Spread away LINE API: " +
+                      spreadAwayPinnacle +
+                      ", Spread away LINE contract: " +
+                      spreadLinesForGames[m * 2 + 1]
+                  );
+
+                  totalOverPinnacle = gamesListResponse[n].totalOver;
+                  console.log(
+                    "Total over LINE API: " +
+                      totalOverPinnacle +
+                      ", Total over LINE contract: " +
+                      totalLinesForGames[m * 2]
+                  );
+
+                  totalUnderPinnacle = gamesListResponse[n].totalUnder;
+                  console.log(
+                    "Total under LINE API: " +
+                      totalUnderPinnacle +
+                      ", Total under LINE contract: " +
+                      totalLinesForGames[m * 2 + 1]
+                  );
+                  spreadHomeOddsPinnacle = gamesListResponse[n].spreadHomeOdds;
+                  console.log(
+                    "Spread home ODDS API: " +
+                      spreadHomeOddsPinnacle +
+                      ", Spread home ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4]
+                  );
+
+                  spreadAwayOddsPinnacle = gamesListResponse[n].spreadAwayOdds;
+                  console.log(
+                    "Spread away ODDS API: " +
+                      spreadAwayOddsPinnacle +
+                      ", Spread away ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4 + 1]
+                  );
+
+                  totalOverOddsPinnacle = gamesListResponse[n].totalOverOdds;
+                  console.log(
+                    "Total over ODDS API: " +
+                      totalOverOddsPinnacle +
+                      ", Total over ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4 + 2]
+                  );
+
+                  totalUnderOddsPinnacle = gamesListResponse[n].totalUnderOdds;
+                  console.log(
+                    "Total under ODDS API: " +
+                      totalUnderOddsPinnacle +
+                      ", Total under ODDS contract: " +
+                      spreadTotalsOddsForGames[m * 4 + 3]
+                  );
+                }
+
+                let invalidOdds = gameProps[3];
+                console.log("Is game paused by invalid odds: " + invalidOdds);
                 let isPausedByCanceledStatus = gameProps[4];
                 console.log(
                   "Is game paused by status: " + isPausedByCanceledStatus
                 );
 
-                let isMarketCanceledAlready = gameProps[2];
-                console.log("Canceled already: " + isMarketCanceledAlready);
+                let isMarketPaused = gameProps[5];
+                console.log("Market paused: " + isMarketPaused);
 
-                console.log(
-                  "MARKET:  " +
-                    marketAddress +
-                    " paused: " +
-                    isPausedByCanceledStatus
-                );
+                if (
+                  oddsForGames[m * 3] === undefined ||
+                  homeOddPinnacle === undefined ||
+                  oddsForGames[m * 3 + 1] === undefined ||
+                  awayOddPinnacle === undefined
+                ) {
+                  continue;
+                }
 
-                // checking if it is already paused by cancel/resolved status
-                // if not pause it
-                if (!isPausedByCanceledStatus && !isMarketCanceledAlready) {
-                  let gameStart = await queues.gameStartPerGameId(
-                    gamesOnContract[m]
+                console.log("--------------");
+
+                // percentage change >= percentageChangePerSport send request
+                // if doesSportSupportSpreadAndTotal is FALSE not check total/spread
+                if (
+                  ((homeOddPinnacle != 0.01 &&
+                    awayOddPinnacle != 0.01 &&
+                    homeOddPinnacle != 0 &&
+                    awayOddPinnacle != 0 &&
+                    (isSportTwoPositionsSport ||
+                      (drawOddPinnacle != 0.01 && drawOddPinnacle != 0)) &&
+                    checkSpreadAndTotal(
+                      doesSportSupportSpreadAndTotal,
+                      spreadLinesForGames,
+                      m,
+                      spreadHomePinnacle,
+                      spreadAwayPinnacle,
+                      totalLinesForGames,
+                      totalOverPinnacle,
+                      totalUnderPinnacle,
+                      spreadTotalsOddsForGames,
+                      spreadHomeOddsPinnacle,
+                      percentageChangePerSportSpreadTotal,
+                      spreadAwayOddsPinnacle,
+                      totalOverOddsPinnacle,
+                      totalUnderOddsPinnacle,
+                      lineChangePerSportSpread,
+                      lineChangePerSportTotal,
+                      priceChangePerSport
+                    )) ||
+                    isPercentageOrPriceChanged(
+                      oddsForGames[m * 3],
+                      homeOddPinnacle,
+                      percentageChangePerSport,
+                      priceChangePerSport
+                    ) ||
+                    isPercentageOrPriceChanged(
+                      oddsForGames[m * 3 + 1],
+                      awayOddPinnacle,
+                      percentageChangePerSport,
+                      priceChangePerSport
+                    ) ||
+                    isPercentageOrPriceChanged(
+                      oddsForGames[m * 3 + 2],
+                      drawOddPinnacle,
+                      percentageChangePerSport,
+                      priceChangePerSport
+                    )) &&
+                  !invalidOdds &&
+                  !isPausedByCanceledStatus &&
+                  !isMarketPaused
+                ) {
+                  let percentageChangeHome = getPercentageOrPriceChange(
+                    oddsForGames[m * 3],
+                    homeOddPinnacle,
+                    percentageChangePerSport,
+                    1
                   );
-                  console.log("GAME start:  " + gameStart);
+                  let percentageChangeAway = getPercentageOrPriceChange(
+                    oddsForGames[m * 3 + 1],
+                    awayOddPinnacle,
+                    percentageChangePerSport,
+                    1
+                  );
+                  let percentageChangeDraw = getPercentageOrPriceChange(
+                    oddsForGames[m * 3 + 2],
+                    drawOddPinnacle,
+                    percentageChangePerSport,
+                    1
+                  );
 
-                  try {
-                    console.log("Send request...");
+                  console.log("Home change odd: " + percentageChangeHome);
+                  console.log("Away change odd: " + percentageChangeAway);
+                  console.log("Draw change odd: " + percentageChangeDraw);
 
-                    let tx = await wrapper.requestGamesResolveWithFilters(
-                      jobIdResolve,
-                      market,
-                      sportIds[j],
-                      gameStart,
-                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
-                      [gamesListResponse[n].id]
+                  if (doesSportSupportSpreadAndTotal) {
+                    let percentageChangeSpreadHome = getPercentageOrPriceChange(
+                      spreadTotalsOddsForGames[m * 4],
+                      spreadHomeOddsPinnacle,
+                      percentageChangePerSportSpreadTotal,
+                      1
                     );
 
-                    await tx.wait().then((e) => {
-                      console.log(
-                        "Requested for: " +
-                          gameStart +
-                          " with game id: " +
-                          gamesListResponse[n].id
-                      );
-                    });
-                    await sendMessageToDiscordGameCanceled(
+                    let percentageChangeSpreadAway = getPercentageOrPriceChange(
+                      spreadTotalsOddsForGames[m * 4 + 1],
+                      spreadAwayOddsPinnacle,
+                      percentageChangePerSportSpreadTotal,
+                      1
+                    );
+
+                    let percentageChangeTotalOver = getPercentageOrPriceChange(
+                      spreadTotalsOddsForGames[m * 4 + 2],
+                      totalOverOddsPinnacle,
+                      percentageChangePerSportSpreadTotal,
+                      1
+                    );
+
+                    let percentageChangeTotalUnder = getPercentageOrPriceChange(
+                      spreadTotalsOddsForGames[m * 4 + 3],
+                      totalUnderOddsPinnacle,
+                      percentageChangePerSportSpreadTotal,
+                      1
+                    );
+                    console.log(
+                      "Spread HOME change odd: " + percentageChangeSpreadHome
+                    );
+                    console.log(
+                      "Spread AWAY change odd: " + percentageChangeSpreadAway
+                    );
+                    console.log(
+                      "Total OVER change odd: " + percentageChangeTotalOver
+                    );
+                    console.log(
+                      "Total UNDER change odd: " + percentageChangeTotalUnder
+                    );
+                    console.log(
+                      "Spread HOME before: " +
+                        spreadLinesForGames[m * 2] +
+                        ", spread HOME now: " +
+                        spreadHomePinnacle
+                    );
+                    console.log(
+                      "Spread AWAY before: " +
+                        spreadLinesForGames[m * 2 + 1] +
+                        ", spread AWAY now: " +
+                        spreadAwayPinnacle
+                    );
+                    console.log(
+                      "Total OVER before: " +
+                        totalLinesForGames[m * 2] +
+                        ", total OVER now: " +
+                        totalOverPinnacle
+                    );
+                    console.log(
+                      "Total UNDER before: " +
+                        totalLinesForGames[m * 2 + 1] +
+                        ", total UNDER now: " +
+                        totalUnderPinnacle
+                    );
+
+                    await sendMessageSpreadTotalChangedDiscord(
                       gamesListResponse[n].homeTeam,
                       gamesListResponse[n].awayTeam,
-                      gameStart
-                    );
-                  } catch (e) {
-                    console.log(e);
-                    await sendErrorMessageToDiscordStatusCancel(
-                      "Request to CL odds-bot went wrong, see: " +
-                        botName +
-                        ", EXCEPTION MESSAGE: " +
-                        e.message.slice(0, 200),
-                      sportIds[j],
+                      spreadLinesForGames[m * 2],
+                      spreadHomePinnacle,
+                      spreadLinesForGames[m * 2 + 1],
+                      spreadAwayPinnacle,
+                      totalLinesForGames[m * 2],
+                      totalOverPinnacle,
+                      totalLinesForGames[m * 2 + 1],
+                      totalUnderPinnacle,
+                      lineChangePerSportSpread,
+                      lineChangePerSportTotal,
                       gameStart,
-                      gamesListResponse[n].id
+                      "1054737348170092644",
+                      network
                     );
-                    failedCounter++;
-                    await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) 10min for admin
                   }
-                } else {
-                  console.log("Market already paused!");
-                }
-              }
-            }
-          }
 
-          console.log("Games to be send: ");
-          console.log("------");
-          console.log(gamesWhichOddsChanged);
-          console.log("------");
+                  console.log("Setting sendRequestForOdds to true");
 
-          // odds changed
-          if (sendRequestForOdds && gamesWhichOddsChanged.length > 0) {
-            console.log("Sending request, odds changed...");
-            try {
-              console.log("Send request...");
+                  sendRequestForOdds = true;
 
-              console.log(
-                "Requesting games count: " + gamesWhichOddsChanged.length
-              );
-              if (gamesWhichOddsChanged.length > process.env.CL_ODDS_BATCH) {
-                let gamesInBatchforCL = [];
-                for (let i = 0; i < gamesWhichOddsChanged.length; i++) {
-                  gamesInBatchforCL.push(gamesWhichOddsChanged[i]);
-                  if (
-                    (gamesInBatchforCL.length > 0 &&
-                      gamesInBatchforCL.length % process.env.CL_ODDS_BATCH ==
-                        0) ||
-                    gamesWhichOddsChanged.length - 1 == i // last one
-                  ) {
-                    console.log("Batch...");
-                    console.log(gamesInBatchforCL);
+                  gamesWhichOddsChanged.push(gamesListResponse[n].id);
 
-                    let tx = await wrapper.requestOddsWithFilters(
-                      jobId,
-                      sportIds[j],
-                      unixDate,
-                      gamesInBatchforCL, //ids,
-                      {
-                        gasLimit: process.env.GAS_LIMIT,
-                      }
-                    );
-
-                    await tx.wait().then((e) => {
-                      console.log(
-                        "Requested for: " +
-                          unixDate +
-                          " for sport: " +
-                          sportIds[j]
-                      );
-                    });
-
-                    gamesInBatchforCL = [];
-                  }
+                  await sendMessageToDiscordOddsChanged(
+                    gamesListResponse[n].homeTeam,
+                    gamesListResponse[n].awayTeam,
+                    oddsForGames[m * 3],
+                    homeOddPinnacle,
+                    oddsForGames[m * 3 + 1],
+                    awayOddPinnacle,
+                    oddsForGames[m * 3 + 2],
+                    drawOddPinnacle,
+                    gameStart,
+                    percentageChangeHome,
+                    percentageChangeAway,
+                    percentageChangeDraw,
+                    percentageChangePerSport,
+                    "1002145721543311370",
+                    network
+                  );
+                } else if (
+                  // odds appear and game was paused by invalid odds or cancel status send request
+                  homeOddPinnacle != 0.01 &&
+                  awayOddPinnacle != 0.01 &&
+                  homeOddPinnacle != 0 &&
+                  awayOddPinnacle != 0 &&
+                  (isSportTwoPositionsSport ||
+                    (drawOddPinnacle != 0.01 && drawOddPinnacle != 0)) &&
+                  (invalidOdds || isPausedByCanceledStatus)
+                ) {
+                  console.log(
+                    "Receiving valid odds or unpause by wrong cancel status!"
+                  );
+                  sendRequestForOdds = true;
+                  gamesWhichOddsChanged.push(gamesListResponse[n].id);
+                  await sendMessageToDiscordOddsChanged(
+                    gamesListResponse[n].homeTeam,
+                    gamesListResponse[n].awayTeam,
+                    0,
+                    homeOddPinnacle,
+                    0,
+                    awayOddPinnacle,
+                    0,
+                    drawOddPinnacle,
+                    gameStart,
+                    100,
+                    100,
+                    isSportTwoPositionsSport ? 0 : 100,
+                    percentageChangePerSport,
+                    "1002145721543311370",
+                    network
+                  );
                 }
               } else {
-                let tx = await wrapper.requestOddsWithFilters(
-                  jobId,
-                  sportIds[j],
-                  unixDate,
-                  gamesWhichOddsChanged, //ids,
-                  {
-                    gasLimit: process.env.GAS_LIMIT,
-                  }
+                console.log(
+                  "Market for game already resolved, or not created!"
                 );
-
-                await tx.wait().then((e) => {
-                  console.log(
-                    "Requested for: " + unixDate + " for sport: " + sportIds[j]
-                  );
-                });
               }
-            } catch (e) {
-              console.log(e);
-              await sendErrorMessageToDiscordRequestOddsfromCL(
-                "Request to CL odds-bot went wrong, see: " +
-                  botName +
-                  ", EXCEPTION MESSAGE: " +
-                  e.message.slice(0, 200),
-                sportIds[j],
-                unixDate
+              // game is in cancel/resolved status on API
+            } else if (
+              gamesListResponse[n].id ==
+                bytes32({ input: gamesOnContract[m] }) &&
+              isGameInRightStatus(cancelStatuses, gamesListResponse[n].status)
+            ) {
+              let gameProps = await verifier.getGameProperties(
+                gamesOnContract[m]
               );
-              failedCounter++;
-              await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) 10min for admin
+
+              let marketAddress = gameProps[0];
+              console.log("Market: " + marketAddress);
+
+              let isPausedByCanceledStatus = gameProps[4];
+              console.log(
+                "Is game paused by status: " + isPausedByCanceledStatus
+              );
+
+              let isMarketCanceledAlready = gameProps[2];
+              console.log("Canceled already: " + isMarketCanceledAlready);
+
+              console.log(
+                "MARKET:  " +
+                  marketAddress +
+                  " paused: " +
+                  isPausedByCanceledStatus
+              );
+
+              // checking if it is already paused by cancel/resolved status
+              // if not pause it
+              if (!isPausedByCanceledStatus && !isMarketCanceledAlready) {
+                let gameStart = await queues.gameStartPerGameId(
+                  gamesOnContract[m]
+                );
+                console.log("GAME start:  " + gameStart);
+
+                try {
+                  console.log("Send request...");
+
+                  let tx = await wrapper.requestGamesResolveWithFilters(
+                    jobIdResolve,
+                    market,
+                    sportIds,
+                    gameStart,
+                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
+                    [gamesListResponse[n].id]
+                  );
+
+                  await tx.wait().then((e) => {
+                    console.log(
+                      "Requested for: " +
+                        gameStart +
+                        " with game id: " +
+                        gamesListResponse[n].id
+                    );
+                  });
+                  await sendMessageToDiscordGameCanceled(
+                    gamesListResponse[n].homeTeam,
+                    gamesListResponse[n].awayTeam,
+                    gameStart,
+                    network
+                  );
+                } catch (e) {
+                  console.log(e);
+                  await sendErrorMessageToDiscordStatusCancel(
+                    "Request to CL " +
+                      botName +
+                      " went wrong, see: " +
+                      botName +
+                      ", EXCEPTION MESSAGE: " +
+                      e.message.slice(0, 180),
+                    sportIds,
+                    gameStart,
+                    gamesListResponse[n].id,
+                    network,
+                    botName
+                  );
+                  failedCounter++;
+                  await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) 10 min
+                }
+              } else {
+                console.log("Market already paused!");
+              }
             }
-          } else {
-            console.log("Not still for processing...");
+          }
+        }
+
+        console.log("Games to be send: ");
+        console.log("------");
+        console.log(gamesWhichOddsChanged);
+        console.log("------");
+
+        // odds changed
+        if (sendRequestForOdds && gamesWhichOddsChanged.length > 0) {
+          console.log("Sending request, odds changed...");
+          try {
+            console.log("Send request...");
+
+            console.log(
+              "Requesting games count: " + gamesWhichOddsChanged.length
+            );
+            if (gamesWhichOddsChanged.length > process.env.CL_ODDS_BATCH) {
+              let gamesInBatchforCL = [];
+              for (let i = 0; i < gamesWhichOddsChanged.length; i++) {
+                gamesInBatchforCL.push(gamesWhichOddsChanged[i]);
+                if (
+                  (gamesInBatchforCL.length > 0 &&
+                    gamesInBatchforCL.length % process.env.CL_ODDS_BATCH ==
+                      0) ||
+                  gamesWhichOddsChanged.length - 1 == i // last one
+                ) {
+                  console.log("Batch...");
+                  console.log(gamesInBatchforCL);
+
+                  let tx = await wrapper.requestOddsWithFilters(
+                    jobId,
+                    sportIds,
+                    unixDate,
+                    gamesInBatchforCL, //ids,
+                    {
+                      gasLimit: process.env.GAS_LIMIT,
+                    }
+                  );
+
+                  await tx.wait().then((e) => {
+                    console.log(
+                      "Requested for: " + unixDate + " for sport: " + sportIds
+                    );
+                  });
+
+                  gamesInBatchforCL = [];
+                }
+              }
+            } else {
+              let tx = await wrapper.requestOddsWithFilters(
+                jobId,
+                sportIds,
+                unixDate,
+                gamesWhichOddsChanged, //ids,
+                {
+                  gasLimit: process.env.GAS_LIMIT,
+                }
+              );
+
+              await tx.wait().then((e) => {
+                console.log(
+                  "Requested for: " + unixDate + " for sport: " + sportIds
+                );
+              });
+            }
+          } catch (e) {
+            console.log(e);
+            await sendErrorMessageToDiscordRequestOddsfromCL(
+              "Request to CL from " +
+                botName +
+                " went wrong, see: " +
+                botName +
+                ", EXCEPTION MESSAGE: " +
+                e.message.slice(0, 180),
+              sportIds,
+              unixDate,
+              network,
+              botName
+            );
+            failedCounter++;
+            await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           }
         } else {
-          console.log("Next date...");
+          console.log("Not still for processing...");
         }
+      } else {
+        console.log("Next date...");
       }
     }
 
@@ -927,100 +948,38 @@ async function doPull(numberOfExecution, botName) {
   }
 }
 
-function checkSpreadAndTotal(
-  doesSportSupportSpreadAndTotal,
-  spreadLinesForGames,
-  m,
-  spreadHomePinnacle,
-  spreadAwayPinnacle,
-  totalLinesForGames,
-  totalOverPinnacle,
-  totalUnderPinnacle,
-  spreadTotalsOddsForGames,
-  spreadHomeOddsPinnacle,
-  percentageChangePerSportSpreadTotal,
-  spreadAwayOddsPinnacle,
-  totalOverOddsPinnacle,
-  totalUnderOddsPinnacle,
-  lineChangePerSportSpread,
-  lineChangePerSportTotal,
-  priceChangePerSport
-) {
-  return (
-    doesSportSupportSpreadAndTotal &&
-    (checkSpreadAndTotalThreshold(
-      spreadLinesForGames[m * 2],
-      spreadHomePinnacle,
-      lineChangePerSportSpread
-    ) ||
-      checkSpreadAndTotalThreshold(
-        spreadLinesForGames[m * 2 + 1],
-        spreadAwayPinnacle,
-        lineChangePerSportSpread
-      ) ||
-      checkSpreadAndTotalThreshold(
-        totalLinesForGames[m * 2],
-        totalOverPinnacle,
-        lineChangePerSportTotal
-      ) ||
-      checkSpreadAndTotalThreshold(
-        totalLinesForGames[m * 2 + 1],
-        totalUnderPinnacle,
-        lineChangePerSportTotal
-      ) ||
-      isPercentageOrPriceChanged(
-        spreadTotalsOddsForGames[m * 4],
-        spreadHomeOddsPinnacle,
-        percentageChangePerSportSpreadTotal,
-        priceChangePerSport
-      ) ||
-      isPercentageOrPriceChanged(
-        spreadTotalsOddsForGames[m * 4 + 1],
-        spreadAwayOddsPinnacle,
-        percentageChangePerSportSpreadTotal
-      ) ||
-      isPercentageOrPriceChanged(
-        spreadTotalsOddsForGames[m * 4 + 2],
-        totalOverOddsPinnacle,
-        percentageChangePerSportSpreadTotal,
-        priceChangePerSport
-      ) ||
-      isPercentageOrPriceChanged(
-        spreadTotalsOddsForGames[m * 4 + 3],
-        totalUnderOddsPinnacle,
-        percentageChangePerSportSpreadTotal,
-        priceChangePerSport
-      ))
-  );
-}
-
 async function doIndefinitely() {
   var botName = process.env.BOT_NAME;
+  let network = process.env.NETWORK;
   console.log("Bot name: " + botName);
   await allowances.checkAllowanceAndAllow(
     process.env.LINK_CONTRACT,
     process.env.WRAPPER_CONTRACT
   );
   var numberOfExecution = 0;
+  var lastStartDate = {};
   while (true) {
     try {
       console.log("---------START ODDS EXECUTION---------");
       console.log("Execution time: " + new Date());
       console.log("Execution number: " + numberOfExecution);
-      await doPull(numberOfExecution, botName);
+      await doPull(numberOfExecution, lastStartDate, botName, network);
       numberOfExecution++;
       console.log("---------END ODDS EXECUTION---------");
       await delay(process.env.ODDS_FREQUENCY);
     } catch (e) {
       console.log(e);
-      sendErrorMessageToDiscord(
+      await sendErrorMessageToDiscord(
         "Please check " +
           botName +
           ", error on execution: " +
           numberOfExecution +
           ", EXCEPTION MESSAGE: " +
-          e.message.slice(0, 200)
+          e.message.slice(0, 200),
+        network,
+        botName
       );
+      numberOfExecution++;
       // wait next process
       await delay(process.env.ODDS_FREQUENCY);
     }
@@ -1041,7 +1000,8 @@ async function sendMessageToDiscordOddsChanged(
   percentageChangeAway,
   percentageChangeDraw,
   percentageChangePerSport,
-  discordID
+  discordID,
+  network
 ) {
   if (
     percentageChangeHome === 0 &&
@@ -1150,6 +1110,10 @@ async function sendMessageToDiscordOddsChanged(
           value: "\u200b",
         },
         {
+          name: ":chains: Network:",
+          value: network,
+        },
+        {
           name: ":abacus: Value of threshold: ",
           value: percentageChangePerSport + "%",
         },
@@ -1176,7 +1140,11 @@ async function sendMessageToDiscordOddsChanged(
       )
       .setColor("#0037ff");
     let overtimeOdds = await overtimeBot.channels.fetch(discordID);
-    overtimeOdds.send(message);
+    if (overtimeOdds) {
+      overtimeOdds.send(message);
+    } else {
+      console.log("channel not found");
+    }
   }
 }
 
@@ -1194,7 +1162,8 @@ async function sendMessageSpreadTotalChangedDiscord(
   lineChangePerSportSpread,
   lineChangePerSportTotal,
   gameTime,
-  discordID
+  discordID,
+  network
 ) {
   if (
     spreadHomeContract == 0 &&
@@ -1220,6 +1189,10 @@ async function sendMessageSpreadTotalChangedDiscord(
         {
           name: "Spread/Total changed more than threshold!",
           value: "\u200b",
+        },
+        {
+          name: ":chains: Network:",
+          value: network,
         },
         {
           name: ":abacus: Value of threshold: ",
@@ -1272,16 +1245,29 @@ async function sendMessageSpreadTotalChangedDiscord(
       )
       .setColor("#0037ff");
     let overtimeOdds = await overtimeBot.channels.fetch(discordID);
-    overtimeOdds.send(message);
+    if (overtimeOdds) {
+      overtimeOdds.send(message);
+    } else {
+      console.log("channel not found");
+    }
   }
 }
 
-async function sendMessageToDiscordGameCanceled(homeTeam, awayTeam, gameTime) {
+async function sendMessageToDiscordGameCanceled(
+  homeTeam,
+  awayTeam,
+  gameTime,
+  network
+) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Game paused by cancel status!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
       },
       {
         name: ":classical_building: Overtime game:",
@@ -1294,20 +1280,34 @@ async function sendMessageToDiscordGameCanceled(homeTeam, awayTeam, gameTime) {
     )
     .setColor("#0037ff");
   let overtimeOdds = await overtimeBot.channels.fetch("1002507873198293012");
-  overtimeOdds.send(message);
+  if (overtimeOdds) {
+    overtimeOdds.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordStatusCancel(
   messageForPrint,
   sportId,
   dateTimestamp,
-  gameId
+  gameId,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on odds bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -1330,19 +1330,33 @@ async function sendErrorMessageToDiscordStatusCancel(
     )
     .setColor("#0037ff");
   let overtimeOdds = await overtimeBot.channels.fetch("1004388531319353425");
-  overtimeOdds.send(message);
+  if (overtimeOdds) {
+    overtimeOdds.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordRequestOddsfromCL(
   messageForPrint,
   sportId,
-  dateTimestamp
+  dateTimestamp,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on odds bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -1359,15 +1373,27 @@ async function sendErrorMessageToDiscordRequestOddsfromCL(
     )
     .setColor("#0037ff");
   let overtimeOdds = await overtimeBot.channels.fetch("1004388531319353425");
-  overtimeOdds.send(message);
+  if (overtimeOdds) {
+    overtimeOdds.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
-async function sendErrorMessageToDiscord(messageForPrint) {
+async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on odds bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -1380,13 +1406,18 @@ async function sendErrorMessageToDiscord(messageForPrint) {
     )
     .setColor("#0037ff");
   let overtimeOdds = await overtimeBot.channels.fetch("1004388531319353425");
-  overtimeOdds.send(message);
+  if (overtimeOdds) {
+    overtimeOdds.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
   messageForPrint,
   threshold,
-  wallet
+  wallet,
+  network
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
@@ -1397,6 +1428,10 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
       {
         name: ":coin: Threshold:",
         value: threshold,
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
       },
       {
         name: ":credit_card: Bot wallet address:",
@@ -1413,7 +1448,11 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004756729378131998");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 doIndefinitely();
@@ -1422,6 +1461,18 @@ function getSecondsToDate(dateFrom) {
   const date = new Date(Date.now() + dateFrom * 3600 * 1000 * 24);
   date.setUTCHours(0, 0, 0, 0);
   return Math.floor(date.getTime() / 1000);
+}
+
+function lastGameHasPassed(lastGameTime, currentTime) {
+  if (lastGameTime === undefined) {
+    return false;
+  }
+  if (lastGameTime === 1) {
+    return true;
+  }
+  return (
+    parseInt(lastGameTime) * process.env.MILISECONDS > parseInt(currentTime)
+  );
 }
 
 function dateConverter(UNIXTimestamp) {
@@ -1782,7 +1833,7 @@ function getSpreadAndTotalOddsFromBackupBookmaker(
 }
 
 function getTotalLineAndOddsForFootball(extendedTotals, type) {
-  if (typeof extendedTotals != "undefined" && extendedTotals.length > 1) {
+  if (typeof extendedTotals != "undefined" && extendedTotals.length > 0) {
     var filteredExtendedTotals = extendedTotals.filter(
       (x) => x.total_over === 2.5 // only filter out 2.5 over/under
     );
@@ -1821,7 +1872,7 @@ function getTotalLineAndOddsForFootball(extendedTotals, type) {
 }
 
 function getSpreadLineAndOddsForFootball(extendedSpread, type) {
-  if (typeof extendedSpread != "undefined" && extendedSpread.length > 1) {
+  if (typeof extendedSpread != "undefined" && extendedSpread.length > 0) {
     var filteredExtendedSpread = extendedSpread.filter(
       (x) => x.point_spread_home === 1 // only filter out 1 over/under
     );
@@ -1851,6 +1902,73 @@ function getSpreadLineAndOddsForFootball(extendedSpread, type) {
     }
   }
   return 0; // no odds no line
+}
+
+function checkSpreadAndTotal(
+  doesSportSupportSpreadAndTotal,
+  spreadLinesForGames,
+  m,
+  spreadHomePinnacle,
+  spreadAwayPinnacle,
+  totalLinesForGames,
+  totalOverPinnacle,
+  totalUnderPinnacle,
+  spreadTotalsOddsForGames,
+  spreadHomeOddsPinnacle,
+  percentageChangePerSportSpreadTotal,
+  spreadAwayOddsPinnacle,
+  totalOverOddsPinnacle,
+  totalUnderOddsPinnacle,
+  lineChangePerSportSpread,
+  lineChangePerSportTotal,
+  priceChangePerSport
+) {
+  return (
+    doesSportSupportSpreadAndTotal &&
+    (checkSpreadAndTotalThreshold(
+      spreadLinesForGames[m * 2],
+      spreadHomePinnacle,
+      lineChangePerSportSpread
+    ) ||
+      checkSpreadAndTotalThreshold(
+        spreadLinesForGames[m * 2 + 1],
+        spreadAwayPinnacle,
+        lineChangePerSportSpread
+      ) ||
+      checkSpreadAndTotalThreshold(
+        totalLinesForGames[m * 2],
+        totalOverPinnacle,
+        lineChangePerSportTotal
+      ) ||
+      checkSpreadAndTotalThreshold(
+        totalLinesForGames[m * 2 + 1],
+        totalUnderPinnacle,
+        lineChangePerSportTotal
+      ) ||
+      isPercentageOrPriceChanged(
+        spreadTotalsOddsForGames[m * 4],
+        spreadHomeOddsPinnacle,
+        percentageChangePerSportSpreadTotal,
+        priceChangePerSport
+      ) ||
+      isPercentageOrPriceChanged(
+        spreadTotalsOddsForGames[m * 4 + 1],
+        spreadAwayOddsPinnacle,
+        percentageChangePerSportSpreadTotal
+      ) ||
+      isPercentageOrPriceChanged(
+        spreadTotalsOddsForGames[m * 4 + 2],
+        totalOverOddsPinnacle,
+        percentageChangePerSportSpreadTotal,
+        priceChangePerSport
+      ) ||
+      isPercentageOrPriceChanged(
+        spreadTotalsOddsForGames[m * 4 + 3],
+        totalUnderOddsPinnacle,
+        percentageChangePerSportSpreadTotal,
+        priceChangePerSport
+      ))
+  );
 }
 
 function checkSpreadAndTotalThreshold(

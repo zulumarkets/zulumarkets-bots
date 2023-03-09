@@ -15,17 +15,24 @@ if (usingBlast) {
     name: process.env.NETWORK,
   });
 } else {
-  console.log("INFURA!");
   if (process.env.NETWORK_ID == 420) {
     etherprovider = new ethers.providers.JsonRpcProvider(
       "https://goerli.optimism.io",
       { chainId: Number(process.env.NETWORK_ID), name: process.env.NETWORK }
     );
   } else {
-    etherprovider = new ethers.providers.InfuraProvider(
-      { chainId: Number(process.env.NETWORK_ID), name: process.env.NETWORK },
-      process.env.INFURA
-    );
+    console.log("chainnodes!");
+    if (process.env.INFURA_URL.includes("chainnodes")) {
+      etherprovider = new ethers.providers.JsonRpcProvider(
+        process.env.INFURA_URL
+      );
+    } else {
+      console.log("INFURA!");
+      etherprovider = new ethers.providers.InfuraProvider(
+        { chainId: Number(process.env.NETWORK_ID), name: process.env.NETWORK },
+        process.env.INFURA
+      );
+    }
   }
 }
 

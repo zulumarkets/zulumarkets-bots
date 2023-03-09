@@ -17,6 +17,7 @@ const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
 let ncaaSupportedTeams = require("./ncaaSupportedTeams.json");
+let ncaabSupportedTeams = require("./ncaabSupportedTeams.json");
 let fifaWCSupportedTeams = require("./fifaWCSupportedTeams.json");
 
 const queues = new ethers.Contract(
@@ -43,16 +44,17 @@ const erc20Instance = new ethers.Contract(
   wallet
 );
 
-async function doCreate() {
+async function doCreate(network, botName) {
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
   console.log("Amount token in wallet: " + parseInt(amountOfToken));
   console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
 
   if (parseInt(amountOfToken) < parseInt(process.env.LINK_THRESHOLD)) {
     await sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
-      "Amount of LINK in a creator-bot is: " + amountOfToken,
+      "Amount of LINK in a " + botName + " is: " + amountOfToken,
       process.env.LINK_THRESHOLD,
-      wallet.address
+      wallet.address,
+      network
     );
   }
 
@@ -68,7 +70,7 @@ async function doCreate() {
   // sportId
   let sportIds = process.env.SPORT_IDS.split(",");
 
-  let americanSports = [1, 2, 3, 4, 6, 10];
+  let americanSports = [1, 2, 3, 4, 5, 6, 10];
   let invalidNames = process.env.INVALID_NAMES.split(",");
 
   console.log("Number of invalid names" + invalidNames.length);
@@ -148,6 +150,17 @@ async function doCreate() {
               if (
                 ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
                 ncaaSupportedTeams.includes(o.teams_normalized[1].name)
+              ) {
+                filteredResponse.push(o);
+              }
+            }
+          });
+        } else if (sportIds[j] == 5) {
+          response.data.events.forEach((o) => {
+            if (o.teams_normalized != undefined) {
+              if (
+                ncaabSupportedTeams.includes(o.teams_normalized[0].name) &&
+                ncaabSupportedTeams.includes(o.teams_normalized[1].name)
               ) {
                 filteredResponse.push(o);
               }
@@ -313,7 +326,12 @@ async function doCreate() {
 
         if (sendRequestForCreate) {
           let gamesInBatch = [];
-          if (sportIds[j] == 1 || sportIds[j] == 7 || sportIds[j] == 18) {
+          if (
+            sportIds[j] == 1 ||
+            sportIds[j] == 7 ||
+            sportIds[j] == 18 ||
+            sportIds[j] == 5
+          ) {
             filteredResponse.forEach((o) => {
               gamesInBatch.push(o.event_id);
             });
@@ -381,11 +399,15 @@ async function doCreate() {
           } catch (e) {
             console.log(e);
             await sendErrorMessageToDiscordRequestCL(
-              "Request to CL creator-bot went wrong! Please check LINK amount on bot, or kill and debug!" +
+              "Request to CL " +
+                botName +
+                " went wrong! Please check LINK amount on bot, or kill and debug!" +
                 " EXCEPTION MESSAGE: " +
-                e.message.slice(0, 200),
+                e.message.slice(0, 180),
               sportIds[j],
-              unixDate
+              unixDate,
+              network,
+              botName
             );
             failedCounter++;
             await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
@@ -395,76 +417,79 @@ async function doCreate() {
     }
   }
 
-  console.log("waiting for queue to populate before Create Markets...");
-  await delay(1000 * 60); // wait to be populated
-  console.log("Create Markets...");
+  if (requestWasSend) {
+    console.log("waiting for queue to populate before Create Markets...");
+    await delay(1000 * 60); // wait to be populated
+    console.log("Create Markets...");
+    let firstCreated = await queues.firstCreated();
+    console.log("Start:  " + firstCreated);
+    let lastCreated = await queues.lastCreated();
+    console.log("End:  " + lastCreated);
 
-  let firstCreated = await queues.firstCreated();
-  console.log("Start:  " + firstCreated);
-  let lastCreated = await queues.lastCreated();
-  console.log("End:  " + lastCreated);
+    // there is new elements in queue
+    if (parseInt(firstCreated) <= parseInt(lastCreated)) {
+      console.log("Processing...");
+      let gameIds = [];
+      for (let i = parseInt(firstCreated); i <= parseInt(lastCreated); i++) {
+        console.log("Process game from queue:  " + i);
 
-  // there is new elements in queue
-  if (parseInt(firstCreated) <= parseInt(lastCreated)) {
-    console.log("Processing...");
-    let gameIds = [];
-    for (let i = parseInt(firstCreated); i <= parseInt(lastCreated); i++) {
-      console.log("Process game from queue:  " + i);
+        let gameId = await queues.gamesCreateQueue(i);
+        console.log("GameID: " + gameId);
 
-      let gameId = await queues.gamesCreateQueue(i);
-      console.log("GameID: " + gameId);
+        gameIds.push(gameId);
 
-      gameIds.push(gameId);
-
-      if (
-        (gameIds.length > 0 &&
-          gameIds.length % process.env.CREATE_BATCH == 0) ||
-        parseInt(lastCreated) == i
-      ) {
-        try {
-          console.log(gameIds);
-          // send all ids
-          let tx = await consumer.createAllMarketsForGames(gameIds, {
-            gasLimit: process.env.GAS_LIMIT,
-          });
-
-          await tx.wait().then((e) => {
-            console.log(
-              "Market created for number of games: " + gameIds.length
-            );
+        if (
+          (gameIds.length > 0 &&
+            gameIds.length % process.env.CREATE_BATCH == 0) ||
+          parseInt(lastCreated) == i
+        ) {
+          try {
             console.log(gameIds);
-          });
+            // send all ids
+            let tx = await consumer.createAllMarketsForGames(gameIds, {
+              gasLimit: process.env.GAS_LIMIT,
+            });
 
-          await delay(1000); // wait to be populated
+            await tx.wait().then((e) => {
+              console.log(
+                "Market created for number of games: " + gameIds.length
+              );
+              console.log(gameIds);
+            });
 
-          gameIds = [];
-        } catch (e) {
-          console.log(e);
-          await sendErrorMessageToDiscordCreateMarkets(
-            "Market creation went wrong! Please check ETH on bot, or kill and debug!" +
-              " EXCEPTION MESSAGE: " +
-              e.message.slice(0, 200),
-            gameIds
-          );
-          failedCounter++;
-          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
-          break;
+            await delay(1000); // wait to be populated
+
+            gameIds = [];
+          } catch (e) {
+            console.log(e);
+            await sendErrorMessageToDiscordCreateMarkets(
+              "Market creation went wrong! Please check ETH on bot, or kill and debug!" +
+                " EXCEPTION MESSAGE: " +
+                e.message.slice(0, 180),
+              gameIds,
+              network,
+              botName
+            );
+            failedCounter++;
+            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+            break;
+          }
+        } else {
+          continue;
         }
-      } else {
-        continue;
       }
-    }
-  } else {
-    if (requestWasSend) {
+    } else {
       console.log("Nothing but request is send!!!!");
       await sendErrorMessageToDiscord(
-        "Request was send, but no games created, please check and debug! Stoping bot is mandatory!"
+        "Request was send, but no games created, please check and debug! Stoping bot is mandatory!",
+        network,
+        botName
       );
       failedCounter++;
       await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
-    } else {
-      console.log("Nothing to process...");
     }
+  } else {
+    console.log("Nothing to create...");
   }
 
   console.log("Ended batch...");
@@ -475,23 +500,30 @@ async function doIndefinitely() {
     process.env.LINK_CONTRACT,
     process.env.WRAPPER_CONTRACT
   );
+  let network = process.env.NETWORK;
+  let botName = process.env.BOT_NAME;
+  console.log("Bot name: " + botName);
   var numberOfExecution = 0;
   while (true) {
     try {
       console.log("---------START CREATION EXECUTION---------");
       console.log("Execution time: " + new Date());
       console.log("Execution number: " + numberOfExecution);
-      await doCreate();
+      await doCreate(network, botName);
       numberOfExecution++;
       console.log("---------END CREATION EXECUTION---------");
       await delay(process.env.CREATION_FREQUENCY);
     } catch (e) {
       console.log(e);
-      sendErrorMessageToDiscord(
-        "Please check creation-bot, error on execution: " +
+      await sendErrorMessageToDiscord(
+        "Please check " +
+          botName +
+          ", error on execution: " +
           numberOfExecution +
           ", EXCEPTION MESSAGE: " +
-          e.message.slice(0, 200)
+          e.message.slice(0, 200),
+        network,
+        botName
       );
       // wait next process
       await delay(process.env.CREATION_FREQUENCY);
@@ -646,13 +678,23 @@ function getOddsFromBackupBookmaker(
 async function sendErrorMessageToDiscordRequestCL(
   messageForPrint,
   sportId,
-  dateTimestamp
+  dateTimestamp,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on creation bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -669,18 +711,32 @@ async function sendErrorMessageToDiscordRequestCL(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendErrorMessageToDiscordCreateMarkets(
   messageForPrint,
-  gameIds
+  gameIds,
+  network,
+  botName
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on creation bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -697,15 +753,27 @@ async function sendErrorMessageToDiscordCreateMarkets(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
-async function sendErrorMessageToDiscord(messageForPrint) {
+async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
   var message = new Discord.MessageEmbed()
     .addFields(
       {
         name: "Uuups! Something went wrong on creation bot!",
         value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
       },
       {
         name: ":exclamation: Error message:",
@@ -718,13 +786,18 @@ async function sendErrorMessageToDiscord(messageForPrint) {
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004360039005442058");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
   messageForPrint,
   threshold,
-  wallet
+  wallet,
+  network
 ) {
   var message = new Discord.MessageEmbed()
     .addFields(
@@ -735,6 +808,10 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
       {
         name: ":coin: Threshold:",
         value: threshold,
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
       },
       {
         name: ":credit_card: Bot wallet address:",
@@ -751,7 +828,11 @@ async function sendWarningMessageToDiscordAmountOfLinkInBotLessThenThreshold(
     )
     .setColor("#0037ff");
   let overtimeCreate = await overtimeBot.channels.fetch("1004753662859550790");
-  overtimeCreate.send(message);
+  if (overtimeCreate) {
+    overtimeCreate.send(message);
+  } else {
+    console.log("channel not found");
+  }
 }
 
 function getSecondsToDate(dateFrom) {
