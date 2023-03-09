@@ -203,24 +203,23 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
       ) {
         console.log("Processing sport and date...");
 
-        let oddsForGames = await verifier.getOddsForGames(gamesOnContract);
-        console.log("Odds count: " + oddsForGames.length);
-
+        let oddsForGames = [];
         let spreadLinesForGames = [];
         let totalLinesForGames = [];
         let spreadTotalsOddsForGames = [];
 
         if (doesSportSupportSpreadAndTotal) {
-          spreadLinesForGames = await verifier.getSpreadLinesForGames(
-            gamesOnContract
-          );
-          totalLinesForGames = await verifier.getTotalLinesForGames(
-            gamesOnContract
-          );
-          spreadTotalsOddsForGames = await verifier.getSpreadTotalsOddsForGames(
-            gamesOnContract
-          );
+          let allGamesPropertiesProperties =
+            await verifier.getAllPropertiesForGivenGames(gamesOnContract);
+
+          oddsForGames = allGamesPropertiesProperties[0];
+          spreadLinesForGames = allGamesPropertiesProperties[1];
+          totalLinesForGames = allGamesPropertiesProperties[2];
+          spreadTotalsOddsForGames = allGamesPropertiesProperties[3];
+        } else {
+          oddsForGames = await verifier.getOddsForGames(gamesOnContract);
         }
+        console.log("Odds count: " + oddsForGames.length);
         console.log("spread lines count: " + spreadLinesForGames.length);
         console.log("total lines count: " + totalLinesForGames.length);
         console.log(
@@ -363,25 +362,38 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
 
         let gamesWhichOddsChanged = [];
 
+        let getAllPropertiesForGivenGames = await verifier.getAllGameProperties(
+          gamesOnContract
+        );
+
+        let marketAddressArray = getAllPropertiesForGivenGames[0];
+        let isMarketResolvedArray = getAllPropertiesForGivenGames[1];
+        let isMarketCanceledArray = getAllPropertiesForGivenGames[2];
+        let invalidOddsArray = getAllPropertiesForGivenGames[3];
+        let isPausedByCanceledStatusArray = getAllPropertiesForGivenGames[4];
+        let isMarketPausedArray = getAllPropertiesForGivenGames[5];
+        let gameStartedArray = getAllPropertiesForGivenGames[6];
+
         // check if odd changed more then ODDS_PERCENTAGE_CHANGE_BY_SPORT
-        for (let n = 0; n < gamesListResponse.length; n++) {
+        for (let m = 0; m < gamesOnContract.length; m++) {
           /*if (sendRequestForOdds) {
             break;
           }*/
-          console.log("Game status -> " + gamesListResponse[n].status);
-          console.log(
-            "Obtaining game id (as string): -> " + gamesListResponse[n].id
-          );
-          console.log(
-            "Game: " +
-              gamesListResponse[n].homeTeam +
-              " " +
-              gamesListResponse[n].awayTeam
-          );
-          for (let m = 0; m < gamesOnContract.length; m++) {
+
+          for (let n = 0; n < gamesListResponse.length; n++) {
             /*if (sendRequestForOdds) {
               break;
             }*/
+            console.log("Game status -> " + gamesListResponse[n].status);
+            console.log(
+              "Obtaining game id (as string): -> " + gamesListResponse[n].id
+            );
+            console.log(
+              "Game: " +
+                gamesListResponse[n].homeTeam +
+                " " +
+                gamesListResponse[n].awayTeam
+            );
             // when game is found and status and status is STATUS_SCHEDULED
             if (
               gamesListResponse[n].id ==
@@ -390,22 +402,17 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
             ) {
               console.log("Odds, checking...");
 
-              let gameProps = await verifier.getGameProperties(
-                gamesOnContract[m]
-              );
-
-              let marketAddress = gameProps[0];
+              let marketAddress = marketAddressArray[m];
               console.log("Market: " + marketAddress);
 
-              let isMarketResolved = gameProps[1];
+              let isMarketResolved = isMarketResolvedArray[m];
               console.log("Market resolved: " + isMarketResolved);
 
-              let isMarketCanceled = gameProps[2];
+              let isMarketCanceled = isMarketCanceledArray[m];
               console.log("Market canceled: " + isMarketCanceled);
 
-              let gameStart = await queues.gameStartPerGameId(
-                gamesOnContract[m]
-              );
+              let gameStart = gameStartedArray[m];
+              console.log("GAME start:  " + gameStart);
 
               console.log(
                 "Last game on that date is (before): " +
@@ -529,14 +536,14 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                   );
                 }
 
-                let invalidOdds = gameProps[3];
+                let invalidOdds = invalidOddsArray[m];
                 console.log("Is game paused by invalid odds: " + invalidOdds);
-                let isPausedByCanceledStatus = gameProps[4];
+                let isPausedByCanceledStatus = isPausedByCanceledStatusArray[m];
                 console.log(
                   "Is game paused by status: " + isPausedByCanceledStatus
                 );
 
-                let isMarketPaused = gameProps[5];
+                let isMarketPaused = isMarketPausedArray[m];
                 console.log("Market paused: " + isMarketPaused);
 
                 if (
@@ -774,19 +781,15 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                 bytes32({ input: gamesOnContract[m] }) &&
               isGameInRightStatus(cancelStatuses, gamesListResponse[n].status)
             ) {
-              let gameProps = await verifier.getGameProperties(
-                gamesOnContract[m]
-              );
-
-              let marketAddress = gameProps[0];
+              let marketAddress = marketAddressArray[m];
               console.log("Market: " + marketAddress);
 
-              let isPausedByCanceledStatus = gameProps[4];
+              let isPausedByCanceledStatus = isPausedByCanceledStatusArray[m];
               console.log(
                 "Is game paused by status: " + isPausedByCanceledStatus
               );
 
-              let isMarketCanceledAlready = gameProps[2];
+              let isMarketCanceledAlready = isMarketCanceledArray[m];
               console.log("Canceled already: " + isMarketCanceledAlready);
 
               console.log(
@@ -799,9 +802,7 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
               // checking if it is already paused by cancel/resolved status
               // if not pause it
               if (!isPausedByCanceledStatus && !isMarketCanceledAlready) {
-                let gameStart = await queues.gameStartPerGameId(
-                  gamesOnContract[m]
-                );
+                let gameStart = gameStartedArray[m];
                 console.log("GAME start:  " + gameStart);
 
                 try {
