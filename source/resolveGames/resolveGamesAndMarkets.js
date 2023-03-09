@@ -15,6 +15,7 @@ const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
+const gamesVerifier = require("../../contracts/RundownVerifier.js");
 const linkToken = require("../../contracts/LinkToken.js");
 let ncaaSupportedTeams = require("../createGames/ncaaSupportedTeams.json");
 let ncaabSupportedTeams = require("../createGames/ncaabSupportedTeams.json");
@@ -40,6 +41,12 @@ const consumer = new ethers.Contract(
 const erc20Instance = new ethers.Contract(
   process.env.LINK_CONTRACT,
   linkToken.linkTokenContract.abi,
+  wallet
+);
+
+const verifier = new ethers.Contract(
+  process.env.CONSUMER_VERIFIER_CONTRACT,
+  gamesVerifier.rundownVerifier.abi,
   wallet
 );
 
@@ -96,6 +103,8 @@ async function doResolve(network, botName) {
 
   let requestWasSend = false;
   let failedCounter = 0;
+
+  let gameForRequestCheck = [];
 
   // if there is no games no triggering
   if (unproccessedGames > 0) {
@@ -292,6 +301,7 @@ async function doResolve(network, botName) {
           console.log(gameIds);
 
           if (gameIds.length > 0) {
+            gameForRequestCheck = gameForRequestCheck.concat(gameIds);
             try {
               console.log("Send request...");
               console.log("Games...");
@@ -452,17 +462,53 @@ async function doResolve(network, botName) {
       }
     } else {
       console.log("Nothing but request is send!!!!");
-      await sendErrorMessageToDiscord(
-        "Request was send, but no games resolved, please check and debug! Stoping bot is mandatory!",
-        network,
-        botName
-      );
-      failedCounter++;
-      await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+      // check by ID's
+      if (gameForRequestCheck.length > 0) {
+        console.log("length for checking: " + gameForRequestCheck.length);
+        let sendMassage = false;
+        let gameForRequestCheckBytes = [];
+        for (let r = 0; r < gameForRequestCheck.length; r++) {
+          gameForRequestCheckBytes.push(
+            bytes32({ input: gameForRequestCheck[r] })
+          );
+        }
+        console.log(
+          "length for checking (bytes): " + gameForRequestCheckBytes.length
+        );
+
+        let getAllPropertiesForGivenGames = await verifier.getAllGameProperties(
+          gameForRequestCheckBytes
+        );
+
+        let isMarketResolvedArray = getAllPropertiesForGivenGames[1];
+        let isMarketCanceledArray = getAllPropertiesForGivenGames[2];
+
+        for (let r = 0; r < gameForRequestCheckBytes.length; r++) {
+          if (sendMassage) {
+            break;
+          }
+
+          if (!isMarketResolvedArray[r] && !isMarketCanceledArray[r]) {
+            sendMassage = true;
+          }
+        }
+        if (sendMassage) {
+          await sendErrorMessageToDiscord(
+            "Request was send, but no games resolved, please check and debug! Stoping bot is mandatory!",
+            network,
+            botName
+          );
+          failedCounter++;
+          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+        }
+      }
     }
   } else {
     console.log("Nothing to resolve...");
   }
+
+  // reset
+  gameForRequestCheck = [];
 
   console.log("Ended batch...");
 }
