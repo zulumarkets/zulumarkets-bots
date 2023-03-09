@@ -219,31 +219,29 @@ async function doCheck(network, botName) {
               parseInt(gameStartContract) !=
               parseInt(gamesListResponse[n].gameStartTime)
             ) {
-              console.log("Time of a game UPDATED!!!");
-              console.log("Afected game: " + gamesListResponse[n].id);
-              if (canMarketBeUpdated) {
-                gamesToBeProcessed.push(gamesListResponse[n].id);
-                await sendMessageToDiscordTimeOfAGameHasChanged(
-                  "Time of a game/fight has changed!!!",
-                  gamesListResponse[n].id,
-                  gameIdContract,
-                  gameCreatedOnContract[5],
-                  gameCreatedOnContract[6],
-                  parseInt(gameStartContract),
-                  parseInt(gamesListResponse[n].gameStartTime),
-                  network
-                );
-              } else {
-                await sendMessageToDiscordTimeOfAGameHasChanged(
-                  "OLD MARKET! Time of a game/fight has changed!!! NEED MANUAL PAUSE IF GAME DATE IS NOW EARLIER",
-                  gamesListResponse[n].id,
-                  gameIdContract,
-                  gameCreatedOnContract[5],
-                  gameCreatedOnContract[6],
-                  parseInt(gameStartContract),
-                  parseInt(gamesListResponse[n].gameStartTime),
-                  network
-                );
+              let cuerrentTimeInMili = new Date().getTime(); // miliseconds
+              console.log("Time for proocessing:  " + cuerrentTimeInMili);
+
+              if (
+                parseInt(gamesListResponse[n].gameStartTime) * 1000 >
+                  cuerrentTimeInMili ||
+                parseInt(gameStartContract) * 1000 > cuerrentTimeInMili
+              ) {
+                console.log("Time of a game UPDATED!!!");
+                console.log("Afected game: " + gamesListResponse[n].id);
+                if (canMarketBeUpdated) {
+                  gamesToBeProcessed.push(gamesListResponse[n].id);
+                  await sendMessageToDiscordTimeOfAGameHasChanged(
+                    "Time of a game/fight has changed!!!",
+                    gamesListResponse[n].id,
+                    gameIdContract,
+                    gameCreatedOnContract[5],
+                    gameCreatedOnContract[6],
+                    parseInt(gameStartContract),
+                    parseInt(gamesListResponse[n].gameStartTime),
+                    network
+                  );
+                }
               }
             }
           }
