@@ -462,10 +462,10 @@ async function doResolve(network, botName) {
       }
     } else {
       console.log("Nothing but request is send!!!!");
+      let sendMassage = false;
       // check by ID's
       if (gameForRequestCheck.length > 0) {
         console.log("length for checking: " + gameForRequestCheck.length);
-        let sendMassage = false;
         let gameForRequestCheckBytes = [];
         for (let r = 0; r < gameForRequestCheck.length; r++) {
           gameForRequestCheckBytes.push(
