@@ -8,6 +8,7 @@ const linkToken = require("../../contracts/LinkToken.js");
 
 const parlayData = require("../../contracts/ParlayData.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
+const sportManagerABI = require("../../contracts/SportManager.js");
 const gamesOddsObtainer = require("../../contracts/GamesOddsObtainer.js");
 
 const Discord = require("discord.js");
@@ -29,6 +30,11 @@ const dataParlay = new ethers.Contract(
 const consumer = new ethers.Contract(
   process.env.CONSUMER_CONTRACT,
   gamesConsumer.gamesConsumerContract.abi,
+  wallet
+);
+const sportManager = new ethers.Contract(
+  process.env.SPORT_MANAGER_CONTRACT,
+  sportManagerABI.sportManagerContract.abi,
   wallet
 );
 
@@ -193,28 +199,34 @@ async function exerciseHistory(blocksInHistory, backwardsFromLatestBlock) {
   console.log("Latest block:", parseInt(latestBlock));
   let startBlock = latestBlock - blocksInHistory;
   console.log("Start block:", parseInt(startBlock));
+  let numOfMaturedMarkets = await sportManager.numMaturedMarkets();
+  console.log("Num of Matured markets:", numOfMaturedMarkets.toString());
+  console.log("Markets batch: [", (parseInt(numOfMaturedMarkets)-(parseInt(process.env.NUM_OF_MARKETS)+parseInt(process.env.SKIP_NUM_OF_MARKETS))), ", ", (parseInt(numOfMaturedMarkets)-(parseInt(process.env.SKIP_NUM_OF_MARKETS))),"]");
+  let sportMarketAddress = await sportManager.maturedMarkets((parseInt(numOfMaturedMarkets)-(parseInt(process.env.NUM_OF_MARKETS)+parseInt(process.env.SKIP_NUM_OF_MARKETS))), parseInt(process.env.NUM_OF_MARKETS));
+  newResolved = [];
+  newResolved = newResolved.concat(sportMarketAddress);
   if (blocksInHistory != 0) {
-    let eventFilter = consumer.filters.ResolveSportsMarket();
-    let events = await consumer.queryFilter(
-      eventFilter,
-      startBlock,
-      latestBlock
-    );
-    if (events.length > 0) {
-      let sportMarketAddress;
-      let sportMarketId;
-      let sportMarketOutcome;
-      let sportMarketOptionsCount;
-      for (let i = 0; i < events.length; i++) {
-        sportMarketAddress = events[i].args._marketAddress;
-        sportMarketId = events[i].args._id;
-        sportMarketOutcome = parseInt(events[i].args._outcome);
-        newResolved.push(sportMarketAddress);
-      }
-      if (parlaysToBeExercised.length > 0) {
-        console.log("Parlays to be exercised: ", parlaysToBeExercised);
-      }
-    }
+    // let eventFilter = consumer.filters.ResolveSportsMarket();
+    // let events = await consumer.queryFilter(
+    //   eventFilter,
+    //   startBlock,
+    //   latestBlock
+    // );
+    // if (events.length > 0) {
+    //   let sportMarketAddress;
+    //   let sportMarketId;
+    //   let sportMarketOutcome;
+    //   let sportMarketOptionsCount;
+    //   for (let i = 0; i < events.length; i++) {
+    //     sportMarketAddress = events[i].args._marketAddress;
+    //     sportMarketId = events[i].args._id;
+    //     sportMarketOutcome = parseInt(events[i].args._outcome);
+    //     newResolved.push(sportMarketAddress);
+    //   }
+    //   if (parlaysToBeExercised.length > 0) {
+    //     console.log("Parlays to be exercised: ", parlaysToBeExercised);
+    //   }
+    // }
     console.log("CHILD FILTER CHECK ---> ");
     eventFilter = obtainer.filters.ResolveChildMarket();
     events = await obtainer.queryFilter(eventFilter, startBlock, latestBlock);
@@ -246,11 +258,11 @@ async function doExercise(exerciseParlays) {
   let tx;
   let tx_batch = [];
   if (exerciseParlays.length > 0) {
-    if (exerciseParlays.length > 20) {
+    if (exerciseParlays.length > process.env.EXERCISE_BATCH) {
       let batch = [];
       for (let i = 0; i < exerciseParlays.length; i++) {
         batch.push(exerciseParlays[i]);
-        if (batch.length == 20) {
+        if (batch.length == process.env.EXERCISE_BATCH) {
           try {
             tx = await dataParlay.exerciseParlays(batch, {
               gasLimit: process.env.GAS_LIMIT,
