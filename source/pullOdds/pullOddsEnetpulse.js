@@ -25,12 +25,6 @@ let footballTournament = require("../createGames/footballSupportTournament.json"
 
 const oddslib = require("oddslib");
 
-const queues = new ethers.Contract(
-  process.env.GAME_QUEUE_CONTRACT,
-  gamesQueue.gamesQueueContract.abi,
-  wallet
-);
-
 const wrapper = new ethers.Contract(
   process.env.WRAPPER_CONTRACT,
   gamesWrapper.gamesWraperContract.abi,
@@ -54,6 +48,8 @@ const obtainer = new ethers.Contract(
   gamesOddsObtainer.gamesOddsObtainerContract.abi,
   wallet
 );
+
+let requestIdList = [];
 
 async function doPull(numberOfExecution, lastStartDate, botName, network) {
   const LEAGUES_BY_SPORT = {
@@ -79,6 +75,50 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
         wallet.address,
         network
       );
+    }
+  }
+
+  console.log("Request ids list: ");
+  console.log(requestIdList);
+  console.log("---------");
+
+  if (requestIdList.length > 0) {
+    let faildRequsts = 0;
+    let isFulfilled = await wrapper.areOddsRequestIdsFulFilled(requestIdList);
+
+    if (!isFulfilled) {
+      await sendErrorMessageToDiscordRequestNotFulfilled(
+        network,
+        botName,
+        requestIdList,
+        faildRequsts
+      );
+    } else {
+      requestIdList = [];
+    }
+
+    while (!isFulfilled) {
+      await delay(faildRequsts > 0 ? 10 * 60 * 1000 * faildRequsts : 60 * 1000);
+      isFulfilled = await wrapper.areOddsRequestIdsFulFilled(requestIdList);
+      if (isFulfilled || faildRequsts > 0) {
+        requestIdList = [];
+        if (isFulfilled) {
+          console.log(
+            "All good! Previous execution was executed with success!"
+          );
+        } else {
+          console.log("Nothing changed, lets try again, with new req!!!");
+        }
+        break;
+      } else {
+        faildRequsts++; //1
+        await sendErrorMessageToDiscordRequestNotFulfilled(
+          network,
+          botName,
+          requestIdList,
+          faildRequsts
+        );
+      }
     }
   }
 
@@ -1049,6 +1089,14 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                             " for sport: " +
                             tournamentType[r].id
                         );
+                        let events = e.events.filter(
+                          (evn) => evn.event === "ChainlinkRequested"
+                        );
+                        if (events.length > 0) {
+                          const requestId = events[0].args.id;
+                          console.log("Chainlink request id is: " + requestId);
+                          requestIdList.push(requestId);
+                        }
                       });
 
                       gamesInBatchforCL = [];
@@ -1072,6 +1120,14 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                         " for sport: " +
                         tournamentType[r].id
                     );
+                    let events = e.events.filter(
+                      (evn) => evn.event === "ChainlinkRequested"
+                    );
+                    if (events.length > 0) {
+                      const requestId = events[0].args.id;
+                      console.log("Chainlink request id is: " + requestId);
+                      requestIdList.push(requestId);
+                    }
                   });
                 }
               } catch (e) {
@@ -1556,6 +1612,56 @@ async function sendErrorMessageToDiscord(messageForPrint, network, botName) {
       {
         name: ":exclamation: Error message:",
         value: messageForPrint,
+      },
+      {
+        name: ":alarm_clock: Timestamp:",
+        value: new Date(new Date().toUTCString()),
+      }
+    )
+    .setColor("#0037ff");
+  let overtimeOdds = await overtimeBot.channels.fetch("1004388531319353425");
+  if (overtimeOdds) {
+    overtimeOdds.send(message);
+  } else {
+    console.log("channel not found");
+  }
+}
+
+async function sendErrorMessageToDiscordRequestNotFulfilled(
+  network,
+  botName,
+  requestIds,
+  faildNumber
+) {
+  let messageForPrint = "";
+  if (faildNumber > 0) {
+    messageForPrint = "Waited, not populated stil";
+  } else {
+    messageForPrint =
+      "First check on request id list returned NOT POPULATED, wait more!";
+  }
+
+  var message = new Discord.MessageEmbed()
+    .addFields(
+      {
+        name: "Uuups! Something went wrong on odds bot!",
+        value: "\u200b",
+      },
+      {
+        name: ":chains: Network:",
+        value: network,
+      },
+      {
+        name: ":robot: Bot:",
+        value: botName,
+      },
+      {
+        name: ":exclamation: Error message:",
+        value: messageForPrint,
+      },
+      {
+        name: ":hammer_pick: Request ids:",
+        value: requestIds,
       },
       {
         name: ":alarm_clock: Timestamp:",

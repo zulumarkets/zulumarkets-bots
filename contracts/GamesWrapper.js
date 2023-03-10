@@ -280,6 +280,63 @@ const gamesWraperContract = {
     {
       inputs: [
         {
+          internalType: "bytes32[]",
+          name: "_requestsIds",
+          type: "bytes32[]",
+        },
+      ],
+      name: "areCreatedRequestIdsFulFilled",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32[]",
+          name: "_requestsIds",
+          type: "bytes32[]",
+        },
+      ],
+      name: "areOddsRequestIdsFulFilled",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32[]",
+          name: "_requestsIds",
+          type: "bytes32[]",
+        },
+      ],
+      name: "areResolvedRequestIdsFulFilled",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
           internalType: "address",
           name: "_marketAddress",
           type: "address",
@@ -631,6 +688,25 @@ const gamesWraperContract = {
           name: "",
           type: "bytes32",
         },
+      ],
+      name: "requestIdGamesCreatedFulFilled",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
+        },
         {
           internalType: "uint256",
           name: "",
@@ -655,6 +731,25 @@ const gamesWraperContract = {
           name: "",
           type: "bytes32",
         },
+      ],
+      name: "requestIdGamesOddsFulFilled",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
+        },
         {
           internalType: "uint256",
           name: "",
@@ -667,6 +762,25 @@ const gamesWraperContract = {
           internalType: "bytes",
           name: "",
           type: "bytes",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
+        },
+      ],
+      name: "requestIdGamesResolvedFulFilled",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
         },
       ],
       stateMutability: "view",
