@@ -336,7 +336,8 @@ async function doResolve(network, botName) {
             // filter out finished games
             events = events.filter(
               (event) =>
-                isGameInRightStatus(resolvedStatuses, event.status_type) &&
+                (isGameInRightStatus(resolvedStatuses, event.status_type) ||
+                  isGameInRightStatus(cancelStatuses, event.status_type)) &&
                 (isNotTennis ||
                   Object.values(event.property).filter(
                     (props) => props.name === "EventTypeName"
