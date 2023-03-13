@@ -95,386 +95,381 @@ async function doCreate(network, botName) {
 
   console.log("Create Games...");
 
-  let processed = false;
   let requestWasSend = false;
   let failedCounter = 0;
-  while (!processed) {
-    processed = true;
 
-    console.log("JOB ID =  " + jobId);
-    console.log("MARKET =  " + market);
+  console.log("JOB ID =  " + jobId);
+  console.log("MARKET =  " + market);
 
-    // do for all sportIds
-    for (let j = 0; j < sportIds.length; j++) {
-      let leaguesbySport = [];
-      if (LEAGUES_BY_SPORT[sportIds[j]] !== undefined) {
-        leaguesbySport = LEAGUES_BY_SPORT[sportIds[j]];
-      } else {
-        // move to the next!!!
-        console.log("Not supported (league)!");
-        continue;
+  // do for all sportIds
+  for (let j = 0; j < sportIds.length; j++) {
+    let leaguesbySport = [];
+    if (LEAGUES_BY_SPORT[sportIds[j]] !== undefined) {
+      leaguesbySport = LEAGUES_BY_SPORT[sportIds[j]];
+    } else {
+      // move to the next!!!
+      console.log("Not supported (league)!");
+      continue;
+    }
+
+    console.log("Leagues count: " + leaguesbySport.length);
+
+    let tournamentsbySport = [];
+    if (TOURNAMENTS_BY_SPORT[sportIds[j]] !== undefined) {
+      tournamentsbySport = TOURNAMENTS_BY_SPORT[sportIds[j]];
+    } else {
+      console.log("Not supported (tournaments)!");
+      // move to the next!!!
+      continue;
+    }
+
+    console.log("Tournaments count: " + tournamentsbySport.length);
+
+    // get turnament types (Example GS, ATP event etc.) for given sport
+    let responseTournament = await axios.get(baseUrl_template, {
+      params: {
+        username: process.env.USERNAME_ENETPULS,
+        token: process.env.REQUEST_KEY_ENETPULS,
+        sportFK: sportIds[j],
+      },
+    });
+
+    var tournamentType = [];
+    for (key in responseTournament.data.tournament_templates) {
+      tournamentType.push(
+        Object.assign(responseTournament.data.tournament_templates[key], {
+          id: key,
+        })
+      );
+    }
+
+    console.log("Tournament type count: " + tournamentType.length);
+
+    // filter only supported turnaments by name
+    tournamentType = tournamentType.filter((tournamnet) =>
+      leaguesbySport.includes(tournamnet.id)
+    );
+    console.log("Tournament type count (filtered): " + tournamentType.length);
+
+    // get tournamet by tournament types
+    for (let z = 0; z < tournamentType.length; z++) {
+      var tournaments = [];
+      console.log("Tournament type: " + tournamentType[z].id);
+
+      let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(
+        tournamentType[z].id
+      );
+      useBackupBookmaker = oddsBookmakers.length > 1;
+      primaryBookmaker = "" + oddsBookmakers[0];
+      console.log("Primary bookmaker is (id): " + primaryBookmaker);
+      console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
+
+      if (useBackupBookmaker) {
+        backupBookmaker = "" + oddsBookmakers[1];
+        console.log("Backup bookmaker is (id): " + backupBookmaker);
       }
 
-      console.log("Leagues count: " + leaguesbySport.length);
-
-      let tournamentsbySport = [];
-      if (TOURNAMENTS_BY_SPORT[sportIds[j]] !== undefined) {
-        tournamentsbySport = TOURNAMENTS_BY_SPORT[sportIds[j]];
-      } else {
-        console.log("Not supported (tournaments)!");
-        // move to the next!!!
-        continue;
-      }
-
-      console.log("Tournaments count: " + tournamentsbySport.length);
-
-      // get turnament types (Example GS, ATP event etc.) for given sport
-      let responseTournament = await axios.get(baseUrl_template, {
+      let responseTournaments = await axios.get(baseURL_tournament, {
         params: {
           username: process.env.USERNAME_ENETPULS,
           token: process.env.REQUEST_KEY_ENETPULS,
-          sportFK: sportIds[j],
+          tournament_templateFK: tournamentType[z].id,
         },
       });
 
-      var tournamentType = [];
-      for (key in responseTournament.data.tournament_templates) {
-        tournamentType.push(
-          Object.assign(responseTournament.data.tournament_templates[key], {
+      for (key in responseTournaments.data.tournaments) {
+        tournaments.push(
+          Object.assign(responseTournaments.data.tournaments[key], {
             id: key,
           })
         );
       }
 
-      console.log("Tournament type count: " + tournamentType.length);
+      console.log("Tournaments count: " + tournaments.length);
 
-      // filter only supported turnaments by name
-      tournamentType = tournamentType.filter((tournamnet) =>
-        leaguesbySport.includes(tournamnet.id)
+      // filter out only current year
+      tournaments = tournaments.filter((item) =>
+        isNameInYear(item.name, yearOfCalculation)
       );
-      console.log("Tournament type count (filtered): " + tournamentType.length);
+      console.log("Tournaments count (filtered): " + tournaments.length);
 
-      // get tournamet by tournament types
-      for (let z = 0; z < tournamentType.length; z++) {
-        var tournaments = [];
-        console.log("Tournament type: " + tournamentType[z].id);
+      var stages = [];
+      // get tournamet tages by tournament ID's
+      for (let z = 0; z < tournaments.length; z++) {
+        console.log("Tournament ids: " + tournaments[z].id);
 
-        let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(
-          tournamentType[z].id
-        );
-        useBackupBookmaker = oddsBookmakers.length > 1;
-        primaryBookmaker = "" + oddsBookmakers[0];
-        console.log("Primary bookmaker is (id): " + primaryBookmaker);
-        console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
-
-        if (useBackupBookmaker) {
-          backupBookmaker = "" + oddsBookmakers[1];
-          console.log("Backup bookmaker is (id): " + backupBookmaker);
-        }
-
-        let responseTournaments = await axios.get(baseURL_tournament, {
+        let stagesTournaments = await axios.get(baseURL_stage, {
           params: {
             username: process.env.USERNAME_ENETPULS,
             token: process.env.REQUEST_KEY_ENETPULS,
-            tournament_templateFK: tournamentType[z].id,
+            tournamentFK: tournaments[z].id,
           },
         });
 
-        for (key in responseTournaments.data.tournaments) {
-          tournaments.push(
-            Object.assign(responseTournaments.data.tournaments[key], {
+        for (key in stagesTournaments.data.tournament_stages) {
+          stages.push(
+            Object.assign(stagesTournaments.data.tournament_stages[key], {
               id: key,
             })
           );
         }
+      }
 
-        console.log("Tournaments count: " + tournaments.length);
+      console.log("Stages count: " + stages.length);
 
-        // filter out only current year
-        tournaments = tournaments.filter((item) =>
-          isNameInYear(item.name, yearOfCalculation)
-        );
-        console.log("Tournaments count (filtered): " + tournaments.length);
+      // filter only supported turnaments by name
+      stages = stages.filter(
+        (stage) =>
+          tournamentsbySport.includes(stage.name) &&
+          supportedGender.includes(stage.gender)
+      );
+      console.log("Stages count (filtered): " + stages.length);
 
-        var stages = [];
-        // get tournamet tages by tournament ID's
-        for (let z = 0; z < tournaments.length; z++) {
-          console.log("Tournament ids: " + tournaments[z].id);
+      var events = [];
+      // get tournamet tages by tournament ID's
+      for (let z = 0; z < stages.length; z++) {
+        console.log("Stages ids: " + stages[z].id);
 
-          let stagesTournaments = await axios.get(baseURL_stage, {
-            params: {
-              username: process.env.USERNAME_ENETPULS,
-              token: process.env.REQUEST_KEY_ENETPULS,
-              tournamentFK: tournaments[z].id,
-            },
-          });
+        let eventsResponse = await axios.get(baseUrl_events, {
+          params: {
+            username: process.env.USERNAME_ENETPULS,
+            token: process.env.REQUEST_KEY_ENETPULS,
+            tournament_stageFK: stages[z].id,
+            includeEventProperties: "yes", //add `EventTypeName` -> "Male Single"
+          },
+        });
 
-          for (key in stagesTournaments.data.tournament_stages) {
-            stages.push(
-              Object.assign(stagesTournaments.data.tournament_stages[key], {
-                id: key,
-              })
-            );
-          }
-        }
-
-        console.log("Stages count: " + stages.length);
-
-        // filter only supported turnaments by name
-        stages = stages.filter(
-          (stage) =>
-            tournamentsbySport.includes(stage.name) &&
-            supportedGender.includes(stage.gender)
-        );
-        console.log("Stages count (filtered): " + stages.length);
-
-        var events = [];
-        // get tournamet tages by tournament ID's
-        for (let z = 0; z < stages.length; z++) {
-          console.log("Stages ids: " + stages[z].id);
-
-          let eventsResponse = await axios.get(baseUrl_events, {
-            params: {
-              username: process.env.USERNAME_ENETPULS,
-              token: process.env.REQUEST_KEY_ENETPULS,
-              tournament_stageFK: stages[z].id,
-              includeEventProperties: "yes", //add `EventTypeName` -> "Male Single"
-            },
-          });
-
-          for (key in eventsResponse.data.events) {
-            events.push(
-              Object.assign(eventsResponse.data.events[key], {
-                id: key,
-              })
-            );
-          }
-        }
-
-        console.log("Events count: " + events.length);
-        var isNotTennis = sportIds[j] == 2 ? false : true;
-        console.log("Is not tennis: " + isNotTennis);
-
-        // filter only events that are not started and event which start after daysInFront and if tennis only male singles
-        events = events.filter((event) => {
-          return (
-            event.status_type === "notstarted" &&
-            getUnixDateFromString(event.startdate) <=
-              getSecondsToDate(daysInFront) &&
-            (isNotTennis ||
-              Object.values(event.property).filter(
-                (props) => props.name === "EventTypeName"
-              )[0].value === "Male Single")
+        for (key in eventsResponse.data.events) {
+          events.push(
+            Object.assign(eventsResponse.data.events[key], {
+              id: key,
+            })
           );
-        });
-        console.log("Events count (filtered): " + events.length);
+        }
+      }
 
-        var mapDaysAndEvents = new Map();
-        events.forEach((o) => {
-          console.log(o.id);
-          let arrayOfGames = [];
-          var dateAsUnixFormat = getUnixDateFromString(o.startdate);
+      console.log("Events count: " + events.length);
+      var isNotTennis = sportIds[j] == 2 ? false : true;
+      console.log("Is not tennis: " + isNotTennis);
 
-          if (typeof mapDaysAndEvents.get(dateAsUnixFormat) != "undefined") {
-            arrayOfGames = mapDaysAndEvents.get(dateAsUnixFormat);
-            arrayOfGames.push(o.id);
-          } else {
-            arrayOfGames.push(o.id);
-          }
+      // filter only events that are not started and event which start after daysInFront and if tennis only male singles
+      events = events.filter((event) => {
+        return (
+          event.status_type === "notstarted" &&
+          getUnixDateFromString(event.startdate) <=
+            getSecondsToDate(daysInFront) &&
+          (isNotTennis ||
+            Object.values(event.property).filter(
+              (props) => props.name === "EventTypeName"
+            )[0].value === "Male Single")
+        );
+      });
+      console.log("Events count (filtered): " + events.length);
 
-          mapDaysAndEvents.set(dateAsUnixFormat, arrayOfGames); // to set the value using key
-        });
+      var mapDaysAndEvents = new Map();
+      events.forEach((o) => {
+        console.log(o.id);
+        let arrayOfGames = [];
+        var dateAsUnixFormat = getUnixDateFromString(o.startdate);
 
-        // do for next X days in front
-        for (let i = 0; i <= daysInFront; i++) {
-          console.log("------------------------");
-          console.log("SPORT ID =  " + sportIds[j]);
-          console.log("TODAY +  " + i);
-          let gamesForCreation = [];
+        if (typeof mapDaysAndEvents.get(dateAsUnixFormat) != "undefined") {
+          arrayOfGames = mapDaysAndEvents.get(dateAsUnixFormat);
+          arrayOfGames.push(o.id);
+        } else {
+          arrayOfGames.push(o.id);
+        }
 
-          let unixDate = getSecondsToDate(i);
-          console.log("Unix date in seconds: " + unixDate);
-          let isSportTwoPositionsSport =
-            await consumer.isSportTwoPositionsSport(sportIds[j]);
+        mapDaysAndEvents.set(dateAsUnixFormat, arrayOfGames); // to set the value using key
+      });
 
-          let gamesOnADate = mapDaysAndEvents.get(unixDate);
+      // do for next X days in front
+      for (let i = 0; i <= daysInFront; i++) {
+        console.log("------------------------");
+        console.log("SPORT ID =  " + sportIds[j]);
+        console.log("TODAY +  " + i);
+        let gamesForCreation = [];
 
-          if (typeof gamesOnADate != "undefined") {
-            console.log("*** processing games ids ***");
-            console.log("Count games: " + gamesOnADate.length);
-            console.log(gamesOnADate);
-            console.log("*** processing games ids***");
-            for (let n = 0; n < gamesOnADate.length; n++) {
-              let isGameAlreadyFullFilled = await consumer.gameFulfilledCreated(
-                bytes32({ input: gamesOnADate[n] })
-              );
-              console.log("Checking Game (id api): " + gamesOnADate[n]);
-              console.log(
-                "Checking Game (id bytes): " +
-                  bytes32({ input: gamesOnADate[n] })
-              );
-              console.log("Fulfilled: " + isGameAlreadyFullFilled);
+        let unixDate = getSecondsToDate(i);
+        console.log("Unix date in seconds: " + unixDate);
+        let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(
+          sportIds[j]
+        );
 
-              // if game is not fulfiled check if odds are there
-              if (!isGameAlreadyFullFilled) {
-                let odds = [];
-                let oddsPerGameResponse = await axios.get(baseUrl_odds, {
-                  params: {
-                    username: process.env.USERNAME_ENETPULS,
-                    token: process.env.REQUEST_KEY_ENETPULS,
-                    objectFK: gamesOnADate[n],
-                    odds_providerFK: primaryBookmaker,
-                    outcome_typeFK: process.env.OUTCOME_TYPE_FK,
-                    outcome_scopeFK: process.env.OUTCOME_SCOPE_FK,
-                  },
-                });
+        let gamesOnADate = mapDaysAndEvents.get(unixDate);
 
-                for (key in oddsPerGameResponse.data.preodds) {
-                  odds.push(
-                    Object.assign(oddsPerGameResponse.data.preodds[key], {
-                      id: key,
-                    })
-                  );
-                }
-
-                console.log("Odds count: " + odds.length);
-
-                odds = odds.filter((checkingOdds) => {
-                  return (
-                    Object.values(checkingOdds.preodds_bettingoffers).filter(
-                      (props) => props.odds_providerFK === primaryBookmaker
-                    )[0].odds > 0
-                  );
-                });
-
-                console.log("Odds count (filtered): " + odds.length);
-
-                // there is odds for both participant
-                if (
-                  odds.length > 2 ||
-                  (isSportTwoPositionsSport && odds.length > 1)
-                ) {
-                  gamesForCreation.push(gamesOnADate[n]);
-                }
-              }
-            }
-
-            console.log(
-              "For date " +
-                unixDate +
-                ", request is sending games count: " +
-                gamesForCreation.length +
-                ", sport id: " +
-                tournamentType[z].id
+        if (typeof gamesOnADate != "undefined") {
+          console.log("*** processing games ids ***");
+          console.log("Count games: " + gamesOnADate.length);
+          console.log(gamesOnADate);
+          console.log("*** processing games ids***");
+          for (let n = 0; n < gamesOnADate.length; n++) {
+            let isGameAlreadyFullFilled = await consumer.gameFulfilledCreated(
+              bytes32({ input: gamesOnADate[n] })
             );
+            console.log("Checking Game (id api): " + gamesOnADate[n]);
+            console.log(
+              "Checking Game (id bytes): " + bytes32({ input: gamesOnADate[n] })
+            );
+            console.log("Fulfilled: " + isGameAlreadyFullFilled);
 
-            if (gamesForCreation.length > 0) {
-              let gamesInBatch = []; // only collect ID's
-
-              gamesForCreation.forEach((o) => {
-                gamesInBatch.push(o);
+            // if game is not fulfiled check if odds are there
+            if (!isGameAlreadyFullFilled) {
+              let odds = [];
+              let oddsPerGameResponse = await axios.get(baseUrl_odds, {
+                params: {
+                  username: process.env.USERNAME_ENETPULS,
+                  token: process.env.REQUEST_KEY_ENETPULS,
+                  objectFK: gamesOnADate[n],
+                  odds_providerFK: primaryBookmaker,
+                  outcome_typeFK: process.env.OUTCOME_TYPE_FK,
+                  outcome_scopeFK: process.env.OUTCOME_SCOPE_FK,
+                },
               });
 
-              try {
-                console.log("Send request...");
-
-                console.log("Requesting games: " + gamesInBatch.length);
-                console.log(gamesInBatch);
-                if (gamesInBatch.length > process.env.CL_CREATE_BATCH) {
-                  let gamesInBatchforCL = [];
-                  for (let i = 0; i < gamesInBatch.length; i++) {
-                    gamesInBatchforCL.push(gamesInBatch[i]);
-                    if (
-                      (gamesInBatchforCL.length > 0 &&
-                        gamesInBatchforCL.length %
-                          process.env.CL_CREATE_BATCH ==
-                          0) ||
-                      gamesInBatch.length - 1 == i // last one
-                    ) {
-                      console.log("Batch...");
-                      console.log(gamesInBatchforCL);
-
-                      let tx = await wrapper.requestGamesResolveWithFilters(
-                        jobId,
-                        market,
-                        tournamentType[z].id,
-                        unixDate,
-                        [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                        gamesInBatchforCL,
-                        {
-                          gasLimit: process.env.GAS_LIMIT,
-                        }
-                      );
-                      await tx.wait().then((e) => {
-                        console.log(
-                          "Requested for: " +
-                            unixDate +
-                            " with game id: " +
-                            gamesInBatchforCL
-                        );
-
-                        let events = e.events.filter(
-                          (evn) => evn.event === "ChainlinkRequested"
-                        );
-                        if (events.length > 0) {
-                          const requestId = events[0].args.id;
-                          console.log("Chainlink request id is: " + requestId);
-                          requestIdList.push(requestId);
-                        }
-                      });
-                      requestWasSend = true;
-                      gamesInBatchforCL = [];
-                      await delay(5000);
-                    }
-                  }
-                } else {
-                  let tx = await wrapper.requestGamesResolveWithFilters(
-                    jobId,
-                    market,
-                    tournamentType[z].id,
-                    unixDate,
-                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                    gamesInBatch,
-                    {
-                      gasLimit: process.env.GAS_LIMIT,
-                    }
-                  );
-
-                  await tx.wait().then((e) => {
-                    console.log("Requested for: " + unixDate);
-
-                    let events = e.events.filter(
-                      (evn) => evn.event === "ChainlinkRequested"
-                    );
-                    if (events.length > 0) {
-                      const requestId = events[0].args.id;
-                      console.log("Chainlink request id is: " + requestId);
-                      requestIdList.push(requestId);
-                    }
-                  });
-                  requestWasSend = true;
-                }
-              } catch (e) {
-                console.log(e);
-                await sendErrorMessageToDiscordRequestCL(
-                  "Request to CL " +
-                    botName +
-                    " went wrong! Please check LINK amount on bot, or kill and debug!" +
-                    " EXCEPTION MESSAGE: " +
-                    e.message.slice(0, 180),
-                  tournamentType[z].id,
-                  unixDate,
-                  network,
-                  botName
+              for (key in oddsPerGameResponse.data.preodds) {
+                odds.push(
+                  Object.assign(oddsPerGameResponse.data.preodds[key], {
+                    id: key,
+                  })
                 );
-                failedCounter++;
-                await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin*/
+              }
+
+              console.log("Odds count: " + odds.length);
+
+              odds = odds.filter((checkingOdds) => {
+                return (
+                  Object.values(checkingOdds.preodds_bettingoffers).filter(
+                    (props) => props.odds_providerFK === primaryBookmaker
+                  )[0].odds > 0
+                );
+              });
+
+              console.log("Odds count (filtered): " + odds.length);
+
+              // there is odds for both participant
+              if (
+                odds.length > 2 ||
+                (isSportTwoPositionsSport && odds.length > 1)
+              ) {
+                gamesForCreation.push(gamesOnADate[n]);
               }
             }
-          } else {
-            console.log("No games on that date for processing!");
-            console.log("-------------------------------------");
           }
+
+          console.log(
+            "For date " +
+              unixDate +
+              ", request is sending games count: " +
+              gamesForCreation.length +
+              ", sport id: " +
+              tournamentType[z].id
+          );
+
+          if (gamesForCreation.length > 0) {
+            let gamesInBatch = []; // only collect ID's
+
+            gamesForCreation.forEach((o) => {
+              gamesInBatch.push(o);
+            });
+
+            try {
+              console.log("Send request...");
+
+              console.log("Requesting games: " + gamesInBatch.length);
+              console.log(gamesInBatch);
+              if (gamesInBatch.length > process.env.CL_CREATE_BATCH) {
+                let gamesInBatchforCL = [];
+                for (let i = 0; i < gamesInBatch.length; i++) {
+                  gamesInBatchforCL.push(gamesInBatch[i]);
+                  if (
+                    (gamesInBatchforCL.length > 0 &&
+                      gamesInBatchforCL.length % process.env.CL_CREATE_BATCH ==
+                        0) ||
+                    gamesInBatch.length - 1 == i // last one
+                  ) {
+                    console.log("Batch...");
+                    console.log(gamesInBatchforCL);
+
+                    let tx = await wrapper.requestGamesResolveWithFilters(
+                      jobId,
+                      market,
+                      tournamentType[z].id,
+                      unixDate,
+                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                      gamesInBatchforCL,
+                      {
+                        gasLimit: process.env.GAS_LIMIT,
+                      }
+                    );
+                    await tx.wait().then((e) => {
+                      console.log(
+                        "Requested for: " +
+                          unixDate +
+                          " with game id: " +
+                          gamesInBatchforCL
+                      );
+
+                      let events = e.events.filter(
+                        (evn) => evn.event === "ChainlinkRequested"
+                      );
+                      if (events.length > 0) {
+                        const requestId = events[0].args.id;
+                        console.log("Chainlink request id is: " + requestId);
+                        requestIdList.push(requestId);
+                      }
+                    });
+                    requestWasSend = true;
+                    gamesInBatchforCL = [];
+                    await delay(5000);
+                  }
+                }
+              } else {
+                let tx = await wrapper.requestGamesResolveWithFilters(
+                  jobId,
+                  market,
+                  tournamentType[z].id,
+                  unixDate,
+                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                  gamesInBatch,
+                  {
+                    gasLimit: process.env.GAS_LIMIT,
+                  }
+                );
+
+                await tx.wait().then((e) => {
+                  console.log("Requested for: " + unixDate);
+
+                  let events = e.events.filter(
+                    (evn) => evn.event === "ChainlinkRequested"
+                  );
+                  if (events.length > 0) {
+                    const requestId = events[0].args.id;
+                    console.log("Chainlink request id is: " + requestId);
+                    requestIdList.push(requestId);
+                  }
+                });
+                requestWasSend = true;
+              }
+            } catch (e) {
+              console.log(e);
+              await sendErrorMessageToDiscordRequestCL(
+                "Request to CL " +
+                  botName +
+                  " went wrong! Please check LINK amount on bot, or kill and debug!" +
+                  " EXCEPTION MESSAGE: " +
+                  e.message.slice(0, 180),
+                tournamentType[z].id,
+                unixDate,
+                network,
+                botName
+              );
+              failedCounter++;
+              await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin*/
+            }
+          }
+        } else {
+          console.log("No games on that date for processing!");
+          console.log("-------------------------------------");
         }
       }
     }
@@ -543,6 +538,7 @@ async function doCreate(network, botName) {
       }
     } else {
       console.log("Nothing but request is send!!!!");
+      await delay(1 * 60 * 1000); // wait minute
       if (requestIdList.length > 0) {
         let isFulfilled = await wrapper.areCreatedRequestIdsFulFilled(
           requestIdList

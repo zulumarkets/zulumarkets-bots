@@ -11,7 +11,6 @@ overtimeBot.login(process.env.BOT_OVERTIME_ODDS);
 
 const axios = require("axios");
 
-const gamesQueue = require("../../contracts/GamesQueue.js");
 const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesVerifier = require("../../contracts/RundownVerifier.js");
 const gamesOddsObtainer = require("../../contracts/GamesOddsObtainer.js");

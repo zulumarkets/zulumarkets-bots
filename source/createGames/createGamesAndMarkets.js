@@ -75,10 +75,7 @@ async function doCreate(network, botName) {
   let americanSports = [1, 2, 3, 4, 5, 6, 10];
   let invalidNames = process.env.INVALID_NAMES.split(",");
 
-  console.log("Number of invalid names" + invalidNames.length);
-  console.log("---------------");
-  console.log(invalidNames);
-  console.log("---------------");
+  console.log("Number of invalid names: " + invalidNames.length);
 
   let primaryBookmaker;
   let useBackupBookmaker;
@@ -86,340 +83,335 @@ async function doCreate(network, botName) {
 
   console.log("Create Games...");
 
-  let processed = false;
   let requestWasSend = false;
   let failedCounter = 0;
-  while (!processed) {
-    processed = true;
 
-    console.log("JOB ID =  " + jobId);
-    console.log("MARKET =  " + market);
+  console.log("JOB ID =  " + jobId);
+  console.log("MARKET =  " + market);
 
-    // do for all sportIds
-    for (let j = 0; j < sportIds.length; j++) {
-      let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(sportIds[j]);
-      useBackupBookmaker = oddsBookmakers.length > 1;
-      primaryBookmaker = oddsBookmakers[0];
-      console.log("Primary bookmaker is (id): " + primaryBookmaker);
-      console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
+  // do for all sportIds
+  for (let j = 0; j < sportIds.length; j++) {
+    let oddsBookmakers = await wrapper.getBookmakerIdsBySportId(sportIds[j]);
+    useBackupBookmaker = oddsBookmakers.length > 1;
+    primaryBookmaker = oddsBookmakers[0];
+    console.log("Primary bookmaker is (id): " + primaryBookmaker);
+    console.log("Use Backup Bookmaker is set to: " + useBackupBookmaker);
 
-      if (useBackupBookmaker) {
-        backupBookmaker = oddsBookmakers[1];
-        console.log("Backup bookmaker is (id): " + backupBookmaker);
+    if (useBackupBookmaker) {
+      backupBookmaker = oddsBookmakers[1];
+      console.log("Backup bookmaker is (id): " + backupBookmaker);
+    }
+
+    // do for next X days in front
+    for (let i = 0; i <= daysInFront; i++) {
+      console.log("------------------------");
+      console.log("SPORT ID =  " + sportIds[j]);
+      console.log("TODAY +  " + i);
+
+      let unixDate = await getSecondsToDate(i);
+      console.log("Unix date in seconds: " + unixDate);
+      let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
+      console.log("Unix date in miliseconds: " + unixDateMiliseconds);
+
+      const dayOfWeekDigit = new Date(parseInt(unixDateMiliseconds)).getDay();
+      console.log("Day of week: " + dayOfWeekDigit);
+
+      if (sportIds[j] == 7 && dayOfWeekDigit != 0 && dayOfWeekDigit != 6) {
+        console.log("Skiping UFC fights if not weekend fights!");
+        continue;
       }
 
-      // do for next X days in front
-      for (let i = 0; i <= daysInFront; i++) {
-        console.log("------------------------");
-        console.log("SPORT ID =  " + sportIds[j]);
-        console.log("TODAY +  " + i);
+      let sendRequestForCreate = false;
 
-        let unixDate = await getSecondsToDate(i);
-        console.log("Unix date in seconds: " + unixDate);
-        let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
-        console.log("Unix date in miliseconds: " + unixDateMiliseconds);
+      let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(
+        sportIds[j]
+      );
 
-        const dayOfWeekDigit = new Date(parseInt(unixDateMiliseconds)).getDay();
-        console.log("Day of week: " + dayOfWeekDigit);
+      const urlBuild =
+        baseUrl +
+        "/sports/" +
+        sportIds[j] +
+        "/events/" +
+        dateConverter(unixDateMiliseconds);
+      let response = await axios.get(urlBuild, {
+        params: { key: process.env.REQUEST_KEY },
+      });
 
-        if (sportIds[j] == 7 && dayOfWeekDigit != 0 && dayOfWeekDigit != 6) {
-          console.log("Skiping UFC fights if not weekend fights!");
-          continue;
-        }
+      const gamesListResponse = [];
 
-        let sendRequestForCreate = false;
+      let filteredResponse = [];
+      if (sportIds[j] == 1) {
+        response.data.events.forEach((o) => {
+          if (o.teams_normalized != undefined) {
+            if (
+              ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
+              ncaaSupportedTeams.includes(o.teams_normalized[1].name)
+            ) {
+              filteredResponse.push(o);
+            }
+          }
+        });
+      } else if (sportIds[j] == 7) {
+        console.log("Filter out UFC fights only!");
+        const scheduleListResponse = [];
 
-        let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(
-          sportIds[j]
-        );
-
-        const urlBuild =
-          baseUrl +
-          "/sports/" +
-          sportIds[j] +
-          "/events/" +
-          dateConverter(unixDateMiliseconds);
-        let response = await axios.get(urlBuild, {
+        const urlBuildSchedule =
+          baseUrl + "/sports/" + sportIds[j] + "/schedule";
+        let responseSchedule = await axios.get(urlBuildSchedule, {
           params: { key: process.env.REQUEST_KEY },
         });
 
-        const gamesListResponse = [];
-
-        let filteredResponse = [];
-        if (sportIds[j] == 1) {
-          response.data.events.forEach((o) => {
-            if (o.teams_normalized != undefined) {
-              if (
-                ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
-                ncaaSupportedTeams.includes(o.teams_normalized[1].name)
-              ) {
-                filteredResponse.push(o);
-              }
-            }
-          });
-        } else if (sportIds[j] == 7) {
-          console.log("Filter out UFC fights only!");
-          const scheduleListResponse = [];
-
-          const urlBuildSchedule =
-            baseUrl + "/sports/" + sportIds[j] + "/schedule";
-          let responseSchedule = await axios.get(urlBuildSchedule, {
-            params: { key: process.env.REQUEST_KEY },
-          });
-
-          responseSchedule.data.schedules.forEach((schedule) => {
-            scheduleListResponse.push({
-              id: schedule.event_id,
-              leagueName: checkIfUndefinedLeague(schedule),
-              broadcast: checkIfUndefinedBroadcast(schedule),
-            });
-          });
-
-          console.log(
-            "Schedule endpoint fetch number of elements: " +
-              scheduleListResponse.length
-          );
-
-          response.data.events.forEach((o) => {
-            for (let n = 0; n < scheduleListResponse.length; n++) {
-              if (
-                scheduleListResponse[n].id == o.event_id &&
-                scheduleListResponse[n].leagueName ==
-                  "Ultimate Fighting Championship" &&
-                scheduleListResponse[n].broadcast == "PPV" &&
-                o.score.event_status == "STATUS_SCHEDULED" &&
-                o.teams_normalized != undefined &&
-                !isNameInalid(invalidNames, o.teams_normalized[0].name) &&
-                !isNameInalid(invalidNames, o.teams_normalized[1].name)
-              ) {
-                filteredResponse.push(o);
-              }
-            }
-          });
-        } else if (sportIds[j] == 18) {
-          response.data.events.forEach((o) => {
-            if (o.teams_normalized != undefined) {
-              if (
-                fifaWCSupportedTeams.includes(o.teams_normalized[0].name) &&
-                fifaWCSupportedTeams.includes(o.teams_normalized[1].name)
-              ) {
-                filteredResponse.push(o);
-              }
-            }
-          });
-        } else {
-          filteredResponse = response.data.events;
-        }
-
-        filteredResponse.forEach((event) => {
-          gamesListResponse.push({
-            id: event.event_id,
-            homeTeam: getTeam(
-              event.teams,
-              event.teams_normalized,
-              true,
-              americanSports,
-              sportIds[j]
-            ),
-            awayTeam: getTeam(
-              event.teams,
-              event.teams_normalized,
-              false,
-              americanSports,
-              sportIds[j]
-            ),
-            homeOdd: getOdds(
-              event.lines,
-              1,
-              primaryBookmaker,
-              useBackupBookmaker,
-              backupBookmaker,
-              isSportTwoPositionsSport
-            ),
-            awayOdd: getOdds(
-              event.lines,
-              2,
-              primaryBookmaker,
-              useBackupBookmaker,
-              backupBookmaker,
-              isSportTwoPositionsSport
-            ),
-            drawOdd: getOdds(
-              event.lines,
-              0,
-              primaryBookmaker,
-              useBackupBookmaker,
-              backupBookmaker,
-              isSportTwoPositionsSport
-            ),
+        responseSchedule.data.schedules.forEach((schedule) => {
+          scheduleListResponse.push({
+            id: schedule.event_id,
+            leagueName: checkIfUndefinedLeague(schedule),
+            broadcast: checkIfUndefinedBroadcast(schedule),
           });
         });
 
         console.log(
-          "Number of games: " +
-            gamesListResponse.length +
-            " in a date " +
-            dateConverter(unixDateMiliseconds)
+          "Schedule endpoint fetch number of elements: " +
+            scheduleListResponse.length
         );
 
-        console.log(gamesListResponse);
-
-        for (let n = 0; n < gamesListResponse.length; n++) {
-          let isGameAlreadyFullFilled = await consumer.gameFulfilledCreated(
-            bytes32({ input: gamesListResponse[n].id })
-          );
-          // if game is not fullfilled and not TBD awayTeam and homeTeam send request
-
-          console.log(
-            "Game: " +
-              gamesListResponse[n].homeTeam +
-              " vs " +
-              gamesListResponse[n].awayTeam
-          );
-          console.log(
-            "Game: " +
-              bytes32({ input: gamesListResponse[n].id }) +
-              " fullfilled: " +
-              isGameAlreadyFullFilled
-          );
-          console.log(
-            "homeOdd Pinnacle: " +
-              gamesListResponse[n].homeOdd +
-              " id: " +
-              gamesListResponse[n].id
-          );
-          console.log(
-            "awayOdd Pinnacle: " +
-              gamesListResponse[n].awayOdd +
-              " id: " +
-              gamesListResponse[n].id
-          );
-          console.log(
-            "drawOdd Pinnacle: " +
-              gamesListResponse[n].drawOdd +
-              " id: " +
-              gamesListResponse[n].id
-          );
-
-          if (
-            !isGameAlreadyFullFilled &&
-            !isNameInalid(invalidNames, gamesListResponse[n].awayTeam) &&
-            !isNameInalid(invalidNames, gamesListResponse[n].homeTeam) &&
-            isOddValid(gamesListResponse[n].homeOdd) &&
-            isOddValid(gamesListResponse[n].awayOdd) &&
-            (isSportTwoPositionsSport ||
-              isOddValid(gamesListResponse[n].drawOdd))
-          ) {
-            sendRequestForCreate = true;
-            break;
-          }
-        }
-
-        if (sendRequestForCreate) {
-          let gamesInBatch = [];
-          if (
-            sportIds[j] == 1 ||
-            sportIds[j] == 7 ||
-            sportIds[j] == 18 ||
-            sportIds[j] == 5
-          ) {
-            filteredResponse.forEach((o) => {
-              gamesInBatch.push(o.event_id);
-            });
-          }
-          try {
-            console.log("Send request...");
-
-            console.log("Requesting games: " + gamesInBatch.length);
-            console.log(gamesInBatch);
-            if (gamesInBatch.length > process.env.CL_CREATE_BATCH) {
-              let gamesInBatchforCL = [];
-              for (let i = 0; i < gamesInBatch.length; i++) {
-                gamesInBatchforCL.push(gamesInBatch[i]);
-                if (
-                  (gamesInBatchforCL.length > 0 &&
-                    gamesInBatchforCL.length % process.env.CL_CREATE_BATCH ==
-                      0) ||
-                  gamesInBatch.length - 1 == i // last one
-                ) {
-                  console.log("Batch...");
-                  console.log(gamesInBatchforCL);
-
-                  let tx = await wrapper.requestGamesResolveWithFilters(
-                    jobId,
-                    market,
-                    sportIds[j],
-                    unixDate,
-                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                    gamesInBatchforCL,
-                    {
-                      gasLimit: process.env.GAS_LIMIT,
-                    }
-                  );
-                  await tx.wait().then((e) => {
-                    console.log(
-                      "Requested for: " +
-                        unixDate +
-                        " with game id: " +
-                        gamesInBatchforCL
-                    );
-                    let events = e.events.filter(
-                      (evn) => evn.event === "ChainlinkRequested"
-                    );
-                    if (events.length > 0) {
-                      const requestId = events[0].args.id;
-                      console.log("Chainlink request id is: " + requestId);
-                      requestIdList.push(requestId);
-                    }
-                  });
-                  requestWasSend = true;
-                  gamesInBatchforCL = [];
-                  await delay(5000);
-                }
-              }
-            } else {
-              let tx = await wrapper.requestGamesResolveWithFilters(
-                jobId,
-                market,
-                sportIds[j],
-                unixDate,
-                [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                gamesInBatch,
-                {
-                  gasLimit: process.env.GAS_LIMIT,
-                }
-              );
-
-              await tx.wait().then((e) => {
-                console.log("Requested for: " + unixDate);
-
-                let events = e.events.filter(
-                  (evn) => evn.event === "ChainlinkRequested"
-                );
-                if (events.length > 0) {
-                  const requestId = events[0].args.id;
-                  console.log("Chainlink request id is: " + requestId);
-                  requestIdList.push(requestId);
-                }
-              });
-              requestWasSend = true;
+        response.data.events.forEach((o) => {
+          for (let n = 0; n < scheduleListResponse.length; n++) {
+            if (
+              scheduleListResponse[n].id == o.event_id &&
+              scheduleListResponse[n].leagueName ==
+                "Ultimate Fighting Championship" &&
+              scheduleListResponse[n].broadcast == "PPV" &&
+              o.score.event_status == "STATUS_SCHEDULED" &&
+              o.teams_normalized != undefined &&
+              !isNameInalid(invalidNames, o.teams_normalized[0].name) &&
+              !isNameInalid(invalidNames, o.teams_normalized[1].name)
+            ) {
+              filteredResponse.push(o);
             }
-          } catch (e) {
-            console.log(e);
-            await sendErrorMessageToDiscordRequestCL(
-              "Request to CL " +
-                botName +
-                " went wrong! Please check LINK amount on bot, or kill and debug!" +
-                " EXCEPTION MESSAGE: " +
-                e.message.slice(0, 180),
+          }
+        });
+      } else if (sportIds[j] == 18) {
+        response.data.events.forEach((o) => {
+          if (o.teams_normalized != undefined) {
+            if (
+              fifaWCSupportedTeams.includes(o.teams_normalized[0].name) &&
+              fifaWCSupportedTeams.includes(o.teams_normalized[1].name)
+            ) {
+              filteredResponse.push(o);
+            }
+          }
+        });
+      } else {
+        filteredResponse = response.data.events;
+      }
+
+      filteredResponse.forEach((event) => {
+        gamesListResponse.push({
+          id: event.event_id,
+          homeTeam: getTeam(
+            event.teams,
+            event.teams_normalized,
+            true,
+            americanSports,
+            sportIds[j]
+          ),
+          awayTeam: getTeam(
+            event.teams,
+            event.teams_normalized,
+            false,
+            americanSports,
+            sportIds[j]
+          ),
+          homeOdd: getOdds(
+            event.lines,
+            1,
+            primaryBookmaker,
+            useBackupBookmaker,
+            backupBookmaker,
+            isSportTwoPositionsSport
+          ),
+          awayOdd: getOdds(
+            event.lines,
+            2,
+            primaryBookmaker,
+            useBackupBookmaker,
+            backupBookmaker,
+            isSportTwoPositionsSport
+          ),
+          drawOdd: getOdds(
+            event.lines,
+            0,
+            primaryBookmaker,
+            useBackupBookmaker,
+            backupBookmaker,
+            isSportTwoPositionsSport
+          ),
+        });
+      });
+
+      console.log(
+        "Number of games: " +
+          gamesListResponse.length +
+          " in a date " +
+          dateConverter(unixDateMiliseconds)
+      );
+
+      console.log(gamesListResponse);
+
+      for (let n = 0; n < gamesListResponse.length; n++) {
+        let isGameAlreadyFullFilled = await consumer.gameFulfilledCreated(
+          bytes32({ input: gamesListResponse[n].id })
+        );
+        // if game is not fullfilled and not TBD awayTeam and homeTeam send request
+
+        console.log(
+          "Game: " +
+            gamesListResponse[n].homeTeam +
+            " vs " +
+            gamesListResponse[n].awayTeam
+        );
+        console.log(
+          "Game: " +
+            bytes32({ input: gamesListResponse[n].id }) +
+            " fullfilled: " +
+            isGameAlreadyFullFilled
+        );
+        console.log(
+          "homeOdd Pinnacle: " +
+            gamesListResponse[n].homeOdd +
+            " id: " +
+            gamesListResponse[n].id
+        );
+        console.log(
+          "awayOdd Pinnacle: " +
+            gamesListResponse[n].awayOdd +
+            " id: " +
+            gamesListResponse[n].id
+        );
+        console.log(
+          "drawOdd Pinnacle: " +
+            gamesListResponse[n].drawOdd +
+            " id: " +
+            gamesListResponse[n].id
+        );
+
+        if (
+          !isGameAlreadyFullFilled &&
+          !isNameInalid(invalidNames, gamesListResponse[n].awayTeam) &&
+          !isNameInalid(invalidNames, gamesListResponse[n].homeTeam) &&
+          isOddValid(gamesListResponse[n].homeOdd) &&
+          isOddValid(gamesListResponse[n].awayOdd) &&
+          (isSportTwoPositionsSport || isOddValid(gamesListResponse[n].drawOdd))
+        ) {
+          sendRequestForCreate = true;
+          break;
+        }
+      }
+
+      if (sendRequestForCreate) {
+        let gamesInBatch = [];
+        if (
+          sportIds[j] == 1 ||
+          sportIds[j] == 7 ||
+          sportIds[j] == 18 ||
+          sportIds[j] == 5
+        ) {
+          filteredResponse.forEach((o) => {
+            gamesInBatch.push(o.event_id);
+          });
+        }
+        try {
+          console.log("Send request...");
+
+          console.log("Requesting games: " + gamesInBatch.length);
+          console.log(gamesInBatch);
+          if (gamesInBatch.length > process.env.CL_CREATE_BATCH) {
+            let gamesInBatchforCL = [];
+            for (let i = 0; i < gamesInBatch.length; i++) {
+              gamesInBatchforCL.push(gamesInBatch[i]);
+              if (
+                (gamesInBatchforCL.length > 0 &&
+                  gamesInBatchforCL.length % process.env.CL_CREATE_BATCH ==
+                    0) ||
+                gamesInBatch.length - 1 == i // last one
+              ) {
+                console.log("Batch...");
+                console.log(gamesInBatchforCL);
+
+                let tx = await wrapper.requestGamesResolveWithFilters(
+                  jobId,
+                  market,
+                  sportIds[j],
+                  unixDate,
+                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                  gamesInBatchforCL,
+                  {
+                    gasLimit: process.env.GAS_LIMIT,
+                  }
+                );
+                await tx.wait().then((e) => {
+                  console.log(
+                    "Requested for: " +
+                      unixDate +
+                      " with game id: " +
+                      gamesInBatchforCL
+                  );
+                  let events = e.events.filter(
+                    (evn) => evn.event === "ChainlinkRequested"
+                  );
+                  if (events.length > 0) {
+                    const requestId = events[0].args.id;
+                    console.log("Chainlink request id is: " + requestId);
+                    requestIdList.push(requestId);
+                  }
+                });
+                requestWasSend = true;
+                gamesInBatchforCL = [];
+                await delay(5000);
+              }
+            }
+          } else {
+            let tx = await wrapper.requestGamesResolveWithFilters(
+              jobId,
+              market,
               sportIds[j],
               unixDate,
-              network,
-              botName
+              [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+              gamesInBatch,
+              {
+                gasLimit: process.env.GAS_LIMIT,
+              }
             );
-            failedCounter++;
-            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+
+            await tx.wait().then((e) => {
+              console.log("Requested for: " + unixDate);
+
+              let events = e.events.filter(
+                (evn) => evn.event === "ChainlinkRequested"
+              );
+              if (events.length > 0) {
+                const requestId = events[0].args.id;
+                console.log("Chainlink request id is: " + requestId);
+                requestIdList.push(requestId);
+              }
+            });
+            requestWasSend = true;
           }
+        } catch (e) {
+          console.log(e);
+          await sendErrorMessageToDiscordRequestCL(
+            "Request to CL " +
+              botName +
+              " went wrong! Please check LINK amount on bot, or kill and debug!" +
+              " EXCEPTION MESSAGE: " +
+              e.message.slice(0, 180),
+            sportIds[j],
+            unixDate,
+            network,
+            botName
+          );
+          failedCounter++;
+          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
         }
       }
     }
@@ -488,6 +480,7 @@ async function doCreate(network, botName) {
       }
     } else {
       console.log("Nothing but request is send!!!!");
+      await delay(1 * 60 * 1000); // wait minute
       if (requestIdList.length > 0) {
         let isFulfilled = await wrapper.areCreatedRequestIdsFulFilled(
           requestIdList

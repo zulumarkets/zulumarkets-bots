@@ -105,9 +105,6 @@ async function doResolve(network, botName) {
   console.log("JOB ID =  " + jobId);
   console.log("MARKET =  " + market);
 
-  let unproccessedGames = await queues.getLengthUnproccessedGames();
-  console.log("GAMES length = " + unproccessedGames);
-
   let cancelStatuses = process.env.CANCEL_STATUSES.split(",");
   let resolvedStatuses = process.env.RESOLVE_STATUSES.split(",");
 
@@ -176,16 +173,15 @@ async function doResolve(network, botName) {
         let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
         console.log("Unix date in miliseconds: " + unixDateMiliseconds);
 
-        let isSportOnADate = await consumer.isSportOnADate(
-          unixDate,
-          parseInt(tournamentType[z].id)
-        );
-        console.log("Having sport on a date:  " + isSportOnADate);
-
-        let gamesOnContract = await consumer.getGamesPerDatePerSport(
-          parseInt(tournamentType[z].id),
+        let sportProps = await verifier.getSportProperties(
+          sportIds[j],
           unixDate
         );
+
+        let isSportOnADate = sportProps[0];
+        console.log("Having sport on a date:  " + isSportOnADate);
+
+        let gamesOnContract = sportProps[2];
         console.log("Count games on a date: " + gamesOnContract.length);
 
         let gameIds = [];
@@ -201,6 +197,13 @@ async function doResolve(network, botName) {
             : process.env.EXPECTED_GAME_FOOTBAL;
         console.log("Expected game duration: " + expectedGameTime);
 
+        let getAllPropertiesForGivenGames = await verifier.getAllGameProperties(
+          gamesOnContract
+        );
+
+        let marketAddressArray = getAllPropertiesForGivenGames[0];
+        let gameStartedArray = getAllPropertiesForGivenGames[6];
+
         var tournaments = [];
         // don't use API request if all games are already resolved
         for (let z = 0; z < gamesOnContract.length; z++) {
@@ -209,7 +212,7 @@ async function doResolve(network, botName) {
           }
           console.log("GAME: " + gamesOnContract[z]);
 
-          let gameStart = await queues.gameStartPerGameId(gamesOnContract[z]);
+          let gameStart = gameStartedArray[z];
           console.log("GAME start: " + gameStart);
 
           let expectedTimeToProcess =
@@ -232,9 +235,7 @@ async function doResolve(network, botName) {
             "isGameResultAlreadyFulfilled: " + isGameResultAlreadyFulfilled
           );
 
-          let marketPerGameId = await consumer.marketPerGameId(
-            gamesOnContract[z]
-          );
+          let marketPerGameId = marketAddressArray[z];
           console.log("marketPerGameId: " + marketPerGameId);
 
           let marketCreated = await consumer.marketCreated(marketPerGameId);
@@ -360,6 +361,9 @@ async function doResolve(network, botName) {
               let gameIdContract = bytes32({ input: gamesListResponse[n].id });
               console.log("Game id (on contract): -> " + gameIdContract);
               console.log("Game id API: " + gamesListResponse[n].id);
+
+              let gameProp = await verifier.getGameProperties(gameIdContract);
+
               let isGameResultAlreadyFulfilledInner =
                 await consumer.gameFulfilledResolved(gameIdContract);
               console.log("Status: " + gamesListResponse[n].status);
@@ -367,16 +371,16 @@ async function doResolve(network, botName) {
                 "Result already fulfilled: " + isGameResultAlreadyFulfilledInner
               );
 
-              let marketId = await consumer.marketPerGameId(gameIdContract);
+              let marketId = gameProp[0];
               console.log("Market ID: " + marketId);
 
               let isMarketCreated = await consumer.marketCreated(marketId);
               console.log("is market created: " + isMarketCreated);
 
-              let isMarketResolved = await consumer.marketResolved(marketId);
+              let isMarketResolved = gameProp[1];
               console.log("is market resolved already: " + isMarketResolved);
 
-              let isMarketCanceled = await consumer.marketCanceled(marketId);
+              let isMarketCanceled = gameProp[2];
               console.log("is market canceled already: " + isMarketCanceled);
 
               // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
@@ -582,6 +586,7 @@ async function doResolve(network, botName) {
       }
     } else {
       console.log("Nothing but request is send!!!!");
+      await delay(1 * 60 * 1000); // wait minute
       if (requestIdList.length > 0) {
         let isFulfilled = await wrapper.areResolvedRequestIdsFulFilled(
           requestIdList

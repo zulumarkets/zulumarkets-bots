@@ -97,306 +97,301 @@ async function doResolve(network, botName) {
   console.log("JOB ID =  " + jobId);
   console.log("MARKET =  " + market);
 
-  let unproccessedGames = await queues.getLengthUnproccessedGames();
-  console.log("GAMES length = " + unproccessedGames);
-
   let cancelStatuses = process.env.CANCEL_STATUSES.split(",");
   let resolvedStatuses = process.env.RESOLVE_STATUSES.split(",");
 
   let requestWasSend = false;
   let failedCounter = 0;
 
-  // if there is no games no triggering
-  if (unproccessedGames > 0) {
-    // do it for all sports
-    for (let j = 0; j < sportIds.length; j++) {
-      let minutesToWait =
-        WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT[sportIds[j]] !== undefined
-          ? WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT[sportIds[j]]
-          : process.env.WAIT_FOR_RESULTS_TO_BE_UPDATED_DEFAULT;
-      for (let i = daysInBack; i <= 0; i++) {
-        console.log("Processing: TODAY " + i);
-        console.log("WAIT FOR RESULT (in minutes): " + minutesToWait);
+  // do it for all sports
+  for (let j = 0; j < sportIds.length; j++) {
+    let minutesToWait =
+      WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT[sportIds[j]] !== undefined
+        ? WAIT_FOR_RESULTS_TO_BE_UPDATED_BY_SPORT[sportIds[j]]
+        : process.env.WAIT_FOR_RESULTS_TO_BE_UPDATED_DEFAULT;
+    for (let i = daysInBack; i <= 0; i++) {
+      console.log("Processing: TODAY " + i);
+      console.log("WAIT FOR RESULT (in minutes): " + minutesToWait);
 
-        let unixDate = getSecondsToDate(i);
+      let unixDate = getSecondsToDate(i);
 
-        console.log("Unix date in seconds: " + unixDate);
-        let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
-        console.log("Unix date in miliseconds: " + unixDateMiliseconds);
+      console.log("Unix date in seconds: " + unixDate);
+      let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
+      console.log("Unix date in miliseconds: " + unixDateMiliseconds);
 
-        let isSportOnADate = await consumer.isSportOnADate(
-          unixDate,
-          sportIds[j]
+      let sportProps = await verifier.getSportProperties(sportIds[j], unixDate);
+
+      let isSportOnADate = sportProps[0];
+      console.log("Having sport on a date:  " + isSportOnADate);
+
+      let gamesOnContract = sportProps[2];
+      console.log("Count games on a date: " + gamesOnContract.length);
+
+      let gameIds = [];
+
+      let sendAPIrequest = false;
+
+      let timeInMiliseconds = new Date().getTime(); // miliseconds
+      console.log("Time for proocessing:  " + timeInMiliseconds);
+
+      let getAllPropertiesForGivenGames = await verifier.getAllGameProperties(
+        gamesOnContract
+      );
+
+      let marketAddressArray = getAllPropertiesForGivenGames[0];
+      let gameStartedArray = getAllPropertiesForGivenGames[6];
+
+      // don't use API request if all games are already resolved
+      for (let z = 0; z < gamesOnContract.length; z++) {
+        if (sendAPIrequest) {
+          break;
+        }
+        console.log("GAME: " + gamesOnContract[z]);
+
+        let gameStart = gameStartedArray[z];
+        console.log("GAME start: " + gameStart);
+
+        let expectedGameTime =
+          EXPECTED_GAME_DURATIN[parseInt(sportIds[j])] !== undefined
+            ? EXPECTED_GAME_DURATIN[parseInt(sportIds[j])]
+            : process.env.EXPECTED_GAME_FOOTBAL;
+        console.log("Expected game duration: " + expectedGameTime);
+
+        let expectedTimeToProcess =
+          parseInt(gameStart) + parseInt(expectedGameTime); // add hours  .env
+        let expectedTimeToProcessInMiliseconds =
+          parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
+        console.log(
+          "Time of processing (gameStart + .env): " +
+            parseInt(expectedTimeToProcess)
         );
-        console.log("Having sport on a date:  " + isSportOnADate);
-
-        let gamesOnContract = await consumer.getGamesPerDatePerSport(
-          sportIds[j],
-          unixDate
+        console.log(
+          "Time of processing (miliseconds): " +
+            expectedTimeToProcessInMiliseconds
         );
-        console.log("Count games on a date: " + gamesOnContract.length);
 
-        let gameIds = [];
+        let isGameResultAlreadyFulfilled = await consumer.gameFulfilledResolved(
+          gamesOnContract[z]
+        );
 
-        let sendAPIrequest = false;
+        console.log(
+          "isGameResultAlreadyFulfilled: " + isGameResultAlreadyFulfilled
+        );
 
-        let timeInMiliseconds = new Date().getTime(); // miliseconds
-        console.log("Time for proocessing:  " + timeInMiliseconds);
+        let marketPerGameId = marketAddressArray[z];
+        console.log("marketPerGameId: " + marketPerGameId);
 
-        // don't use API request if all games are already resolved
-        for (let z = 0; z < gamesOnContract.length; z++) {
-          if (sendAPIrequest) {
-            break;
-          }
-          console.log("GAME: " + gamesOnContract[z]);
+        let marketCreated = await consumer.marketCreated(marketPerGameId);
+        console.log("marketCreated: " + marketCreated);
 
-          let gameStart = await queues.gameStartPerGameId(gamesOnContract[z]);
-          console.log("GAME start: " + gameStart);
+        if (
+          expectedTimeToProcessInMiliseconds < timeInMiliseconds &&
+          !isGameResultAlreadyFulfilled &&
+          marketCreated
+        ) {
+          sendAPIrequest = true;
+        }
+      }
 
-          let expectedGameTime =
-            EXPECTED_GAME_DURATIN[parseInt(sportIds[j])] !== undefined
-              ? EXPECTED_GAME_DURATIN[parseInt(sportIds[j])]
-              : process.env.EXPECTED_GAME_FOOTBAL;
-          console.log("Expected game duration: " + expectedGameTime);
+      // there is games and there are games that are ready to be resolved
+      if (isSportOnADate && gamesOnContract.length > 0 && sendAPIrequest) {
+        console.log("Processing sport and date...");
 
-          let expectedTimeToProcess =
-            parseInt(gameStart) + parseInt(expectedGameTime); // add hours  .env
-          let expectedTimeToProcessInMiliseconds =
-            parseInt(expectedTimeToProcess) * parseInt(process.env.MILISECONDS); // miliseconds
+        const urlBuild =
+          baseUrl +
+          "/sports/" +
+          sportIds[j] +
+          "/events/" +
+          dateConverter(unixDateMiliseconds);
+        let response = await axios.get(urlBuild, {
+          params: { key: process.env.REQUEST_KEY },
+        });
+
+        const gamesListResponse = [];
+
+        let filteredResponse = [];
+        if (sportIds[j] == 1) {
+          response.data.events.forEach((o) => {
+            if (o.teams != undefined) {
+              if (
+                ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
+                ncaaSupportedTeams.includes(o.teams_normalized[1].name)
+              ) {
+                filteredResponse.push(o);
+              }
+            }
+          });
+        } else {
+          filteredResponse = response.data.events;
+        }
+
+        filteredResponse.forEach((event) => {
+          gamesListResponse.push({
+            id: event.event_id,
+            status: checkIfUndefined(event.score),
+            updatedAt: checkIfUndefinedDate(event.score),
+          });
+        });
+
+        // iterate over games on contract and API
+        for (let n = 0; n < gamesListResponse.length; n++) {
+          let gameIdContract = bytes32({ input: gamesListResponse[n].id });
+          console.log("Game id (on contract): -> " + gameIdContract);
+          console.log("Game id API: " + gamesListResponse[n].id);
+
+          let gameProp = await verifier.getGameProperties(gameIdContract);
+
+          let isGameResultAlreadyFulfilledInner =
+            await consumer.gameFulfilledResolved(gameIdContract);
+          console.log("Status: " + gamesListResponse[n].status);
+          console.log("UpdatedAt: " + gamesListResponse[n].updatedAt);
           console.log(
-            "Time of processing (gameStart + .env): " +
-              parseInt(expectedTimeToProcess)
-          );
-          console.log(
-            "Time of processing (miliseconds): " +
-              expectedTimeToProcessInMiliseconds
+            "Result already fulfilled: " + isGameResultAlreadyFulfilledInner
           );
 
-          let isGameResultAlreadyFulfilled =
-            await consumer.gameFulfilledResolved(gamesOnContract[z]);
+          let marketId = gameProp[0];
+          console.log("Market ID: " + marketId);
 
-          console.log(
-            "isGameResultAlreadyFulfilled: " + isGameResultAlreadyFulfilled
-          );
+          let isMarketCreated = await consumer.marketCreated(marketId);
+          console.log("is market created: " + isMarketCreated);
 
-          let marketPerGameId = await consumer.marketPerGameId(
-            gamesOnContract[z]
-          );
-          console.log("marketPerGameId: " + marketPerGameId);
+          let isMarketResolved = gameProp[1];
+          console.log("is market resolved already: " + isMarketResolved);
 
-          let marketCreated = await consumer.marketCreated(marketPerGameId);
-          console.log("marketCreated: " + marketCreated);
+          let isMarketCanceled = gameProp[2];
+          console.log("is market canceled already: " + isMarketCanceled);
 
+          // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
+          // and result is not set and market for that game exists
           if (
-            expectedTimeToProcessInMiliseconds < timeInMiliseconds &&
-            !isGameResultAlreadyFulfilled &&
-            marketCreated
+            (isGameInRightStatus(cancelStatuses, gamesListResponse[n].status) ||
+              isGameInRightStatus(
+                resolvedStatuses,
+                gamesListResponse[n].status
+              )) &&
+            scoreUpdatedAtCheck(
+              timeInMiliseconds,
+              gamesListResponse[n].updatedAt,
+              minutesToWait
+            ) &&
+            !isGameResultAlreadyFulfilledInner &&
+            isMarketCreated &&
+            !isMarketResolved &&
+            !isMarketCanceled
           ) {
-            sendAPIrequest = true;
+            gameIds.push(gamesListResponse[n].id);
           }
         }
 
-        // there is games and there are games that are ready to be resolved
-        if (isSportOnADate && gamesOnContract.length > 0 && sendAPIrequest) {
-          console.log("Processing sport and date...");
+        console.log("Game to be processed....");
+        console.log(gameIds);
 
-          const urlBuild =
-            baseUrl +
-            "/sports/" +
-            sportIds[j] +
-            "/events/" +
-            dateConverter(unixDateMiliseconds);
-          let response = await axios.get(urlBuild, {
-            params: { key: process.env.REQUEST_KEY },
-          });
-
-          const gamesListResponse = [];
-
-          let filteredResponse = [];
-          if (sportIds[j] == 1) {
-            response.data.events.forEach((o) => {
-              if (o.teams != undefined) {
-                if (
-                  ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
-                  ncaaSupportedTeams.includes(o.teams_normalized[1].name)
-                ) {
-                  filteredResponse.push(o);
-                }
-              }
-            });
-          } else {
-            filteredResponse = response.data.events;
-          }
-
-          filteredResponse.forEach((event) => {
-            gamesListResponse.push({
-              id: event.event_id,
-              status: checkIfUndefined(event.score),
-              updatedAt: checkIfUndefinedDate(event.score),
-            });
-          });
-
-          // iterate over games on contract and API
-          for (let n = 0; n < gamesListResponse.length; n++) {
-            let gameIdContract = bytes32({ input: gamesListResponse[n].id });
-            console.log("Game id (on contract): -> " + gameIdContract);
-            console.log("Game id API: " + gamesListResponse[n].id);
-            let isGameResultAlreadyFulfilledInner =
-              await consumer.gameFulfilledResolved(gameIdContract);
-            console.log("Status: " + gamesListResponse[n].status);
-            console.log("UpdatedAt: " + gamesListResponse[n].updatedAt);
-            console.log(
-              "Result already fulfilled: " + isGameResultAlreadyFulfilledInner
-            );
-
-            let marketId = await consumer.marketPerGameId(gameIdContract);
-            console.log("Market ID: " + marketId);
-
-            let isMarketCreated = await consumer.marketCreated(marketId);
-            console.log("is market created: " + isMarketCreated);
-
-            let isMarketResolved = await consumer.marketResolved(marketId);
-            console.log("is market resolved already: " + isMarketResolved);
-
-            let isMarketCanceled = await consumer.marketCanceled(marketId);
-            console.log("is market canceled already: " + isMarketCanceled);
-
-            // see if games are in right status CANCELED or RESOLVED and passed X minutes after result is printed
-            // and result is not set and market for that game exists
-            if (
-              (isGameInRightStatus(
-                cancelStatuses,
-                gamesListResponse[n].status
-              ) ||
-                isGameInRightStatus(
-                  resolvedStatuses,
-                  gamesListResponse[n].status
-                )) &&
-              scoreUpdatedAtCheck(
-                timeInMiliseconds,
-                gamesListResponse[n].updatedAt,
-                minutesToWait
-              ) &&
-              !isGameResultAlreadyFulfilledInner &&
-              isMarketCreated &&
-              !isMarketResolved &&
-              !isMarketCanceled
-            ) {
-              gameIds.push(gamesListResponse[n].id);
-            }
-          }
-
-          console.log("Game to be processed....");
-          console.log(gameIds);
-
-          if (gameIds.length > 0) {
-            try {
-              console.log("Send request...");
-              console.log("Games...");
-              console.log(gameIds);
-              // do it if less than batch number
-              if (gameIds.length <= process.env.CL_RESOLVE_BATCH) {
-                let tx = await wrapper.requestGamesResolveWithFilters(
-                  jobId,
-                  market,
-                  sportIds[j],
-                  unixDate,
-                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                  gameIds,
-                  {
-                    gasLimit: process.env.GAS_LIMIT,
-                  }
-                );
-
-                await tx.wait().then((e) => {
-                  console.log(
-                    "Requested for: " + unixDate + " with game id: " + gameIds
-                  );
-                  let events = e.events.filter(
-                    (evn) => evn.event === "ChainlinkRequested"
-                  );
-                  if (events.length > 0) {
-                    const requestId = events[0].args.id;
-                    console.log("Chainlink request id is: " + requestId);
-                    requestIdList.push(requestId);
-                  }
-                });
-                requestWasSend = true;
-              } else {
-                console.log("Executing in batch...");
-                let gamesInBatch = [];
-                for (let i = 0; i < gameIds.length; i++) {
-                  gamesInBatch.push(gameIds[i]);
-                  if (
-                    (gamesInBatch.length > 0 &&
-                      gamesInBatch.length % process.env.CL_RESOLVE_BATCH ==
-                        0) ||
-                    gameIds.length - 1 == i // last one
-                  ) {
-                    console.log("Batch...");
-                    console.log(gamesInBatch);
-
-                    let tx = await wrapper.requestGamesResolveWithFilters(
-                      jobId,
-                      market,
-                      sportIds[j],
-                      unixDate,
-                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                      gamesInBatch,
-                      {
-                        gasLimit: process.env.GAS_LIMIT,
-                      }
-                    );
-
-                    await tx.wait().then((e) => {
-                      console.log(
-                        "Requested for: " +
-                          unixDate +
-                          " with game id: " +
-                          gamesInBatch
-                      );
-                      let events = e.events.filter(
-                        (evn) => evn.event === "ChainlinkRequested"
-                      );
-                      if (events.length > 0) {
-                        const requestId = events[0].args.id;
-                        console.log("Chainlink request id is: " + requestId);
-                        requestIdList.push(requestId);
-                      }
-                    });
-                    requestWasSend = true;
-                    gamesInBatch = [];
-                    await delay(5000);
-                  }
-                }
-              }
-            } catch (e) {
-              console.log(e);
-              await sendErrorMessageToDiscordRequestToCL(
-                "Request to CL from " +
-                  botName +
-                  " went wrong! Please check LINK amount on bot, or kill and debug!" +
-                  " EXCEPTION MESSAGE: " +
-                  e.message.slice(0, 180),
+        if (gameIds.length > 0) {
+          try {
+            console.log("Send request...");
+            console.log("Games...");
+            console.log(gameIds);
+            // do it if less than batch number
+            if (gameIds.length <= process.env.CL_RESOLVE_BATCH) {
+              let tx = await wrapper.requestGamesResolveWithFilters(
+                jobId,
+                market,
                 sportIds[j],
                 unixDate,
+                [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
                 gameIds,
-                network,
-                botName
+                {
+                  gasLimit: process.env.GAS_LIMIT,
+                }
               );
-              failedCounter++;
-              await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+
+              await tx.wait().then((e) => {
+                console.log(
+                  "Requested for: " + unixDate + " with game id: " + gameIds
+                );
+                let events = e.events.filter(
+                  (evn) => evn.event === "ChainlinkRequested"
+                );
+                if (events.length > 0) {
+                  const requestId = events[0].args.id;
+                  console.log("Chainlink request id is: " + requestId);
+                  requestIdList.push(requestId);
+                }
+              });
+              requestWasSend = true;
+            } else {
+              console.log("Executing in batch...");
+              let gamesInBatch = [];
+              for (let i = 0; i < gameIds.length; i++) {
+                gamesInBatch.push(gameIds[i]);
+                if (
+                  (gamesInBatch.length > 0 &&
+                    gamesInBatch.length % process.env.CL_RESOLVE_BATCH == 0) ||
+                  gameIds.length - 1 == i // last one
+                ) {
+                  console.log("Batch...");
+                  console.log(gamesInBatch);
+
+                  let tx = await wrapper.requestGamesResolveWithFilters(
+                    jobId,
+                    market,
+                    sportIds[j],
+                    unixDate,
+                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                    gamesInBatch,
+                    {
+                      gasLimit: process.env.GAS_LIMIT,
+                    }
+                  );
+
+                  await tx.wait().then((e) => {
+                    console.log(
+                      "Requested for: " +
+                        unixDate +
+                        " with game id: " +
+                        gamesInBatch
+                    );
+                    let events = e.events.filter(
+                      (evn) => evn.event === "ChainlinkRequested"
+                    );
+                    if (events.length > 0) {
+                      const requestId = events[0].args.id;
+                      console.log("Chainlink request id is: " + requestId);
+                      requestIdList.push(requestId);
+                    }
+                  });
+                  requestWasSend = true;
+                  gamesInBatch = [];
+                  await delay(5000);
+                }
+              }
             }
+          } catch (e) {
+            console.log(e);
+            await sendErrorMessageToDiscordRequestToCL(
+              "Request to CL from " +
+                botName +
+                " went wrong! Please check LINK amount on bot, or kill and debug!" +
+                " EXCEPTION MESSAGE: " +
+                e.message.slice(0, 180),
+              sportIds[j],
+              unixDate,
+              gameIds,
+              network,
+              botName
+            );
+            failedCounter++;
+            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
           }
-        } else {
-          console.log(
-            "No games on date: " +
-              unixDate +
-              " for sport " +
-              sportIds[j] +
-              ", or all are resolved / waiting right time to be resolved!"
-          );
         }
+      } else {
+        console.log(
+          "No games on date: " +
+            unixDate +
+            " for sport " +
+            sportIds[j] +
+            ", or all are resolved / waiting right time to be resolved!"
+        );
       }
     }
   }
@@ -466,6 +461,7 @@ async function doResolve(network, botName) {
       }
     } else {
       console.log("Nothing but request is send!!!!");
+      await delay(1 * 60 * 1000); // wait minute
       if (requestIdList.length > 0) {
         let isFulfilled = await wrapper.areResolvedRequestIdsFulFilled(
           requestIdList

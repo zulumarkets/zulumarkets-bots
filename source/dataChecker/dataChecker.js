@@ -16,6 +16,7 @@ const gamesWrapper = require("../../contracts/GamesWrapper.js");
 const gamesConsumer = require("../../contracts/GamesConsumer.js");
 const allowances = require("../../source/allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
+const gamesVerifier = require("../../contracts/RundownVerifier.js");
 
 const queues = new ethers.Contract(
   process.env.GAME_QUEUE_CONTRACT,
@@ -38,6 +39,12 @@ const consumer = new ethers.Contract(
 const erc20Instance = new ethers.Contract(
   process.env.LINK_CONTRACT,
   linkToken.linkTokenContract.abi,
+  wallet
+);
+
+const verifier = new ethers.Contract(
+  process.env.CONSUMER_VERIFIER_CONTRACT,
+  gamesVerifier.rundownVerifier.abi,
   wallet
 );
 
@@ -77,236 +84,232 @@ async function doCheck(network, botName) {
 
   console.log("JOB ID =  " + jobId);
 
-  let unproccessedGames = await queues.getLengthUnproccessedGames();
-  console.log("GAMES length =  " + unproccessedGames);
+  // foreach sport
+  for (let j = 0; j < sportIds.length; j++) {
+    // foreach day starting from current date
+    for (let i = 0; i <= daysInFront; i++) {
+      console.log("------------------------");
+      console.log("SPORT ID =>  " + sportIds[j]);
+      console.log("Processing: TODAY +  " + i);
 
-  // no games on overtime skip all
-  if (unproccessedGames > 0) {
-    // foreach sport
-    for (let j = 0; j < sportIds.length; j++) {
-      // foreach day starting from current date
-      for (let i = 0; i <= daysInFront; i++) {
-        console.log("------------------------");
-        console.log("SPORT ID =>  " + sportIds[j]);
-        console.log("Processing: TODAY +  " + i);
+      let unixDate = await getSecondsToDate(i);
+      console.log("Unix date in seconds: " + unixDate);
+      let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
+      console.log("Unix date in miliseconds: " + unixDateMiliseconds);
 
-        let unixDate = await getSecondsToDate(i);
-        console.log("Unix date in seconds: " + unixDate);
-        let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
-        console.log("Unix date in miliseconds: " + unixDateMiliseconds);
+      console.log("Processing sport and date...");
 
-        console.log("Processing sport and date...");
+      let sendRequestNewMarketCreated = false;
 
-        let sendRequestNewMarketCreated = false;
+      const urlBuild =
+        baseUrl +
+        "/sports/" +
+        sportIds[j] +
+        "/events/" +
+        dateConverter(unixDateMiliseconds);
+      let response = await axios.get(urlBuild, {
+        params: { key: process.env.REQUEST_KEY },
+      });
 
-        const urlBuild =
-          baseUrl +
-          "/sports/" +
-          sportIds[j] +
-          "/events/" +
-          dateConverter(unixDateMiliseconds);
-        let response = await axios.get(urlBuild, {
-          params: { key: process.env.REQUEST_KEY },
+      const gamesListResponse = [];
+
+      response.data.events.forEach((event) => {
+        gamesListResponse.push({
+          id: event.event_id,
+          status: checkIfUndefined(event.score),
+          homeTeam: getTeam(
+            event.teams,
+            event.teams_normalized,
+            true,
+            americanSports,
+            sportIds[j]
+          ),
+          awayTeam: getTeam(
+            event.teams,
+            event.teams_normalized,
+            false,
+            americanSports,
+            sportIds[j]
+          ),
+          gameStartTime: Math.floor(
+            new Date(event.event_date).getTime() / 1000
+          ),
         });
+      });
 
-        const gamesListResponse = [];
+      let gamesToBeProcessed = [];
 
-        response.data.events.forEach((event) => {
-          gamesListResponse.push({
-            id: event.event_id,
-            status: checkIfUndefined(event.score),
-            homeTeam: getTeam(
-              event.teams,
-              event.teams_normalized,
-              true,
-              americanSports,
-              sportIds[j]
-            ),
-            awayTeam: getTeam(
-              event.teams,
-              event.teams_normalized,
-              false,
-              americanSports,
-              sportIds[j]
-            ),
-            gameStartTime: Math.floor(
-              new Date(event.event_date).getTime() / 1000
-            ),
-          });
-        });
+      // go over games (contract vs API) and check data
+      for (let n = 0; n < gamesListResponse.length; n++) {
+        console.log("Game status -> " + gamesListResponse[n].status);
+        console.log("Game id (as string): -> " + gamesListResponse[n].id);
+        let gameIdContract = bytes32({ input: gamesListResponse[n].id });
+        console.log("Game id (on contract): -> " + gameIdContract);
 
-        let gamesToBeProcessed = [];
+        let gameProp = await verifier.getGameProperties(gameIdContract);
 
-        // go over games (contract vs API) and check data
-        for (let n = 0; n < gamesListResponse.length; n++) {
-          console.log("Game status -> " + gamesListResponse[n].status);
-          console.log("Game id (as string): -> " + gamesListResponse[n].id);
-          let gameIdContract = bytes32({ input: gamesListResponse[n].id });
-          console.log("Game id (on contract): -> " + gameIdContract);
+        let marketAddress = gameProp[0];
+        console.log("Market:  " + marketAddress);
+        let isMarketCreated = await consumer.marketCreated(marketAddress);
+        console.log("Is market created:  " + isMarketCreated);
 
-          let marketAddress = await consumer.marketPerGameId(gameIdContract);
-          console.log("Market:  " + marketAddress);
-          let isMarketCreated = await consumer.marketCreated(marketAddress);
-          console.log("Is market created:  " + isMarketCreated);
+        let isMarketCanceled = gameProp[2];
+        console.log("Is market canceled:  " + isMarketCanceled);
 
-          let isMarketCanceled = await consumer.marketCanceled(marketAddress);
-          console.log("Is market canceled:  " + isMarketCanceled);
+        // get by ID and only STATUS_SCHEDULED events
+        if (
+          !isMarketCanceled &&
+          isMarketCreated &&
+          gamesListResponse[n].status == "STATUS_SCHEDULED"
+        ) {
+          console.log("Team home API: " + gamesListResponse[n].homeTeam);
+          console.log("Team away API: " + gamesListResponse[n].awayTeam);
+          console.log("Game time API: " + gamesListResponse[n].gameStartTime);
 
-          // get by ID and only STATUS_SCHEDULED events
+          let gameStartContract = await queues.gameStartPerGameId(
+            gameIdContract
+          );
+          let gameCreatedOnContract = await consumer.getGameCreatedById(
+            gameIdContract
+          );
+
+          let canMarketBeUpdated = await consumer.canMarketBeUpdated(
+            marketAddress
+          );
+          console.log("Can market be updated: " + canMarketBeUpdated);
+
+          console.log("Game time Contract: " + gameStartContract);
+          console.log("Game on Contract: " + gameCreatedOnContract);
+          console.log("Home team on Contract: " + gameCreatedOnContract[5]);
+          console.log("Away team on Contract: " + gameCreatedOnContract[6]);
+          // name has changed and market can be updated, so only new markets
+          // ONLY UFC
           if (
-            !isMarketCanceled &&
-            isMarketCreated &&
-            gamesListResponse[n].status == "STATUS_SCHEDULED"
+            gameCreatedOnContract[5] != gamesListResponse[n].homeTeam ||
+            gameCreatedOnContract[6] != gamesListResponse[n].awayTeam
           ) {
-            console.log("Team home API: " + gamesListResponse[n].homeTeam);
-            console.log("Team away API: " + gamesListResponse[n].awayTeam);
-            console.log("Game time API: " + gamesListResponse[n].gameStartTime);
+            console.log("TEAMS not the same!!!");
+            console.log("Afected game: " + gamesListResponse[n].id);
+            if (sportIds[j] == 7) {
+              gamesToBeProcessed.push(gamesListResponse[n].id);
+              sendRequestNewMarketCreated = true;
 
-            let gameStartContract = await queues.gameStartPerGameId(
-              gameIdContract
-            );
-            let gameCreatedOnContract = await consumer.getGameCreatedById(
-              gameIdContract
-            );
+              await sendMessageToDiscordTeamsNotTheSame(
+                "Fighters are not the same!!! Bot will cancel market, and create new one!",
+                gamesListResponse[n].id,
+                gameIdContract,
+                gameCreatedOnContract[5],
+                gamesListResponse[n].homeTeam,
+                gameCreatedOnContract[6],
+                gamesListResponse[n].awayTeam,
+                parseInt(gameStartContract),
+                network
+              );
+              // need to know if some other sport is having this issue so only print to discord
+            } else {
+              await sendMessageToDiscordTeamsNotTheSame(
+                "Game/Fight are not the same!",
+                gamesListResponse[n].id,
+                gameIdContract,
+                gameCreatedOnContract[5],
+                gamesListResponse[n].homeTeam,
+                gameCreatedOnContract[6],
+                gamesListResponse[n].awayTeam,
+                parseInt(gameStartContract),
+                network
+              );
+            }
 
-            let canMarketBeUpdated = await consumer.canMarketBeUpdated(
-              marketAddress
-            );
-            console.log("Can market be updated: " + canMarketBeUpdated);
+            // start of a game has changed
+          } else if (
+            parseInt(gameStartContract) !=
+            parseInt(gamesListResponse[n].gameStartTime)
+          ) {
+            let cuerrentTimeInMili = new Date().getTime(); // miliseconds
+            console.log("Time for proocessing:  " + cuerrentTimeInMili);
 
-            console.log("Game time Contract: " + gameStartContract);
-            console.log("Game on Contract: " + gameCreatedOnContract);
-            console.log("Home team on Contract: " + gameCreatedOnContract[5]);
-            console.log("Away team on Contract: " + gameCreatedOnContract[6]);
-            // name has changed and market can be updated, so only new markets
-            // ONLY UFC
             if (
-              gameCreatedOnContract[5] != gamesListResponse[n].homeTeam ||
-              gameCreatedOnContract[6] != gamesListResponse[n].awayTeam
+              parseInt(gamesListResponse[n].gameStartTime) * 1000 >
+                cuerrentTimeInMili ||
+              parseInt(gameStartContract) * 1000 > cuerrentTimeInMili
             ) {
-              console.log("TEAMS not the same!!!");
+              console.log("Time of a game UPDATED!!!");
               console.log("Afected game: " + gamesListResponse[n].id);
-              if (sportIds[j] == 7) {
+              if (canMarketBeUpdated) {
                 gamesToBeProcessed.push(gamesListResponse[n].id);
-                sendRequestNewMarketCreated = true;
-
-                await sendMessageToDiscordTeamsNotTheSame(
-                  "Fighters are not the same!!! Bot will cancel market, and create new one!",
+                await sendMessageToDiscordTimeOfAGameHasChanged(
+                  "Time of a game/fight has changed!!!",
                   gamesListResponse[n].id,
                   gameIdContract,
                   gameCreatedOnContract[5],
-                  gamesListResponse[n].homeTeam,
                   gameCreatedOnContract[6],
-                  gamesListResponse[n].awayTeam,
                   parseInt(gameStartContract),
+                  parseInt(gamesListResponse[n].gameStartTime),
                   network
                 );
-                // need to know if some other sport is having this issue so only print to discord
-              } else {
-                await sendMessageToDiscordTeamsNotTheSame(
-                  "Game/Fight are not the same!",
-                  gamesListResponse[n].id,
-                  gameIdContract,
-                  gameCreatedOnContract[5],
-                  gamesListResponse[n].homeTeam,
-                  gameCreatedOnContract[6],
-                  gamesListResponse[n].awayTeam,
-                  parseInt(gameStartContract),
-                  network
-                );
-              }
-
-              // start of a game has changed
-            } else if (
-              parseInt(gameStartContract) !=
-              parseInt(gamesListResponse[n].gameStartTime)
-            ) {
-              let cuerrentTimeInMili = new Date().getTime(); // miliseconds
-              console.log("Time for proocessing:  " + cuerrentTimeInMili);
-
-              if (
-                parseInt(gamesListResponse[n].gameStartTime) * 1000 >
-                  cuerrentTimeInMili ||
-                parseInt(gameStartContract) * 1000 > cuerrentTimeInMili
-              ) {
-                console.log("Time of a game UPDATED!!!");
-                console.log("Afected game: " + gamesListResponse[n].id);
-                if (canMarketBeUpdated) {
-                  gamesToBeProcessed.push(gamesListResponse[n].id);
-                  await sendMessageToDiscordTimeOfAGameHasChanged(
-                    "Time of a game/fight has changed!!!",
-                    gamesListResponse[n].id,
-                    gameIdContract,
-                    gameCreatedOnContract[5],
-                    gameCreatedOnContract[6],
-                    parseInt(gameStartContract),
-                    parseInt(gamesListResponse[n].gameStartTime),
-                    network
-                  );
-                }
               }
             }
           }
         }
+      }
 
-        console.log(gamesToBeProcessed);
+      console.log(gamesToBeProcessed);
 
-        if (gamesToBeProcessed.length > 0) {
-          try {
-            console.log("Send request to CL...");
+      if (gamesToBeProcessed.length > 0) {
+        try {
+          console.log("Send request to CL...");
 
-            let tx_request = await wrapper.requestGamesResolveWithFilters(
-              jobId,
-              market,
-              sportIds[j],
-              unixDate,
-              [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-              gamesToBeProcessed,
-              {
-                gasLimit: process.env.GAS_LIMIT,
-              }
-            );
-
-            await tx_request.wait().then((e) => {
-              console.log(
-                "Requested for date: " +
-                  unixDate +
-                  ", sportID: " +
-                  sportIds[j] +
-                  ", and games: " +
-                  gamesToBeProcessed
-              );
-              let events = e.events.filter(
-                (evn) => evn.event === "ChainlinkRequested"
-              );
-              if (events.length > 0) {
-                const requestId = events[0].args.id;
-                console.log("Chainlink request id is: " + requestId);
-                requestIdList.push(requestId);
-              }
-            });
-
-            // this needs to create market -> flag for discord
-            if (sendRequestNewMarketCreated) {
-              requestWasSend = true;
+          let tx_request = await wrapper.requestGamesResolveWithFilters(
+            jobId,
+            market,
+            sportIds[j],
+            unixDate,
+            [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+            gamesToBeProcessed,
+            {
+              gasLimit: process.env.GAS_LIMIT,
             }
-          } catch (e) {
-            console.log(e);
-            await sendErrorMessageToDiscordRequestCL(
-              "Request to CL from " +
-                botName +
-                " went wrong! Please check LINK amount on bot, or kill and debug!" +
-                " EXCEPTION MESSAGE: " +
-                e.message.slice(0, 180),
-              sportIds[j],
-              unixDate,
-              gamesToBeProcessed,
-              network,
-              botName
+          );
+
+          await tx_request.wait().then((e) => {
+            console.log(
+              "Requested for date: " +
+                unixDate +
+                ", sportID: " +
+                sportIds[j] +
+                ", and games: " +
+                gamesToBeProcessed
             );
-            failedCounter++;
-            await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+            let events = e.events.filter(
+              (evn) => evn.event === "ChainlinkRequested"
+            );
+            if (events.length > 0) {
+              const requestId = events[0].args.id;
+              console.log("Chainlink request id is: " + requestId);
+              requestIdList.push(requestId);
+            }
+          });
+
+          // this needs to create market -> flag for discord
+          if (sendRequestNewMarketCreated) {
+            requestWasSend = true;
           }
+        } catch (e) {
+          console.log(e);
+          await sendErrorMessageToDiscordRequestCL(
+            "Request to CL from " +
+              botName +
+              " went wrong! Please check LINK amount on bot, or kill and debug!" +
+              " EXCEPTION MESSAGE: " +
+              e.message.slice(0, 180),
+            sportIds[j],
+            unixDate,
+            gamesToBeProcessed,
+            network,
+            botName
+          );
+          failedCounter++;
+          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
         }
       }
     }
@@ -378,6 +381,7 @@ async function doCheck(network, botName) {
       }
     } else {
       console.log("Nothing but request is send!!!!");
+      await delay(1 * 60 * 1000); // wait minute
       if (requestIdList.length > 0) {
         let isFulfilled = await wrapper.areCreatedRequestIdsFulFilled(
           requestIdList
