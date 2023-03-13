@@ -47,6 +47,8 @@ const erc20Instance = new ethers.Contract(
   wallet
 );
 
+let requestIdList = [];
+
 async function doCreate(network, botName) {
   const LEAGUES_BY_SPORT = {
     1: supportedLeaguesFootball,
@@ -410,6 +412,15 @@ async function doCreate(network, botName) {
                             " with game id: " +
                             gamesInBatchforCL
                         );
+
+                        let events = e.events.filter(
+                          (evn) => evn.event === "ChainlinkRequested"
+                        );
+                        if (events.length > 0) {
+                          const requestId = events[0].args.id;
+                          console.log("Chainlink request id is: " + requestId);
+                          requestIdList.push(requestId);
+                        }
                       });
                       requestWasSend = true;
                       gamesInBatchforCL = [];
@@ -431,6 +442,15 @@ async function doCreate(network, botName) {
 
                   await tx.wait().then((e) => {
                     console.log("Requested for: " + unixDate);
+
+                    let events = e.events.filter(
+                      (evn) => evn.event === "ChainlinkRequested"
+                    );
+                    if (events.length > 0) {
+                      const requestId = events[0].args.id;
+                      console.log("Chainlink request id is: " + requestId);
+                      requestIdList.push(requestId);
+                    }
                   });
                   requestWasSend = true;
                 }
@@ -523,17 +543,27 @@ async function doCreate(network, botName) {
       }
     } else {
       console.log("Nothing but request is send!!!!");
-      await sendErrorMessageToDiscord(
-        "Request was send, but no games created, please check and debug! Stoping bot is mandatory!",
-        network,
-        botName
-      );
-      failedCounter++;
-      await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+      if (requestIdList.length > 0) {
+        let isFulfilled = await wrapper.areCreatedRequestIdsFulFilled(
+          requestIdList
+        );
+        if (!isFulfilled) {
+          await sendErrorMessageToDiscord(
+            "Request was send, but no games created, please check and debug! Stoping bot is mandatory!",
+            network,
+            botName
+          );
+          failedCounter++;
+          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+        } else {
+          requestIdList = [];
+        }
+      }
     }
   } else {
     console.log("Nothing to create...");
   }
+  requestIdList = [];
   console.log("Ended batch...");
 }
 

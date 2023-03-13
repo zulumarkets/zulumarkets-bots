@@ -50,6 +50,8 @@ const verifier = new ethers.Contract(
   wallet
 );
 
+let requestIdList = [];
+
 async function doResolve(network, botName) {
   const EXPECTED_GAME_DURATIN = {
     1: process.env.EXPECTED_GAME_NFL,
@@ -103,8 +105,6 @@ async function doResolve(network, botName) {
 
   let requestWasSend = false;
   let failedCounter = 0;
-
-  let gameForRequestCheck = [];
 
   // if there is no games no triggering
   if (unproccessedGames > 0) {
@@ -290,7 +290,6 @@ async function doResolve(network, botName) {
           console.log(gameIds);
 
           if (gameIds.length > 0) {
-            gameForRequestCheck = gameForRequestCheck.concat(gameIds);
             try {
               console.log("Send request...");
               console.log("Games...");
@@ -313,6 +312,14 @@ async function doResolve(network, botName) {
                   console.log(
                     "Requested for: " + unixDate + " with game id: " + gameIds
                   );
+                  let events = e.events.filter(
+                    (evn) => evn.event === "ChainlinkRequested"
+                  );
+                  if (events.length > 0) {
+                    const requestId = events[0].args.id;
+                    console.log("Chainlink request id is: " + requestId);
+                    requestIdList.push(requestId);
+                  }
                 });
                 requestWasSend = true;
               } else {
@@ -348,6 +355,14 @@ async function doResolve(network, botName) {
                           " with game id: " +
                           gamesInBatch
                       );
+                      let events = e.events.filter(
+                        (evn) => evn.event === "ChainlinkRequested"
+                      );
+                      if (events.length > 0) {
+                        const requestId = events[0].args.id;
+                        console.log("Chainlink request id is: " + requestId);
+                        requestIdList.push(requestId);
+                      }
                     });
                     requestWasSend = true;
                     gamesInBatch = [];
@@ -451,37 +466,11 @@ async function doResolve(network, botName) {
       }
     } else {
       console.log("Nothing but request is send!!!!");
-      let sendMassage = false;
-      // check by ID's
-      if (gameForRequestCheck.length > 0) {
-        console.log("length for checking: " + gameForRequestCheck.length);
-        let gameForRequestCheckBytes = [];
-        for (let r = 0; r < gameForRequestCheck.length; r++) {
-          gameForRequestCheckBytes.push(
-            bytes32({ input: gameForRequestCheck[r] })
-          );
-        }
-        console.log(
-          "length for checking (bytes): " + gameForRequestCheckBytes.length
+      if (requestIdList.length > 0) {
+        let isFulfilled = await wrapper.areResolvedRequestIdsFulFilled(
+          requestIdList
         );
-
-        let getAllPropertiesForGivenGames = await verifier.getAllGameProperties(
-          gameForRequestCheckBytes
-        );
-
-        let isMarketResolvedArray = getAllPropertiesForGivenGames[1];
-        let isMarketCanceledArray = getAllPropertiesForGivenGames[2];
-
-        for (let r = 0; r < gameForRequestCheckBytes.length; r++) {
-          if (sendMassage) {
-            break;
-          }
-
-          if (!isMarketResolvedArray[r] && !isMarketCanceledArray[r]) {
-            sendMassage = true;
-          }
-        }
-        if (sendMassage) {
+        if (!isFulfilled) {
           await sendErrorMessageToDiscord(
             "Request was send, but no games resolved, please check and debug! Stoping bot is mandatory!",
             network,
@@ -489,6 +478,8 @@ async function doResolve(network, botName) {
           );
           failedCounter++;
           await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+        } else {
+          requestIdList = [];
         }
       }
     }
@@ -496,9 +487,7 @@ async function doResolve(network, botName) {
     console.log("Nothing to resolve...");
   }
 
-  // reset
-  gameForRequestCheck = [];
-
+  requestIdList = [];
   console.log("Ended batch...");
 }
 

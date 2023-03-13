@@ -41,6 +41,8 @@ const erc20Instance = new ethers.Contract(
   wallet
 );
 
+let requestIdList = [];
+
 async function doCheck(network, botName) {
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
   console.log("Amount token in wallet: " + parseInt(amountOfToken));
@@ -274,6 +276,14 @@ async function doCheck(network, botName) {
                   ", and games: " +
                   gamesToBeProcessed
               );
+              let events = e.events.filter(
+                (evn) => evn.event === "ChainlinkRequested"
+              );
+              if (events.length > 0) {
+                const requestId = events[0].args.id;
+                console.log("Chainlink request id is: " + requestId);
+                requestIdList.push(requestId);
+              }
             });
 
             // this needs to create market -> flag for discord
@@ -368,18 +378,28 @@ async function doCheck(network, botName) {
       }
     } else {
       console.log("Nothing but request is send!!!!");
-      await sendErrorMessageToDiscord(
-        "Request was send, team names was changed, but no games created, please check and debug! Stoping bot is mandatory!",
-        network,
-        botName
-      );
-      failedCounter++;
-      await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+      if (requestIdList.length > 0) {
+        let isFulfilled = await wrapper.areCreatedRequestIdsFulFilled(
+          requestIdList
+        );
+        if (!isFulfilled) {
+          await sendErrorMessageToDiscord(
+            "Request was send, team names was changed, but no games created, please check and debug! Stoping bot is mandatory!",
+            network,
+            botName
+          );
+          failedCounter++;
+          await delay(1 * 60 * 60 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+        } else {
+          requestIdList = [];
+        }
+      }
     }
   } else {
     console.log("Nothing to process...");
   }
 
+  requestIdList = [];
   console.log("Ended batch...");
 }
 
