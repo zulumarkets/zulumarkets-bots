@@ -400,7 +400,7 @@ async function doIndefinitely() {
         firstRun = false;
         await delay(5000);
       } else {
-        await delay(process.env.EXERCISE_FREQUENCY);
+        await delay(process.env.EXERCISE_PARLAYS_FREQUENCY);
         newMaturedMarkets = await sportManager.numMaturedMarkets();
         if (parseInt(newMaturedMarkets) > lastMaturedMarkets) {
           console.log(
@@ -428,7 +428,7 @@ async function doIndefinitely() {
           ", date: " +
           new Date()
       );
-      await delay(process.env.EXERCISE_FREQUENCY);
+      await delay(process.env.EXERCISE_PARLAYS_FREQUENCY);
     }
   }
 }
