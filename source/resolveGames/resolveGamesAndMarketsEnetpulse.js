@@ -174,7 +174,7 @@ async function doResolve(network, botName) {
         console.log("Unix date in miliseconds: " + unixDateMiliseconds);
 
         let sportProps = await verifier.getSportProperties(
-          sportIds[j],
+          tournamentType[z].id,
           unixDate
         );
 
