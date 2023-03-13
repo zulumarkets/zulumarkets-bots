@@ -224,17 +224,6 @@ async function doResolve(network, botName) {
                 }
               }
             });
-          } else if (sportIds[j] == 5) {
-            response.data.events.forEach((o) => {
-              if (o.teams != undefined) {
-                if (
-                  ncaabSupportedTeams.includes(o.teams_normalized[0].name) &&
-                  ncaabSupportedTeams.includes(o.teams_normalized[1].name)
-                ) {
-                  filteredResponse.push(o);
-                }
-              }
-            });
           } else {
             filteredResponse = response.data.events;
           }
