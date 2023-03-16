@@ -207,6 +207,8 @@ async function doCheck(network, botName) {
               );
               // need to know if some other sport is having this issue so only print to discord
             } else {
+              gamesToBeProcessed.push(gamesListResponse[n].id);
+              sendRequestNewMarketCreated = true;
               await sendMessageToDiscordTeamsNotTheSame(
                 "Game/Fight are not the same!",
                 gamesListResponse[n].id,
