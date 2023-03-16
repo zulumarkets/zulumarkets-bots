@@ -1980,12 +1980,36 @@ function getTotalLineAndOddsForFootball(extendedTotals, type) {
 function getSpreadLineAndOddsForFootball(extendedSpread, type) {
   if (typeof extendedSpread != "undefined" && extendedSpread.length > 0) {
     var filteredExtendedSpread = extendedSpread.filter(
-      (x) => x.point_spread_home === 1 // only filter out 1 over/under
+      (x) => x.point_spread_home === 1.5 // only filter out 1.5
     );
 
     if (filteredExtendedSpread.length === 0) {
       filteredExtendedSpread = extendedSpread.filter(
-        (x) => x.point_spread_home === -1 // only filter out -1 over/under IF no total_over === 1
+        (x) => x.point_spread_home === -1.5 // after -1.5
+      );
+    }
+
+    if (filteredExtendedSpread.length === 0) {
+      filteredExtendedSpread = extendedSpread.filter(
+        (x) => x.point_spread_home === 2.5 // only filter out 2.5
+      );
+    }
+
+    if (filteredExtendedSpread.length === 0) {
+      filteredExtendedSpread = extendedSpread.filter(
+        (x) => x.point_spread_home === -2.5 // only filter out -2.5
+      );
+    }
+
+    if (filteredExtendedSpread.length === 0) {
+      filteredExtendedSpread = extendedSpread.filter(
+        (x) => x.point_spread_home === 1 // only filter out 1
+      );
+    }
+
+    if (filteredExtendedSpread.length === 0) {
+      filteredExtendedSpread = extendedSpread.filter(
+        (x) => x.point_spread_home === -1 // only filter out -1
       );
     }
 
