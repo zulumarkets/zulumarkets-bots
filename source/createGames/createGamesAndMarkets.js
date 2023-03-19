@@ -177,7 +177,7 @@ async function doCreate(network, botName) {
           for (let n = 0; n < scheduleListResponse.length; n++) {
             if (
               scheduleListResponse[n].id == o.event_id &&
-              scheduleListResponse[n].leagueName.includes(
+              scheduleListResponse[n].eventName.includes(
                 "Men's Basketball Championship"
               ) &&
               o.score.event_status == "STATUS_SCHEDULED" &&
