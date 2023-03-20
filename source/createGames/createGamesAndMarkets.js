@@ -152,11 +152,38 @@ async function doCreate(network, botName) {
           }
         });
       } else if (sportIds[j] == 5) {
+        console.log("Filter out NCAAB MM tournament only!");
+        const scheduleListResponse = [];
+
+        const urlBuildSchedule =
+          baseUrl + "/sports/" + sportIds[j] + "/schedule";
+        let responseSchedule = await axios.get(urlBuildSchedule, {
+          params: { key: process.env.REQUEST_KEY },
+        });
+
+        responseSchedule.data.schedules.forEach((schedule) => {
+          scheduleListResponse.push({
+            id: schedule.event_id,
+            eventName: checkIfUndefinedEvent(schedule),
+          });
+        });
+
+        console.log(
+          "Schedule endpoint fetch number of elements: " +
+            scheduleListResponse.length
+        );
+
         response.data.events.forEach((o) => {
-          if (o.teams_normalized != undefined) {
+          for (let n = 0; n < scheduleListResponse.length; n++) {
             if (
-              ncaabSupportedTeams.includes(o.teams_normalized[0].name) &&
-              ncaabSupportedTeams.includes(o.teams_normalized[1].name)
+              scheduleListResponse[n].id == o.event_id &&
+              scheduleListResponse[n].eventName.includes(
+                "Men's Basketball Championship"
+              ) &&
+              o.score.event_status == "STATUS_SCHEDULED" &&
+              o.teams_normalized != undefined &&
+              !isNameInalid(invalidNames, o.teams_normalized[0].name) &&
+              !isNameInalid(invalidNames, o.teams_normalized[1].name)
             ) {
               filteredResponse.push(o);
             }
@@ -879,6 +906,13 @@ function checkIfUndefinedBroadcast(eventBroadcast) {
 function checkIfUndefinedLeague(eventLeague) {
   if (eventLeague && eventLeague.league_name) {
     return eventLeague.league_name;
+  }
+  return "unknown";
+}
+
+function checkIfUndefinedEvent(eventName) {
+  if (eventName && eventName.event_name) {
+    return eventName.event_name;
   }
   return "unknown";
 }
