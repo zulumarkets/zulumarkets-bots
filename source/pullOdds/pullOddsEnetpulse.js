@@ -1161,7 +1161,9 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                     );
 
                     totalOddsForRequestBatch.push(totalOddsForRequest[i * 2]);
-                    totalOddsForRequestBatch.push(totalOddsForRequest[i + 1]);
+                    totalOddsForRequestBatch.push(
+                      totalOddsForRequest[i * 2 + 1]
+                    );
 
                     if (
                       (gamesInBatch.length > 0 &&
@@ -1202,7 +1204,7 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                   }
                 } else {
                   let tx = await reciever.fulfillGamesOdds(
-                    gamesInBatch,
+                    gameIdsForRequest,
                     mainOddsForRequest,
                     spreadLinesForRequest,
                     spreadOddsForRequest,
