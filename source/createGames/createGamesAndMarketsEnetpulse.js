@@ -21,6 +21,12 @@ let supportedLeaguesTennis = require("./supportedLeaguesTennis.json"); // league
 let supportedLeaguesFootball = require("./supportedLeaguesFootball.json"); // leagues/tour types etc.
 let tennisTournaments = require("./tennisSupportTournament.json"); // supported tennis tournamens
 let footballTournament = require("./footballSupportTournament.json"); // supported tennis tournamens
+let supportedLeaguesCsGo = require("./supportedLeaguesCsGo.json"); // leagues/tour types etc.
+let supportedLeaguesDota = require("./supportedLeaguesDota.json"); // leagues/tour types etc.
+let supportedLeaguesLol = require("./supportedLeaguesLol.json"); // leagues/tour types etc.
+let csGoSupportedTournaments = require("./supportTournamentCsGo.json"); // supported CSGO
+let dotaSupportedTournaments = require("./supportTournamentDota.json"); // supported Dota
+let lolSupportedTournaments = require("./supportTournamentLol.json"); // supported Lol
 // todo add suported other leagues
 
 const queues = new ethers.Contract(
@@ -53,12 +59,19 @@ async function doCreate(network, botName) {
   const LEAGUES_BY_SPORT = {
     1: supportedLeaguesFootball,
     2: supportedLeaguesTennis,
+    84: supportedLeaguesCsGo,
+    85: supportedLeaguesDota,
+    92: supportedLeaguesLol,
   };
 
   const TOURNAMENTS_BY_SPORT = {
     1: footballTournament,
     2: tennisTournaments,
+    84: csGoSupportedTournaments,
+    85: dotaSupportedTournaments,
+    92: lolSupportedTournaments,
   };
+
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
   console.log("Amount token in wallet: " + parseInt(amountOfToken));
   console.log("Threshold: " + parseInt(process.env.LINK_THRESHOLD));
@@ -292,8 +305,9 @@ async function doCreate(network, botName) {
         let unixDate = getSecondsToDate(i);
         console.log("Unix date in seconds: " + unixDate);
         let isSportTwoPositionsSport = await consumer.isSportTwoPositionsSport(
-          sportIds[j]
+          tournamentType[z].id
         );
+        console.log("Is two positional: " + isSportTwoPositionsSport);
 
         let gamesOnADate = mapDaysAndEvents.get(unixDate);
 
