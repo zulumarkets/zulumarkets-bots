@@ -1126,121 +1126,119 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
             console.log("Next date...");
           }
         }
+      }
 
-        console.log("Games to be send: ");
-        console.log("------");
-        console.log(gamesWhichOddsChanged);
-        console.log(gameIdsForRequest);
-        console.log(mainOddsForRequest);
-        console.log(spreadLinesForRequest);
-        console.log(spreadOddsForRequest);
-        console.log(totalLinesForRequest);
-        console.log(totalOddsForRequest);
-        console.log("------");
+      console.log("Games to be send: ");
+      console.log("------");
+      console.log(gamesWhichOddsChanged);
+      console.log(gameIdsForRequest);
+      console.log(mainOddsForRequest);
+      console.log(spreadLinesForRequest);
+      console.log(spreadOddsForRequest);
+      console.log(totalLinesForRequest);
+      console.log(totalOddsForRequest);
+      console.log("------");
 
-        // odds changed
-        if (sendRequestForOdds && gameIdsForRequest.length > 0) {
-          console.log("Sending request, odds changed...");
-          try {
-            console.log("Send request...");
+      // odds changed
+      if (sendRequestForOdds && gameIdsForRequest.length > 0) {
+        console.log("Sending request, odds changed...");
+        try {
+          console.log("Send request...");
 
-            console.log("Requesting games count: " + gameIdsForRequest.length);
-            if (gameIdsForRequest.length > process.env.CL_ODDS_BATCH) {
-              let gamesInBatch = [];
-              let mainOddsForRequestBatch = [];
-              let spreadLinesForRequestBatch = [];
-              let totalLinesForRequestBatch = [];
-              let spreadOddsForRequestBatch = [];
-              let totalOddsForRequestBatch = [];
-              for (let i = 0; i < gameIdsForRequest.length; i++) {
-                gamesInBatch.push(gameIdsForRequest[i]);
-                mainOddsForRequestBatch.push(mainOddsForRequest[i * 3]);
-                mainOddsForRequestBatch.push(mainOddsForRequest[i * 3 + 1]);
-                mainOddsForRequestBatch.push(mainOddsForRequest[i * 3 + 2]);
+          console.log("Requesting games count: " + gameIdsForRequest.length);
+          if (gameIdsForRequest.length > process.env.CL_ODDS_BATCH) {
+            let gamesInBatch = [];
+            let mainOddsForRequestBatch = [];
+            let spreadLinesForRequestBatch = [];
+            let totalLinesForRequestBatch = [];
+            let spreadOddsForRequestBatch = [];
+            let totalOddsForRequestBatch = [];
+            for (let i = 0; i < gameIdsForRequest.length; i++) {
+              gamesInBatch.push(gameIdsForRequest[i]);
+              mainOddsForRequestBatch.push(mainOddsForRequest[i * 3]);
+              mainOddsForRequestBatch.push(mainOddsForRequest[i * 3 + 1]);
+              mainOddsForRequestBatch.push(mainOddsForRequest[i * 3 + 2]);
 
-                spreadLinesForRequestBatch.push(spreadLinesForRequest[i * 2]);
-                spreadLinesForRequestBatch.push(
-                  spreadLinesForRequest[i * 2 + 1]
+              spreadLinesForRequestBatch.push(spreadLinesForRequest[i * 2]);
+              spreadLinesForRequestBatch.push(spreadLinesForRequest[i * 2 + 1]);
+
+              totalLinesForRequestBatch.push(totalLinesForRequest[i * 2]);
+              totalLinesForRequestBatch.push(totalLinesForRequest[i * 2 + 1]);
+
+              spreadOddsForRequestBatch.push(spreadOddsForRequest[i * 2]);
+              spreadOddsForRequestBatch.push(spreadOddsForRequest[i * 2 + 1]);
+
+              totalOddsForRequestBatch.push(totalOddsForRequest[i * 2]);
+              totalOddsForRequestBatch.push(totalOddsForRequest[i * 2 + 1]);
+
+              if (
+                (gamesInBatch.length > 0 &&
+                  gamesInBatch.length % process.env.CL_ODDS_BATCH == 0) ||
+                gamesWhichOddsChanged.length - 1 == i // last one
+              ) {
+                console.log("Batch...");
+                console.log(gamesInBatch);
+
+                let tx = await reciever.fulfillGamesOdds(
+                  gamesInBatch,
+                  mainOddsForRequestBatch,
+                  spreadLinesForRequestBatch,
+                  spreadOddsForRequestBatch,
+                  totalLinesForRequestBatch,
+                  totalOddsForRequestBatch,
+                  {
+                    gasLimit: process.env.GAS_LIMIT,
+                  }
                 );
 
-                totalLinesForRequestBatch.push(totalLinesForRequest[i * 2]);
-                totalLinesForRequestBatch.push(totalLinesForRequest[i * 2 + 1]);
+                await tx.wait().then((e) => {
+                  console.log("Requested for sport: " + tournamentType[r].id);
+                });
 
-                spreadOddsForRequestBatch.push(spreadOddsForRequest[i * 2]);
-                spreadOddsForRequestBatch.push(spreadOddsForRequest[i * 2 + 1]);
-
-                totalOddsForRequestBatch.push(totalOddsForRequest[i * 2]);
-                totalOddsForRequestBatch.push(totalOddsForRequest[i * 2 + 1]);
-
-                if (
-                  (gamesInBatch.length > 0 &&
-                    gamesInBatch.length % process.env.CL_ODDS_BATCH == 0) ||
-                  gamesWhichOddsChanged.length - 1 == i // last one
-                ) {
-                  console.log("Batch...");
-                  console.log(gamesInBatch);
-
-                  let tx = await reciever.fulfillGamesOdds(
-                    gamesInBatch,
-                    mainOddsForRequestBatch,
-                    spreadLinesForRequestBatch,
-                    spreadOddsForRequestBatch,
-                    totalLinesForRequestBatch,
-                    totalOddsForRequestBatch,
-                    {
-                      gasLimit: process.env.GAS_LIMIT,
-                    }
-                  );
-
-                  await tx.wait().then((e) => {
-                    console.log("Requested for sport: " + tournamentType[r].id);
-                  });
-
-                  gamesInBatch = [];
-                  mainOddsForRequestBatch = [];
-                  spreadLinesForRequestBatch = [];
-                  totalLinesForRequestBatch = [];
-                  spreadOddsForRequestBatch = [];
-                  totalOddsForRequestBatch = [];
-                }
+                gamesInBatch = [];
+                mainOddsForRequestBatch = [];
+                spreadLinesForRequestBatch = [];
+                totalLinesForRequestBatch = [];
+                spreadOddsForRequestBatch = [];
+                totalOddsForRequestBatch = [];
               }
-            } else {
-              let tx = await reciever.fulfillGamesOdds(
-                gameIdsForRequest,
-                mainOddsForRequest,
-                spreadLinesForRequest,
-                spreadOddsForRequest,
-                totalLinesForRequest,
-                totalOddsForRequest,
-                {
-                  gasLimit: process.env.GAS_LIMIT,
-                }
-              );
-
-              await tx.wait().then((e) => {
-                console.log("Requested for sport: " + tournamentType[r].id);
-              });
             }
-          } catch (e) {
-            console.log(e);
-            await sendErrorMessageToDiscordRequestOddsfromCL(
-              "Request to changing odds from " +
-                botName +
-                " went wrong, see: " +
-                botName +
-                ", EXCEPTION MESSAGE: " +
-                e.message.slice(0, 180),
-              tournamentType[r].id,
-              unixDate,
-              network,
-              botName
+          } else {
+            let tx = await reciever.fulfillGamesOdds(
+              gameIdsForRequest,
+              mainOddsForRequest,
+              spreadLinesForRequest,
+              spreadOddsForRequest,
+              totalLinesForRequest,
+              totalOddsForRequest,
+              {
+                gasLimit: process.env.GAS_LIMIT,
+              }
             );
-            failedCounter++;
-            await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+
+            await tx.wait().then((e) => {
+              console.log("Requested for sport: " + tournamentType[r].id);
+            });
           }
-        } else {
-          console.log("Not still for processing...");
+        } catch (e) {
+          console.log(e);
+          await sendErrorMessageToDiscordRequestOddsfromCL(
+            "Request to changing odds from " +
+              botName +
+              " went wrong, see: " +
+              botName +
+              ", EXCEPTION MESSAGE: " +
+              e.message.slice(0, 180),
+            tournamentType[r].id,
+            unixDate,
+            network,
+            botName
+          );
+          failedCounter++;
+          await delay(1 * 10 * 60 * 1000); // wait 10min
         }
+      } else {
+        console.log("Not still for processing...");
       }
     }
 
