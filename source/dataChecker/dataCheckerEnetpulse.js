@@ -286,11 +286,6 @@ async function doCheck(network, botName) {
             gameIdContract
           );
 
-          let canMarketBeUpdated = await consumer.canMarketBeUpdated(
-            marketAddress
-          );
-          console.log("Can market be updated: " + canMarketBeUpdated);
-
           console.log("Game time Contract: " + gameStartContract);
           console.log("Game on Contract: " + gameCreatedOnContract);
           console.log("Home team on Contract: " + gameCreatedOnContract[5]);
@@ -301,43 +296,38 @@ async function doCheck(network, botName) {
 
             if (
               parseInt(newDateOnAPI) * 1000 >
-                parseInt(gameStartContract) * 1000 &&
-              parseInt(newDateOnAPI) * 1000 >
-                cuerrentTimeInMili + 10 * 60 * 1000
+                cuerrentTimeInMili + 10 * 60 * 1000 ||
+              parseInt(gameStartContract) * 1000 > cuerrentTimeInMili
             ) {
-              console.log("Ignore!");
-            } else {
               console.log("Time of a game UPDATED!!!");
               console.log("Afected game: " + events[a].id);
-              if (canMarketBeUpdated) {
-                let arrayOfGames = [];
-                var dateOfAGameAsUnixFormat = getUnixDateFromString(
-                  events[a].startdate
-                );
+              let arrayOfGames = [];
+              var dateOfAGameAsUnixFormat = getUnixDateFromString(
+                events[a].startdate
+              );
 
-                if (
-                  typeof mapDaysAndEvents.get(dateOfAGameAsUnixFormat) !=
-                  "undefined"
-                ) {
-                  arrayOfGames = mapDaysAndEvents.get(dateOfAGameAsUnixFormat);
-                  arrayOfGames.push(events[a].id);
-                } else {
-                  arrayOfGames.push(events[a].id);
-                }
-
-                mapDaysAndEvents.set(dateOfAGameAsUnixFormat, arrayOfGames); // to set the value using key
-
-                await sendMessageToDiscordTimeOfAGameHasChanged(
-                  "Time of a game has changed!!!",
-                  events[a].id,
-                  gameIdContract,
-                  gameCreatedOnContract[5],
-                  gameCreatedOnContract[6],
-                  parseInt(gameStartContract),
-                  parseInt(newDateOnAPI),
-                  network
-                );
+              if (
+                typeof mapDaysAndEvents.get(dateOfAGameAsUnixFormat) !=
+                "undefined"
+              ) {
+                arrayOfGames = mapDaysAndEvents.get(dateOfAGameAsUnixFormat);
+                arrayOfGames.push(events[a].id);
+              } else {
+                arrayOfGames.push(events[a].id);
               }
+
+              mapDaysAndEvents.set(dateOfAGameAsUnixFormat, arrayOfGames); // to set the value using key
+
+              await sendMessageToDiscordTimeOfAGameHasChanged(
+                "Time of a game has changed!!!",
+                events[a].id,
+                gameIdContract,
+                gameCreatedOnContract[5],
+                gameCreatedOnContract[6],
+                parseInt(gameStartContract),
+                parseInt(newDateOnAPI),
+                network
+              );
             }
           }
         }
