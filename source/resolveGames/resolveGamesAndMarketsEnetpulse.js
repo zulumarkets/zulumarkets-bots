@@ -22,6 +22,13 @@ let supportedLeaguesTennis = require("../createGames/supportedLeaguesTennis.json
 let supportedLeaguesFootball = require("../createGames/supportedLeaguesFootball.json"); // leagues/tour types etc.
 let tennisTournaments = require("../createGames/tennisSupportTournament.json"); // supported tennis tournamens
 let footballTournament = require("../createGames/footballSupportTournament.json"); // supported tennis tournamens
+let supportedLeaguesCsGo = require("../createGames/supportedLeaguesCsGo.json"); // leagues/tour types etc.
+let supportedLeaguesDota = require("../createGames/supportedLeaguesDota.json"); // leagues/tour types etc.
+let supportedLeaguesLol = require("../createGames/supportedLeaguesLol.json"); // leagues/tour types etc.
+let csGoSupportedTournaments = require("../createGames/supportTournamentCsGo.json"); // supported CSGO
+let dotaSupportedTournaments = require("../createGames/supportTournamentDota.json"); // supported Dota
+let lolSupportedTournaments = require("../createGames/supportTournamentLol.json"); // supported Lol
+
 const queues = new ethers.Contract(
   process.env.GAME_QUEUE_CONTRACT,
   gamesQueue.gamesQueueContract.abi,
@@ -58,15 +65,25 @@ async function doResolve(network, botName) {
   const LEAGUES_BY_SPORT = {
     1: supportedLeaguesFootball,
     2: supportedLeaguesTennis,
+    84: supportedLeaguesCsGo,
+    85: supportedLeaguesDota,
+    92: supportedLeaguesLol,
   };
 
   const TOURNAMENTS_BY_SPORT = {
     1: footballTournament,
     2: tennisTournaments,
+    84: csGoSupportedTournaments,
+    85: dotaSupportedTournaments,
+    92: lolSupportedTournaments,
   };
-  const EXPECTED_GAME_DURATIN = {
+
+  const EXPECTED_GAME_DURATION = {
     153: process.env.EXPECTED_GAME_GS,
     156: process.env.EXPECTED_GAME_MASTERS,
+    9977: process.env.EXPECTED_GAME_CSGO,
+    9983: process.env.EXPECTED_GAME_DOTA,
+    10138: process.env.EXPECTED_GAME_LOL,
   };
 
   let amountOfToken = await erc20Instance.balanceOf(wallet.address);
@@ -192,8 +209,8 @@ async function doResolve(network, botName) {
         console.log("Time for proocessing:  " + timeInMiliseconds);
 
         let expectedGameTime =
-          EXPECTED_GAME_DURATIN[parseInt(tournamentType[z].id)] !== undefined
-            ? EXPECTED_GAME_DURATIN[parseInt(tournamentType[z].id)]
+          EXPECTED_GAME_DURATION[parseInt(tournamentType[z].id)] !== undefined
+            ? EXPECTED_GAME_DURATION[parseInt(tournamentType[z].id)]
             : process.env.EXPECTED_GAME_FOOTBAL;
         console.log("Expected game duration: " + expectedGameTime);
 
