@@ -173,11 +173,6 @@ async function doCheck(network, botName) {
             gameIdContract
           );
 
-          let canMarketBeUpdated = await consumer.canMarketBeUpdated(
-            marketAddress
-          );
-          console.log("Can market be updated: " + canMarketBeUpdated);
-
           console.log("Game time Contract: " + gameStartContract);
           console.log("Game on Contract: " + gameCreatedOnContract);
           console.log("Home team on Contract: " + gameCreatedOnContract[5]);
@@ -237,19 +232,17 @@ async function doCheck(network, botName) {
             ) {
               console.log("Time of a game UPDATED!!!");
               console.log("Afected game: " + gamesListResponse[n].id);
-              if (canMarketBeUpdated) {
-                gamesToBeProcessed.push(gamesListResponse[n].id);
-                await sendMessageToDiscordTimeOfAGameHasChanged(
-                  "Time of a game/fight has changed!!!",
-                  gamesListResponse[n].id,
-                  gameIdContract,
-                  gameCreatedOnContract[5],
-                  gameCreatedOnContract[6],
-                  parseInt(gameStartContract),
-                  parseInt(gamesListResponse[n].gameStartTime),
-                  network
-                );
-              }
+              gamesToBeProcessed.push(gamesListResponse[n].id);
+              await sendMessageToDiscordTimeOfAGameHasChanged(
+                "Time of a game/fight has changed!!!",
+                gamesListResponse[n].id,
+                gameIdContract,
+                gameCreatedOnContract[5],
+                gameCreatedOnContract[6],
+                parseInt(gameStartContract),
+                parseInt(gamesListResponse[n].gameStartTime),
+                network
+              );
             }
           }
         }
