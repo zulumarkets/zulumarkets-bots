@@ -1095,7 +1095,7 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
           botName
         );
         failedCounter++;
-        await delay(1 * 60 * 10 * 1000 * failedCounter); // wait X (failedCounter) hours for admin
+        await delay(1 * 10 * 60 * 1000); // wait 10min
       }
     } else {
       console.log("Not still for processing...");
