@@ -1090,7 +1090,6 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
             ", EXCEPTION MESSAGE: " +
             e.message.slice(0, 180),
           sportIds,
-          unixDate,
           network,
           botName
         );
@@ -1498,7 +1497,6 @@ async function sendErrorMessageToDiscordStatusCancel(
 async function sendErrorMessageToDiscordRequestOddsfromCL(
   messageForPrint,
   sportId,
-  dateTimestamp,
   network,
   botName
 ) {
@@ -1522,7 +1520,7 @@ async function sendErrorMessageToDiscordRequestOddsfromCL(
       },
       {
         name: ":hammer_pick: Input params:",
-        value: "SportId: " + sportId + ", date (unix date): " + dateTimestamp,
+        value: "SportId: " + sportId,
       },
       {
         name: ":alarm_clock: Timestamp:",
