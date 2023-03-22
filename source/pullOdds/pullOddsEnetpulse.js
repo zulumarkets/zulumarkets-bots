@@ -16,6 +16,7 @@ const gamesVerifier = require("../../contracts/RundownVerifier.js");
 const gamesOddsObtainer = require("../../contracts/GamesOddsObtainer.js");
 const allowances = require("../allowances.js");
 const linkToken = require("../../contracts/LinkToken.js");
+const gamesOddsReciever = require("../../contracts/GameOddsReciever.js");
 let supportedGender = require("../createGames/supportedGender.json"); // leagues/tour types etc.
 let supportedLeaguesTennis = require("../createGames/supportedLeaguesTennis.json"); // leagues/tour types etc.
 let supportedLeaguesFootball = require("../createGames/supportedLeaguesFootball.json"); // leagues/tour types etc.
@@ -23,6 +24,12 @@ let tennisTournaments = require("../createGames/tennisSupportTournament.json"); 
 let footballTournament = require("../createGames/footballSupportTournament.json"); // supported tennis tournamens
 
 const oddslib = require("oddslib");
+
+const reciever = new ethers.Contract(
+  process.env.ODDS_RECIEVER_CONTRACT,
+  gamesOddsReciever.gamesOddsRecieverContract.abi,
+  wallet
+);
 
 const wrapper = new ethers.Contract(
   process.env.WRAPPER_CONTRACT,
@@ -382,7 +389,6 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
 
           // filter only events that are not started and event which start after daysInFront and if tennis only male singles
           events = events.filter((event) => {
-            console.log(event.id);
             return (
               (event.status_type === "notstarted" ||
                 isGameInRightStatus(cancelStatuses, event.status_type)) &&
@@ -530,6 +536,12 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
             }
 
             let gamesWhichOddsChanged = [];
+            let gameIdsForRequest = [];
+            let mainOddsForRequest = [];
+            let spreadLinesForRequest = [];
+            let totalLinesForRequest = [];
+            let spreadOddsForRequest = [];
+            let totalOddsForRequest = [];
 
             console.log(gamesListResponse);
 
@@ -554,23 +566,24 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                 /*if (sendRequestForOdds) {
                   break;
                 }*/
-                console.log("Game status -> " + gamesListResponse[n].status);
-                console.log(
-                  "Obtaining game id (as string): -> " + gamesListResponse[n].id
-                );
-                console.log(
-                  "Game: " +
-                    gamesListResponse[n].homeTeam +
-                    " " +
-                    gamesListResponse[n].awayTeam
-                );
-
                 // when game is found and status and status is STATUS_SCHEDULED
                 if (
                   gamesOnContract[m] ==
                     bytes32({ input: gamesListResponse[n].id }) &&
                   gamesListResponse[n].status == "notstarted"
                 ) {
+                  console.log("Game status -> " + gamesListResponse[n].status);
+                  console.log(
+                    "Obtaining game id (as string): -> " +
+                      gamesListResponse[n].id
+                  );
+                  console.log(
+                    "Game: " +
+                      gamesListResponse[n].homeTeam +
+                      " " +
+                      gamesListResponse[n].awayTeam
+                  );
+
                   console.log("Odds, checking...");
 
                   let marketAddress = marketAddressArray[m];
@@ -634,14 +647,14 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                       );
                     }
 
-                    let spreadHomePinnacle;
-                    let spreadAwayPinnacle;
-                    let totalOverPinnacle;
-                    let totalUnderPinnacle;
-                    let spreadHomeOddsPinnacle;
-                    let spreadAwayOddsPinnacle;
-                    let totalOverOddsPinnacle;
-                    let totalUnderOddsPinnacle;
+                    let spreadHomePinnacle = 0;
+                    let spreadAwayPinnacle = 0;
+                    let totalOverPinnacle = 0;
+                    let totalUnderPinnacle = 0;
+                    let spreadHomeOddsPinnacle = 0;
+                    let spreadAwayOddsPinnacle = 0;
+                    let totalOverOddsPinnacle = 0;
+                    let totalUnderOddsPinnacle = 0;
 
                     if (doesSportSupportSpreadAndTotal) {
                       spreadHomePinnacle = gamesListResponse[n].spreadHome;
@@ -807,6 +820,12 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                       console.log("Away change odd: " + percentageChangeAway);
                       console.log("Draw change odd: " + percentageChangeDraw);
 
+                      gameIdsForRequest.push(gamesOnContract[m]);
+
+                      mainOddsForRequest.push(homeOddPinnacle);
+                      mainOddsForRequest.push(awayOddPinnacle);
+                      mainOddsForRequest.push(drawOddPinnacle);
+
                       if (doesSportSupportSpreadAndTotal) {
                         let percentageChangeSpreadHome =
                           getPercentageOrPriceChange(
@@ -896,6 +915,25 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                           "1054737348170092644",
                           network
                         );
+                        spreadLinesForRequest.push(spreadHomePinnacle);
+                        spreadLinesForRequest.push(spreadAwayPinnacle);
+                        spreadOddsForRequest.push(spreadHomeOddsPinnacle);
+                        spreadOddsForRequest.push(spreadAwayOddsPinnacle);
+
+                        totalLinesForRequest.push(totalOverPinnacle);
+                        totalLinesForRequest.push(totalUnderPinnacle);
+                        totalOddsForRequest.push(totalOverOddsPinnacle);
+                        totalOddsForRequest.push(totalUnderOddsPinnacle);
+                      } else {
+                        spreadLinesForRequest.push(0);
+                        spreadLinesForRequest.push(0);
+                        spreadOddsForRequest.push(0);
+                        spreadOddsForRequest.push(0);
+
+                        totalLinesForRequest.push(0);
+                        totalLinesForRequest.push(0);
+                        totalOddsForRequest.push(0);
+                        totalOddsForRequest.push(0);
                       }
 
                       console.log("Setting sendRequestForOdds to true");
@@ -936,6 +974,34 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                       );
                       sendRequestForOdds = true;
                       gamesWhichOddsChanged.push(gamesListResponse[n].id);
+
+                      gameIdsForRequest.push(gamesOnContract[m]);
+
+                      mainOddsForRequest.push(homeOddPinnacle);
+                      mainOddsForRequest.push(awayOddPinnacle);
+                      mainOddsForRequest.push(drawOddPinnacle);
+
+                      if (doesSportSupportSpreadAndTotal) {
+                        spreadLinesForRequest.push(spreadHomePinnacle);
+                        spreadLinesForRequest.push(spreadAwayPinnacle);
+                        spreadOddsForRequest.push(spreadHomeOddsPinnacle);
+                        spreadOddsForRequest.push(spreadAwayOddsPinnacle);
+
+                        totalLinesForRequest.push(totalOverPinnacle);
+                        totalLinesForRequest.push(totalUnderPinnacle);
+                        totalOddsForRequest.push(totalOverOddsPinnacle);
+                        totalOddsForRequest.push(totalUnderOddsPinnacle);
+                      } else {
+                        spreadLinesForRequest.push(0);
+                        spreadLinesForRequest.push(0);
+                        spreadOddsForRequest.push(0);
+                        spreadOddsForRequest.push(0);
+
+                        totalLinesForRequest.push(0);
+                        totalLinesForRequest.push(0);
+                        totalOddsForRequest.push(0);
+                        totalOddsForRequest.push(0);
+                      }
                       await sendMessageToDiscordOddsChanged(
                         gamesListResponse[n].homeTeam,
                         gamesListResponse[n].awayTeam,
@@ -1047,35 +1113,73 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
             console.log("Games to be send: ");
             console.log("------");
             console.log(gamesWhichOddsChanged);
+            console.log(gameIdsForRequest);
+            console.log(mainOddsForRequest);
+            console.log(spreadLinesForRequest);
+            console.log(spreadOddsForRequest);
+            console.log(totalLinesForRequest);
+            console.log(totalOddsForRequest);
             console.log("------");
 
             // odds changed
-            if (sendRequestForOdds && gamesWhichOddsChanged.length > 0) {
+            if (sendRequestForOdds && gameIdsForRequest.length > 0) {
               console.log("Sending request, odds changed...");
               try {
                 console.log("Send request...");
 
                 console.log(
-                  "Requesting games count: " + gamesWhichOddsChanged.length
+                  "Requesting games count: " + gameIdsForRequest.length
                 );
-                if (gamesWhichOddsChanged.length > process.env.CL_ODDS_BATCH) {
-                  let gamesInBatchforCL = [];
-                  for (let i = 0; i < gamesWhichOddsChanged.length; i++) {
-                    gamesInBatchforCL.push(gamesWhichOddsChanged[i]);
+                if (gameIdsForRequest.length > process.env.CL_ODDS_BATCH) {
+                  let gamesInBatch = [];
+                  let mainOddsForRequestBatch = [];
+                  let spreadLinesForRequestBatch = [];
+                  let totalLinesForRequestBatch = [];
+                  let spreadOddsForRequestBatch = [];
+                  let totalOddsForRequestBatch = [];
+                  for (let i = 0; i < gameIdsForRequest.length; i++) {
+                    gamesInBatch.push(gameIdsForRequest[i]);
+                    mainOddsForRequestBatch.push(mainOddsForRequest[i * 3]);
+                    mainOddsForRequestBatch.push(mainOddsForRequest[i * 3 + 1]);
+                    mainOddsForRequestBatch.push(mainOddsForRequest[i * 3 + 2]);
+
+                    spreadLinesForRequestBatch.push(
+                      spreadLinesForRequest[i * 2]
+                    );
+                    spreadLinesForRequestBatch.push(
+                      spreadLinesForRequest[i * 2 + 1]
+                    );
+
+                    totalLinesForRequestBatch.push(totalLinesForRequest[i * 2]);
+                    totalLinesForRequestBatch.push(
+                      totalLinesForRequest[i * 2 + 1]
+                    );
+
+                    spreadOddsForRequestBatch.push(spreadOddsForRequest[i * 2]);
+                    spreadOddsForRequestBatch.push(
+                      spreadOddsForRequest[i * 2 + 1]
+                    );
+
+                    totalOddsForRequestBatch.push(totalOddsForRequest[i * 2]);
+                    totalOddsForRequestBatch.push(
+                      totalOddsForRequest[i * 2 + 1]
+                    );
+
                     if (
-                      (gamesInBatchforCL.length > 0 &&
-                        gamesInBatchforCL.length % process.env.CL_ODDS_BATCH ==
-                          0) ||
+                      (gamesInBatch.length > 0 &&
+                        gamesInBatch.length % process.env.CL_ODDS_BATCH == 0) ||
                       gamesWhichOddsChanged.length - 1 == i // last one
                     ) {
                       console.log("Batch...");
-                      console.log(gamesInBatchforCL);
+                      console.log(gamesInBatch);
 
-                      let tx = await wrapper.requestOddsWithFilters(
-                        jobId,
-                        tournamentType[r].id,
-                        unixDate,
-                        gamesInBatchforCL, //ids,
+                      let tx = await reciever.fulfillGamesOdds(
+                        gamesInBatch,
+                        mainOddsForRequestBatch,
+                        spreadLinesForRequestBatch,
+                        spreadOddsForRequestBatch,
+                        totalLinesForRequestBatch,
+                        totalOddsForRequestBatch,
                         {
                           gasLimit: process.env.GAS_LIMIT,
                         }
@@ -1088,25 +1192,24 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                             " for sport: " +
                             tournamentType[r].id
                         );
-                        let events = e.events.filter(
-                          (evn) => evn.event === "ChainlinkRequested"
-                        );
-                        if (events.length > 0) {
-                          const requestId = events[0].args.id;
-                          console.log("Chainlink request id is: " + requestId);
-                          requestIdList.push(requestId);
-                        }
                       });
 
-                      gamesInBatchforCL = [];
+                      gamesInBatch = [];
+                      mainOddsForRequestBatch = [];
+                      spreadLinesForRequestBatch = [];
+                      totalLinesForRequestBatch = [];
+                      spreadOddsForRequestBatch = [];
+                      totalOddsForRequestBatch = [];
                     }
                   }
                 } else {
-                  let tx = await wrapper.requestOddsWithFilters(
-                    jobId,
-                    tournamentType[r].id,
-                    unixDate,
-                    gamesWhichOddsChanged, //ids,
+                  let tx = await reciever.fulfillGamesOdds(
+                    gameIdsForRequest,
+                    mainOddsForRequest,
+                    spreadLinesForRequest,
+                    spreadOddsForRequest,
+                    totalLinesForRequest,
+                    totalOddsForRequest,
                     {
                       gasLimit: process.env.GAS_LIMIT,
                     }
@@ -1119,20 +1222,12 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                         " for sport: " +
                         tournamentType[r].id
                     );
-                    let events = e.events.filter(
-                      (evn) => evn.event === "ChainlinkRequested"
-                    );
-                    if (events.length > 0) {
-                      const requestId = events[0].args.id;
-                      console.log("Chainlink request id is: " + requestId);
-                      requestIdList.push(requestId);
-                    }
                   });
                 }
               } catch (e) {
                 console.log(e);
                 await sendErrorMessageToDiscordRequestOddsfromCL(
-                  "Request to CL from " +
+                  "Request to changing odds from " +
                     botName +
                     " went wrong, see: " +
                     botName +
@@ -1916,7 +2011,7 @@ function calculateOdds(
     (odds.length < 3 && !isSportTwoPositionsSport) ||
     (odds.length < 2 && isSportTwoPositionsSport)
   ) {
-    return 0.01; // todo
+    return 0;
   }
 
   let calcOdds = [];
