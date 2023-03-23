@@ -22,7 +22,10 @@ if (usingBlast) {
     );
   } else {
     console.log("chainnodes!");
-    if (process.env.INFURA_URL.includes("chainnodes")) {
+    if (
+      process.env.INFURA_URL.includes("chainnodes") ||
+      process.env.INFURA_URL.includes("alchemy")
+    ) {
       etherprovider = new ethers.providers.JsonRpcProvider(
         process.env.INFURA_URL
       );
