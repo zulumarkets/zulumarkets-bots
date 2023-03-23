@@ -487,6 +487,9 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
               let gameStart = gameStartedArray[m];
               console.log("GAME start:  " + gameStart);
 
+              let cuerrentTimeInMili = new Date().getTime(); // miliseconds
+              console.log("Time for proocessing:  " + cuerrentTimeInMili);
+
               console.log(
                 "Last game on that date is (before): " +
                   lastStartDate[dateSport]
@@ -503,10 +506,12 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
 
               // only ongoing games not resolved or already canceled
               // and market exists
+              // and market NOT started
               if (
                 !isMarketResolved &&
                 !isMarketCanceled &&
-                marketAddress != ZERO_ADDRESS
+                marketAddress != ZERO_ADDRESS &&
+                parseInt(gameStart) * 1000 > cuerrentTimeInMili
               ) {
                 let homeOddPinnacle = gamesListResponse[n].homeOdd;
                 console.log("Contract ID: " + gamesOnContract[m]);
