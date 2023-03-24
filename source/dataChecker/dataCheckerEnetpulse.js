@@ -307,9 +307,12 @@ async function doCheck(network, botName) {
             console.log("Time for proocessing:  " + cuerrentTimeInMili);
 
             if (
-              parseInt(newDateOnAPI) * 1000 >
-                cuerrentTimeInMili + 10 * 60 * 1000 ||
-              parseInt(gameStartContract) * 1000 > cuerrentTimeInMili
+              // new time is before contract time OR
+              // new time is more then 10 min in future AND current contract time in past
+              parseInt(newDateOnAPI) < parseInt(gameStartContract) ||
+              (parseInt(newDateOnAPI) * 1000 >
+                cuerrentTimeInMili + 10 * 60 * 1000 &&
+                parseInt(gameStartContract) * 1000 < cuerrentTimeInMili)
             ) {
               console.log("Time of a game UPDATED!!!");
               console.log("Afected game: " + events[a].id);
