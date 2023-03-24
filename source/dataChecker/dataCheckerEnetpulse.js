@@ -366,17 +366,29 @@ async function doCheck(network, botName) {
             try {
               console.log("Send request to CL...");
 
-              let tx_request = await wrapper.requestGamesResolveWithFilters(
-                jobId,
-                market,
-                tournamentType[z].id,
-                unixDate,
-                [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z].id
-                gamesToBeProcessed,
-                {
-                  gasLimit: process.env.GAS_LIMIT,
-                }
-              );
+              let tx_request;
+              if (process.env.NETWORK_ID == 10) {
+                tx_request = await wrapper.requestGamesResolveWithFilters(
+                  jobId,
+                  market,
+                  tournamentType[z].id,
+                  unixDate,
+                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z].id
+                  gamesToBeProcessed,
+                  {
+                    gasLimit: process.env.GAS_LIMIT,
+                  }
+                );
+              } else {
+                tx_request = await wrapper.requestGamesResolveWithFilters(
+                  jobId,
+                  market,
+                  tournamentType[z].id,
+                  unixDate,
+                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z].id
+                  gamesToBeProcessed
+                );
+              }
 
               await tx_request.wait().then((e) => {
                 console.log(
@@ -451,9 +463,14 @@ async function doCheck(network, botName) {
           try {
             console.log(gameIds);
             // send all ids
-            let tx = await consumer.createAllMarketsForGames(gameIds, {
-              gasLimit: process.env.GAS_LIMIT,
-            });
+            let tx;
+            if (process.env.NETWORK_ID == 10) {
+              tx = await consumer.createAllMarketsForGames(gameIds, {
+                gasLimit: process.env.GAS_LIMIT,
+              });
+            } else {
+              tx = await consumer.createAllMarketsForGames(gameIds);
+            }
 
             await tx.wait().then((e) => {
               console.log(

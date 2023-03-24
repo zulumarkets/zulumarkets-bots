@@ -404,17 +404,29 @@ async function doCreate(network, botName) {
                     console.log("Batch...");
                     console.log(gamesInBatchforCL);
 
-                    let tx = await wrapper.requestGamesResolveWithFilters(
-                      jobId,
-                      market,
-                      tournamentType[z].id,
-                      unixDate,
-                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                      gamesInBatchforCL,
-                      {
-                        gasLimit: process.env.GAS_LIMIT,
-                      }
-                    );
+                    let tx;
+                    if (process.env.NETWORK_ID == 10) {
+                      tx = await wrapper.requestGamesResolveWithFilters(
+                        jobId,
+                        market,
+                        tournamentType[z].id,
+                        unixDate,
+                        [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                        gamesInBatchforCL,
+                        {
+                          gasLimit: process.env.GAS_LIMIT,
+                        }
+                      );
+                    } else {
+                      tx = await wrapper.requestGamesResolveWithFilters(
+                        jobId,
+                        market,
+                        tournamentType[z].id,
+                        unixDate,
+                        [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                        gamesInBatchforCL
+                      );
+                    }
                     await tx.wait().then((e) => {
                       console.log(
                         "Requested for: " +
@@ -438,17 +450,29 @@ async function doCreate(network, botName) {
                   }
                 }
               } else {
-                let tx = await wrapper.requestGamesResolveWithFilters(
-                  jobId,
-                  market,
-                  tournamentType[z].id,
-                  unixDate,
-                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                  gamesInBatch,
-                  {
-                    gasLimit: process.env.GAS_LIMIT,
-                  }
-                );
+                let tx;
+                if (process.env.NETWORK_ID == 10) {
+                  tx = await wrapper.requestGamesResolveWithFilters(
+                    jobId,
+                    market,
+                    tournamentType[z].id,
+                    unixDate,
+                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                    gamesInBatch,
+                    {
+                      gasLimit: process.env.GAS_LIMIT,
+                    }
+                  );
+                } else {
+                  tx = await wrapper.requestGamesResolveWithFilters(
+                    jobId,
+                    market,
+                    tournamentType[z].id,
+                    unixDate,
+                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                    gamesInBatch
+                  );
+                }
 
                 await tx.wait().then((e) => {
                   console.log("Requested for: " + unixDate);
@@ -518,9 +542,14 @@ async function doCreate(network, botName) {
           try {
             console.log(gameIds);
             // send all ids
-            let tx = await consumer.createAllMarketsForGames(gameIds, {
-              gasLimit: process.env.GAS_LIMIT,
-            });
+            let tx;
+            if (process.env.NETWORK_ID == 10) {
+              tx = await consumer.createAllMarketsForGames(gameIds, {
+                gasLimit: process.env.GAS_LIMIT,
+              });
+            } else {
+              tx = await consumer.createAllMarketsForGames(gameIds);
+            }
 
             await tx.wait().then((e) => {
               console.log(

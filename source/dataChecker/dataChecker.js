@@ -92,7 +92,7 @@ async function doCheck(network, botName) {
       console.log("SPORT ID =>  " + sportIds[j]);
       console.log("Processing: TODAY +  " + i);
 
-      let unixDate = await getSecondsToDate(i);
+      let unixDate = getSecondsToDate(i);
       console.log("Unix date in seconds: " + unixDate);
       let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
       console.log("Unix date in miliseconds: " + unixDateMiliseconds);
@@ -254,17 +254,29 @@ async function doCheck(network, botName) {
         try {
           console.log("Send request to CL...");
 
-          let tx_request = await wrapper.requestGamesResolveWithFilters(
-            jobId,
-            market,
-            sportIds[j],
-            unixDate,
-            [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-            gamesToBeProcessed,
-            {
-              gasLimit: process.env.GAS_LIMIT,
-            }
-          );
+          let tx_request;
+          if (process.env.NETWORK_ID == 10) {
+            tx_request = await wrapper.requestGamesResolveWithFilters(
+              jobId,
+              market,
+              sportIds[j],
+              unixDate,
+              [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+              gamesToBeProcessed,
+              {
+                gasLimit: process.env.GAS_LIMIT,
+              }
+            );
+          } else {
+            tx_request = await wrapper.requestGamesResolveWithFilters(
+              jobId,
+              market,
+              sportIds[j],
+              unixDate,
+              [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+              gamesToBeProcessed
+            );
+          }
 
           await tx_request.wait().then((e) => {
             console.log(
@@ -340,9 +352,14 @@ async function doCheck(network, botName) {
           try {
             console.log(gameIds);
             // send all ids
-            let tx = await consumer.createAllMarketsForGames(gameIds, {
-              gasLimit: process.env.GAS_LIMIT,
-            });
+            let tx;
+            if (process.env.NETWORK_ID == 10) {
+              tx = await consumer.createAllMarketsForGames(gameIds, {
+                gasLimit: process.env.GAS_LIMIT,
+              });
+            } else {
+              tx = await consumer.createAllMarketsForGames(gameIds);
+            }
 
             await tx.wait().then((e) => {
               console.log(

@@ -108,7 +108,7 @@ async function doCreate(network, botName) {
       console.log("SPORT ID =  " + sportIds[j]);
       console.log("TODAY +  " + i);
 
-      let unixDate = await getSecondsToDate(i);
+      let unixDate = getSecondsToDate(i);
       console.log("Unix date in seconds: " + unixDate);
       let unixDateMiliseconds = parseInt(unixDate) * process.env.MILISECONDS;
       console.log("Unix date in miliseconds: " + unixDateMiliseconds);
@@ -146,6 +146,23 @@ async function doCreate(network, botName) {
             if (
               ncaaSupportedTeams.includes(o.teams_normalized[0].name) &&
               ncaaSupportedTeams.includes(o.teams_normalized[1].name)
+            ) {
+              filteredResponse.push(o);
+            }
+          }
+        });
+        // for NHL, NBA, NFL and MLB only support regular season and postseason
+      } else if (
+        sportIds[j] == 2 ||
+        sportIds[j] == 3 ||
+        sportIds[j] == 4 ||
+        sportIds[j] == 6
+      ) {
+        response.data.events.forEach((o) => {
+          if (o.schedule != undefined) {
+            if (
+              o.schedule.season_type == "Regular Season" ||
+              o.schedule.season_type == "Postseason"
             ) {
               filteredResponse.push(o);
             }
@@ -350,9 +367,13 @@ async function doCreate(network, botName) {
         let gamesInBatch = [];
         if (
           sportIds[j] == 1 ||
+          sportIds[j] == 2 ||
+          sportIds[j] == 3 ||
+          sportIds[j] == 4 ||
+          sportIds[j] == 5 ||
+          sportIds[j] == 6 ||
           sportIds[j] == 7 ||
-          sportIds[j] == 18 ||
-          sportIds[j] == 5
+          sportIds[j] == 18
         ) {
           filteredResponse.forEach((o) => {
             gamesInBatch.push(o.event_id);
@@ -375,18 +396,30 @@ async function doCreate(network, botName) {
               ) {
                 console.log("Batch...");
                 console.log(gamesInBatchforCL);
+                let tx;
+                if (process.env.NETWORK_ID == 10) {
+                  tx = await wrapper.requestGamesResolveWithFilters(
+                    jobId,
+                    market,
+                    sportIds[j],
+                    unixDate,
+                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                    gamesInBatchforCL,
+                    {
+                      gasLimit: process.env.GAS_LIMIT,
+                    }
+                  );
+                } else {
+                  tx = await wrapper.requestGamesResolveWithFilters(
+                    jobId,
+                    market,
+                    sportIds[j],
+                    unixDate,
+                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                    gamesInBatchforCL
+                  );
+                }
 
-                let tx = await wrapper.requestGamesResolveWithFilters(
-                  jobId,
-                  market,
-                  sportIds[j],
-                  unixDate,
-                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-                  gamesInBatchforCL,
-                  {
-                    gasLimit: process.env.GAS_LIMIT,
-                  }
-                );
                 await tx.wait().then((e) => {
                   console.log(
                     "Requested for: " +
@@ -409,17 +442,29 @@ async function doCreate(network, botName) {
               }
             }
           } else {
-            let tx = await wrapper.requestGamesResolveWithFilters(
-              jobId,
-              market,
-              sportIds[j],
-              unixDate,
-              [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
-              gamesInBatch,
-              {
-                gasLimit: process.env.GAS_LIMIT,
-              }
-            );
+            let tx;
+            if (process.env.NETWORK_ID == 10) {
+              tx = await wrapper.requestGamesResolveWithFilters(
+                jobId,
+                market,
+                sportIds[j],
+                unixDate,
+                [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                gamesInBatch,
+                {
+                  gasLimit: process.env.GAS_LIMIT,
+                }
+              );
+            } else {
+              tx = await wrapper.requestGamesResolveWithFilters(
+                jobId,
+                market,
+                sportIds[j],
+                unixDate,
+                [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportIds[j]
+                gamesInBatch
+              );
+            }
 
             await tx.wait().then((e) => {
               console.log("Requested for: " + unixDate);
@@ -484,10 +529,15 @@ async function doCreate(network, botName) {
           try {
             console.log(gameIds);
             // send all ids
-            let tx = await consumer.createAllMarketsForGames(gameIds, {
-              gasLimit: process.env.GAS_LIMIT,
-            });
 
+            let tx;
+            if (process.env.NETWORK_ID == 10) {
+              tx = await consumer.createAllMarketsForGames(gameIds, {
+                gasLimit: process.env.GAS_LIMIT,
+              });
+            } else {
+              tx = await consumer.createAllMarketsForGames(gameIds);
+            }
             await tx.wait().then((e) => {
               console.log(
                 "Market created for number of games: " + gameIds.length

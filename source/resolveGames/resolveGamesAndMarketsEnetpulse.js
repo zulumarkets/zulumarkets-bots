@@ -431,17 +431,29 @@ async function doResolve(network, botName) {
               console.log(gameIds);
               // do it if less than batch number
               if (gameIds.length <= process.env.CL_RESOLVE_BATCH) {
-                let tx = await wrapper.requestGamesResolveWithFilters(
-                  jobId,
-                  market,
-                  tournamentType[z].id,
-                  unixDate,
-                  [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z]
-                  gameIds,
-                  {
-                    gasLimit: process.env.GAS_LIMIT,
-                  }
-                );
+                let tx;
+                if (process.env.NETWORK_ID == 10) {
+                  tx = await wrapper.requestGamesResolveWithFilters(
+                    jobId,
+                    market,
+                    tournamentType[z].id,
+                    unixDate,
+                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z]
+                    gameIds,
+                    {
+                      gasLimit: process.env.GAS_LIMIT,
+                    }
+                  );
+                } else {
+                  tx = await wrapper.requestGamesResolveWithFilters(
+                    jobId,
+                    market,
+                    tournamentType[z].id,
+                    unixDate,
+                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z]
+                    gameIds
+                  );
+                }
 
                 await tx.wait().then((e) => {
                   console.log(
@@ -472,18 +484,29 @@ async function doResolve(network, botName) {
                     console.log("Batch...");
                     console.log(gamesInBatch);
 
-                    let tx = await wrapper.requestGamesResolveWithFilters(
-                      jobId,
-                      market,
-                      tournamentType[z].id,
-                      unixDate,
-                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z]
-                      gamesInBatch,
-                      {
-                        gasLimit: process.env.GAS_LIMIT,
-                      }
-                    );
-
+                    let tx;
+                    if (process.env.NETWORK_ID == 10) {
+                      tx = await wrapper.requestGamesResolveWithFilters(
+                        jobId,
+                        market,
+                        tournamentType[z].id,
+                        unixDate,
+                        [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z]
+                        gamesInBatch,
+                        {
+                          gasLimit: process.env.GAS_LIMIT,
+                        }
+                      );
+                    } else {
+                      tx = await wrapper.requestGamesResolveWithFilters(
+                        jobId,
+                        market,
+                        tournamentType[z].id,
+                        unixDate,
+                        [], // add statuses for football OPTIONAL use property statuses ?? maybe IF tournamentType[z]
+                        gamesInBatch
+                      );
+                    }
                     await tx.wait().then((e) => {
                       console.log(
                         "Requested for: " +
@@ -569,9 +592,14 @@ async function doResolve(network, botName) {
         ) {
           try {
             // send all ids
-            let tx = await consumer.resolveAllMarketsForGames(gameIds, {
-              gasLimit: process.env.GAS_LIMIT,
-            });
+            let tx;
+            if (process.env.NETWORK_ID == 10) {
+              tx = await consumer.resolveAllMarketsForGames(gameIds, {
+                gasLimit: process.env.GAS_LIMIT,
+              });
+            } else {
+              tx = await consumer.resolveAllMarketsForGames(gameIds);
+            }
 
             await tx.wait().then((e) => {
               console.log(

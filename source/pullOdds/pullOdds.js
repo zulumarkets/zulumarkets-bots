@@ -939,15 +939,29 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
                 try {
                   console.log("Send request...");
 
-                  let tx = await wrapper.requestGamesResolveWithFilters(
-                    jobIdResolve,
-                    market,
-                    sportIds,
-                    gameStart,
-                    [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
-                    [gamesListResponse[n].id]
-                  );
-
+                  let tx;
+                  if (process.env.NETWORK_ID == 10) {
+                    tx = await wrapper.requestGamesResolveWithFilters(
+                      jobIdResolve,
+                      market,
+                      sportIds,
+                      gameStart,
+                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
+                      [gamesListResponse[n].id],
+                      {
+                        gasLimit: process.env.GAS_LIMIT,
+                      }
+                    );
+                  } else {
+                    tx = await wrapper.requestGamesResolveWithFilters(
+                      jobIdResolve,
+                      market,
+                      sportIds,
+                      gameStart,
+                      [], // add statuses for football OPTIONAL use property statuses ?? maybe IF sportId
+                      [gamesListResponse[n].id]
+                    );
+                  }
                   await tx.wait().then((e) => {
                     console.log(
                       "Requested for: " +
@@ -1044,17 +1058,29 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
               console.log("Batch...");
               console.log(gamesInBatch);
 
-              let tx = await reciever.fulfillGamesOdds(
-                gamesInBatch,
-                mainOddsForRequestBatch,
-                spreadLinesForRequestBatch,
-                spreadOddsForRequestBatch,
-                totalLinesForRequestBatch,
-                totalOddsForRequestBatch,
-                {
-                  gasLimit: process.env.GAS_LIMIT,
-                }
-              );
+              let tx;
+              if (process.env.NETWORK_ID == 10) {
+                tx = await reciever.fulfillGamesOdds(
+                  gamesInBatch,
+                  mainOddsForRequestBatch,
+                  spreadLinesForRequestBatch,
+                  spreadOddsForRequestBatch,
+                  totalLinesForRequestBatch,
+                  totalOddsForRequestBatch,
+                  {
+                    gasLimit: process.env.GAS_LIMIT,
+                  }
+                );
+              } else {
+                tx = await reciever.fulfillGamesOdds(
+                  gamesInBatch,
+                  mainOddsForRequestBatch,
+                  spreadLinesForRequestBatch,
+                  spreadOddsForRequestBatch,
+                  totalLinesForRequestBatch,
+                  totalOddsForRequestBatch
+                );
+              }
 
               await tx.wait().then((e) => {
                 console.log("Requested for sport: " + sportIds);
@@ -1069,18 +1095,29 @@ async function doPull(numberOfExecution, lastStartDate, botName, network) {
             }
           }
         } else {
-          let tx = await reciever.fulfillGamesOdds(
-            gameIdsForRequest,
-            mainOddsForRequest,
-            spreadLinesForRequest,
-            spreadOddsForRequest,
-            totalLinesForRequest,
-            totalOddsForRequest,
-            {
-              gasLimit: process.env.GAS_LIMIT,
-            }
-          );
-
+          let tx;
+          if (process.env.NETWORK_ID == 10) {
+            tx = await reciever.fulfillGamesOdds(
+              gameIdsForRequest,
+              mainOddsForRequest,
+              spreadLinesForRequest,
+              spreadOddsForRequest,
+              totalLinesForRequest,
+              totalOddsForRequest,
+              {
+                gasLimit: process.env.GAS_LIMIT,
+              }
+            );
+          } else {
+            tx = await reciever.fulfillGamesOdds(
+              gameIdsForRequest,
+              mainOddsForRequest,
+              spreadLinesForRequest,
+              spreadOddsForRequest,
+              totalLinesForRequest,
+              totalOddsForRequest
+            );
+          }
           await tx.wait().then((e) => {
             console.log("Requested for sport: " + sportIds);
           });
